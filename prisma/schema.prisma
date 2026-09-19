@@ -92,9 +92,11 @@ model Branch {
   employees   Employee[]
   shifts      Shift[]
   attendances Attendance[]
-  menuItems   BranchMenuItem[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  menuItems         BranchMenuItem[]
+  inventoryItems    InventoryItem[]
+  stockTransactions StockTransaction[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@index([status])
   @@index([city])
@@ -236,9 +238,11 @@ model Ingredient {
   description String?
   unit        IngredientUnit
   status      MenuStatus         @default(ACTIVE)
-  recipes     RecipeIngredient[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  recipes           RecipeIngredient[]
+  inventoryItems    InventoryItem[]
+  stockTransactions StockTransaction[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([status])
   @@index([name])
@@ -295,5 +299,77 @@ model RecipeIngredient {
   @@unique([menuItemId, ingredientId])
   @@index([menuItemId])
   @@index([ingredientId])
+}
+
+// ─── Inventory & Stock Management ───────────────────────────────────────────
+
+enum InventoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum StockTransactionType {
+  OPENING
+  RECEIPT
+  CONSUMPTION
+  TRANSFER_IN
+  TRANSFER_OUT
+  DAMAGE
+  WASTAGE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+}
+
+enum WastageReason {
+  BURNED
+  SPILLED
+  SPOILED
+  EXPIRED
+  DROPPED
+  OVER_PREPARED
+  PREPARATION_ERROR
+  DELIVERY_DAMAGE
+  PACKAGING_DAMAGE
+  OTHER
+}
+
+model InventoryItem {
+  id           String          @id @default(cuid())
+  branchId     String
+  branch       Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  ingredientId String
+  ingredient   Ingredient      @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  minimumStock Decimal         @default(0) @db.Decimal(10, 3)
+  reorderLevel Decimal         @default(0) @db.Decimal(10, 3)
+  status       InventoryStatus @default(ACTIVE)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([branchId, ingredientId])
+  @@index([branchId])
+  @@index([ingredientId])
+  @@index([status])
+}
+
+model StockTransaction {
+  id           String               @id @default(cuid())
+  branchId     String
+  branch       Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  ingredientId String
+  ingredient   Ingredient           @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  type         StockTransactionType
+  quantity     Decimal              @db.Decimal(10, 3)
+  unit         IngredientUnit
+  referenceId  String?
+  reason       WastageReason?
+  note         String?
+  performedBy  String
+  createdAt    DateTime             @default(now())
+
+  @@index([branchId, ingredientId])
+  @@index([branchId, createdAt])
+  @@index([ingredientId, createdAt])
+  @@index([type])
+  @@index([referenceId])
 }
 

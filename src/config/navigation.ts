@@ -76,6 +76,7 @@ export const mainNavItems: NavItem[] = [
     label: 'Inventory',
     href: '/inventory',
     icon: Package,
+    requiredPermission: PERMISSIONS.INVENTORY_READ,
   },
   {
     label: 'Suppliers',

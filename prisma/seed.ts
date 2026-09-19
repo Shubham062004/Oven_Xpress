@@ -8,6 +8,9 @@ import {
   AttendanceStatus,
   MenuStatus,
   IngredientUnit,
+  InventoryStatus,
+  StockTransactionType,
+  WastageReason,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -75,6 +78,15 @@ async function main() {
     // Branch Menu Availability & Pricing
     { code: 'menu.branch.read', module: 'menu', description: 'View branch menu availability and branch pricing' },
     { code: 'menu.branch.update', module: 'menu', description: 'Update branch menu availability and branch pricing' },
+    // Inventory & Stock Management
+    { code: 'inventory.read', module: 'inventory', description: 'View stock levels, alerts, and ledger history' },
+    { code: 'inventory.create', module: 'inventory', description: 'Record opening stock and stock receipts' },
+    { code: 'inventory.update', module: 'inventory', description: 'Update minimum stock and reorder thresholds' },
+    { code: 'inventory.adjust', module: 'inventory', description: 'Perform manual stock adjustments' },
+    { code: 'inventory.transfer', module: 'inventory', description: 'Execute branch-to-branch stock transfers' },
+    { code: 'inventory.wastage', module: 'inventory', description: 'Log operational wastage and damaged stock' },
+    { code: 'inventory.reconcile', module: 'inventory', description: 'Reconcile physical stock counts with system counts' },
+    { code: 'inventory.deactivate', module: 'inventory', description: 'Activate or deactivate tracked inventory items' },
   ];
 
   console.log('  → Seeding permissions...');
@@ -133,6 +145,14 @@ async function main() {
         'menu.recipe.update',
         'menu.branch.read',
         'menu.branch.update',
+        'inventory.read',
+        'inventory.create',
+        'inventory.update',
+        'inventory.adjust',
+        'inventory.transfer',
+        'inventory.wastage',
+        'inventory.reconcile',
+        'inventory.deactivate',
       ],
     },
     {
@@ -175,6 +195,14 @@ async function main() {
         'menu.recipe.update',
         'menu.branch.read',
         'menu.branch.update',
+        'inventory.read',
+        'inventory.create',
+        'inventory.update',
+        'inventory.adjust',
+        'inventory.transfer',
+        'inventory.wastage',
+        'inventory.reconcile',
+        'inventory.deactivate',
       ],
     },
     {
@@ -200,6 +228,13 @@ async function main() {
         'menu.recipe.read',
         'menu.branch.read',
         'menu.branch.update',
+        'inventory.read',
+        'inventory.create',
+        'inventory.update',
+        'inventory.adjust',
+        'inventory.transfer',
+        'inventory.wastage',
+        'inventory.reconcile',
       ],
     },
     {
@@ -210,6 +245,7 @@ async function main() {
         'branch.read',
         'menu.category.read',
         'menu.item.read',
+        'inventory.read',
       ],
     },
   ];
@@ -984,6 +1020,162 @@ async function main() {
     }
     console.log(`      ↳ BOM configured: ${itemData.recipe.length} ingredients`);
   }
+
+  // 9. Seed Inventory Items & Stock Transactions
+  console.log('  → Seeding inventory items and stock ledger...');
+  const inventoryBranches = [dtBranch, bwBranch, andBranch];
+  const allIngredientRecords = await prisma.ingredient.findMany();
+
+  // Create InventoryItem records and OPENING transactions for all ingredients
+  for (const b of inventoryBranches) {
+    for (const ing of allIngredientRecords) {
+      await prisma.inventoryItem.upsert({
+        where: {
+          branchId_ingredientId: {
+            branchId: b.id,
+            ingredientId: ing.id,
+          },
+        },
+        update: {
+          minimumStock: new Prisma.Decimal('10.000'),
+          reorderLevel: new Prisma.Decimal('20.000'),
+          status: InventoryStatus.ACTIVE,
+        },
+        create: {
+          branchId: b.id,
+          ingredientId: ing.id,
+          minimumStock: new Prisma.Decimal('10.000'),
+          reorderLevel: new Prisma.Decimal('20.000'),
+          status: InventoryStatus.ACTIVE,
+        },
+      });
+
+      // Check if opening stock already exists
+      const existingOpening = await prisma.stockTransaction.findFirst({
+        where: {
+          branchId: b.id,
+          ingredientId: ing.id,
+          type: StockTransactionType.OPENING,
+        },
+      });
+
+      if (!existingOpening) {
+        // Generous initial stock based on unit
+        const openingQty =
+          ing.unit === 'KG'
+            ? '50.000'
+            : ing.unit === 'LITRE'
+              ? '40.000'
+              : ing.unit === 'PIECE'
+                ? '100.000'
+                : '30.000';
+
+        await prisma.stockTransaction.create({
+          data: {
+            branchId: b.id,
+            ingredientId: ing.id,
+            type: StockTransactionType.OPENING,
+            quantity: new Prisma.Decimal(openingQty),
+            unit: ing.unit,
+            note: 'Initial opening stock setup for branch launch',
+            performedBy: 'System Seed',
+          },
+        });
+      }
+    }
+  }
+
+  // Seed sample transactions for Downtown Flagship
+  const doughIng = allIngredientRecords.find((i) => i.name === 'Pizza Dough');
+  const mozzIng = allIngredientRecords.find((i) => i.name === 'Mozzarella Cheese');
+  const sauceIng = allIngredientRecords.find((i) => i.name === 'Tomato Sauce');
+
+  if (doughIng && mozzIng && sauceIng) {
+    // 1. Stock Receipt
+    await prisma.stockTransaction.create({
+      data: {
+        branchId: dtBranch.id,
+        ingredientId: mozzIng.id,
+        type: StockTransactionType.RECEIPT,
+        quantity: new Prisma.Decimal('25.000'),
+        unit: mozzIng.unit,
+        referenceId: 'RCV-2026-001',
+        note: 'Fresh dairy supplier batch delivery',
+        performedBy: 'Aarav Patel',
+      },
+    });
+
+    // 2. Kitchen Wastage
+    await prisma.stockTransaction.create({
+      data: {
+        branchId: dtBranch.id,
+        ingredientId: sauceIng.id,
+        type: StockTransactionType.WASTAGE,
+        reason: WastageReason.SPOILED,
+        quantity: new Prisma.Decimal('2.500'),
+        unit: sauceIng.unit,
+        note: 'Expired batch discovered during morning stock check',
+        performedBy: 'Aarav Patel',
+      },
+    });
+
+    // 3. Physical Damage
+    await prisma.stockTransaction.create({
+      data: {
+        branchId: dtBranch.id,
+        ingredientId: doughIng.id,
+        type: StockTransactionType.DAMAGE,
+        reason: WastageReason.DROPPED,
+        quantity: new Prisma.Decimal('1.000'),
+        unit: doughIng.unit,
+        note: 'Tray dropped during prep station rotation',
+        performedBy: 'Priya Sharma',
+      },
+    });
+
+    // 4. Branch Stock Transfer: Downtown -> Bandra West
+    const transferRef = 'TRF-SEED-001';
+    await prisma.stockTransaction.create({
+      data: {
+        branchId: dtBranch.id,
+        ingredientId: mozzIng.id,
+        type: StockTransactionType.TRANSFER_OUT,
+        quantity: new Prisma.Decimal('5.000'),
+        unit: mozzIng.unit,
+        referenceId: transferRef,
+        note: 'Transfer to Bandra West - Weekend evening backup',
+        performedBy: 'Aarav Patel',
+      },
+    });
+
+    await prisma.stockTransaction.create({
+      data: {
+        branchId: bwBranch.id,
+        ingredientId: mozzIng.id,
+        type: StockTransactionType.TRANSFER_IN,
+        quantity: new Prisma.Decimal('5.000'),
+        unit: mozzIng.unit,
+        referenceId: transferRef,
+        note: 'Transfer from Downtown Flagship - Weekend evening backup',
+        performedBy: 'Aarav Patel',
+      },
+    });
+
+    // 5. Stock Reconciliation Adjustment
+    await prisma.stockTransaction.create({
+      data: {
+        branchId: dtBranch.id,
+        ingredientId: doughIng.id,
+        type: StockTransactionType.ADJUSTMENT_IN,
+        quantity: new Prisma.Decimal('2.000'),
+        unit: doughIng.unit,
+        note: 'Physical Reconciliation: Count=51, System=49, Variance=+2 KG | Verified extra batch made yesterday',
+        performedBy: 'Aarav Patel',
+      },
+    });
+  }
+
+  console.log(`    ✓ Inventory items and initial transactions seeded across ${inventoryBranches.length} branches`);
 
   console.log('✅ Seed completed successfully!');
   console.log('\n⚠️  SECURITY NOTICE: The seeded credentials are for local development/testing only.');

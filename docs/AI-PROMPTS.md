@@ -276,6 +276,30 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Cross-entity validation: employee.branchId === branchId && shift.branchId === branchId
 - STAFF cannot view or modify other staff attendance
 ```
+### Inventory & Stock Management Pattern
 
+```
+# Module: Inventory & Stock Management
 
+## Entity Architecture
+- Branch → InventoryItem → Ingredient
+- StockTransaction (Immutable Ledger)
+- InventoryItem: id, branchId, ingredientId, minimumStock, reorderLevel, status (ACTIVE/INACTIVE)
+- StockTransaction: id, branchId, ingredientId, type, quantity (> 0), unit, referenceId?, reason?, note?, performedBy, createdAt
+- Ledger Inflow Types: OPENING, RECEIPT, TRANSFER_IN, ADJUSTMENT_IN
+- Ledger Outflow Types: CONSUMPTION, TRANSFER_OUT, DAMAGE, WASTAGE, ADJUSTMENT_OUT
+- Constraints: @@unique([branchId, ingredientId]), strictly positive quantities
+
+## Calculations & Integrity
+- Current Stock = Inflows - Outflows (derived dynamically via single groupBy query)
+- Non-negative stock: all debit transactions validate sufficient available stock inside db transaction
+- Atomic Inter-Branch Transfers: Linked TRANSFER_OUT + TRANSFER_IN sharing a common referenceId in a single $transaction
+- Structured Wastage: WastageReason enum (10 reasons) for DAMAGE and WASTAGE
+- Auditability: adjustments require mandatory reason and user attribution; soft deactivation preserves historical transactions
+
+## RBAC & Security
+- Permissions: inventory.read, inventory.create, inventory.update, inventory.adjust, inventory.transfer, inventory.wastage, inventory.reconcile, inventory.deactivate
+- Server-side branch scoping: MANAGER restricted to assigned branch (employee.branchId); OWNER/ADMIN global
+- Flow: Authentication → Permission → Branch Scoping → Input Validation → Transaction → Database
+```
 

@@ -71,14 +71,31 @@ Completed
 - [x] Modals for category CRUD, ingredient CRUD, menu item CRUD, branch availability override, and dynamic recipe BOM builder
 - [x] Database seed for 4 categories, 16 ingredients, 7 menu items, branch overrides, and complete recipe BOMs
 - [x] Menu & Recipe documentation (`docs/features/menu-recipe-management.md`)
+- [x] InventoryItem & StockTransaction models (Prisma schema: InventoryStatus, StockTransactionType, WastageReason enums, composite unique constraints & indexes)
+- [x] Inventory RBAC permissions (8 permissions: `inventory.read`, `inventory.create`, `inventory.update`, `inventory.adjust`, `inventory.transfer`, `inventory.wastage`, `inventory.reconcile`, `inventory.deactivate`)
+- [x] Branch-specific inventory architecture (`Branch → InventoryItem → Ingredient`) with canonical units from `Ingredient`
+- [x] Dynamic current stock calculation from immutable ledger: Inflows - Outflows
+- [x] High-performance batch stock calculation using Prisma `groupBy` aggregates (single DB query)
+- [x] Non-negative stock protection on all debit transactions
+- [x] Opening stock workflow with duplicate opening protection
+- [x] Manual stock receiving workflow with reference ID traceability
+- [x] Damage & Wastage workflow with 10 structured `WastageReason` enum reasons and audit notes
+- [x] Manual stock adjustment workflow (`ADJUSTMENT_IN` / `ADJUSTMENT_OUT`) with mandatory audit reasons
+- [x] Atomic inter-branch stock transfers (`TRANSFER_OUT` + `TRANSFER_IN` with shared reference ID in a single `$transaction`)
+- [x] Physical stock reconciliation workflow with automatic variance calculation and adjustment generation
+- [x] Inventory dashboard (`/inventory`) with 6 KPI cards, Stock Levels tab, Stock Ledger tab, search, branch filter, stock health filter
+- [x] Inventory item detail page (`/inventory/[id]`) with metrics, threshold configuration, and chronological ledger timeline
+- [x] Responsive dialogs for opening stock, receipt, wastage, adjustment, transfer, reconciliation, and threshold configuration
+- [x] Full database seed across 3 branches with 17 ingredients and initial stock ledger transactions
+- [x] Inventory feature documentation (`docs/features/inventory-management.md`)
 
 ## Current Task
 
-Completed verification and documentation.
+Inventory & Stock Management fully implemented, verified, tested, and documented.
 
 ## Next
 
-Phase 6: Salary & Bonuses / Payroll or Inventory Management
+Phase 7: Order Management & Kitchen Display (with automated BOM recipe stock consumption) or Supplier & Purchase Orders
 
 ## Known Issues
 

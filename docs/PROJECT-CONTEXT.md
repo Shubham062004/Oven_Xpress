@@ -104,7 +104,7 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 - `User`: Accounts with `email` (@unique), `name`, `passwordHash` (bcrypt salt 12), `roleId`, and `isActive` status.
 - `Session`: Database-backed sessions with cryptographically random `sessionToken` and 7-day expiration.
 - `Role`: Supported roles (`OWNER`, `ADMIN`, `MANAGER`, `STAFF`).
-- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `branch.*`, `employee.*`, `shift.*`, `attendance.*`, `settings.*`).
+- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `branch.*`, `employee.*`, `shift.*`, `attendance.*`, `menu.*`, `inventory.*`, `settings.*`).
 - `RolePermission`: Many-to-many link between roles and permissions.
 
 ### 2. Session Approach
