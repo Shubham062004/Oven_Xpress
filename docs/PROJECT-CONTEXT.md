@@ -55,6 +55,8 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 
 - **Framework**: Next.js (App Router)
 - **Language**: TypeScript (strict mode)
+- **Database & ORM**: PostgreSQL with Prisma ORM
+- **Authentication**: HTTP-only Cookie Sessions + bcryptjs password hashing
 - **Styling**: Tailwind CSS v4
 - **Components**: shadcn/ui (base-nova)
 - **Icons**: Lucide React
@@ -64,11 +66,31 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 ## Architecture Direction
 
 - Server Components by default, Client Components only where interactivity is needed
-- App Router with file-based routing
+- App Router with file-based routing and route groups (`(auth)` and `(dashboard)`)
 - Centralized design tokens via CSS variables
-- Shared layout shell (sidebar + header)
+- Shared layout shell (sidebar + header) protected at server execution boundary
 - Component library via shadcn/ui (copy-paste ownership)
-- Future: Server Actions for mutations, Prisma for database
+- Server Actions for mutations and authentication flows (`loginAction`, `logoutAction`)
+- Centralized server-side guards: `requireAuthentication()`, `requireRole()`, `requirePermission()`
+
+## Authentication & RBAC Architecture
+
+### 1. Database Model
+- `User`: Accounts with `email` (@unique), `name`, `passwordHash` (bcrypt salt 12), `roleId`, and `isActive` status.
+- `Session`: Database-backed sessions with cryptographically random `sessionToken` and 7-day expiration.
+- `Role`: Supported roles (`OWNER`, `ADMIN`, `MANAGER`, `STAFF`).
+- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `settings.*`).
+- `RolePermission`: Many-to-many link between roles and permissions.
+
+### 2. Session Approach
+- Cookie name: `ox_session`
+- Flagged with `httpOnly: true`, `secure: true` (in production), `sameSite: 'lax'`, and `path: '/'`.
+- Instant server-side revocation on logout (`destroySession()`) or upon account deactivation (`isActive === false`).
+
+### 3. Authorization Principles
+- **Defense in Depth**: Perimeter edge check (`middleware.ts`) + Server Component layout guard (`requireAuthentication()`) + Granular action/route guards (`requirePermission()`).
+- **UI Visibility ≠ Security**: Navigation visibility filters in the sidebar/drawer are convenience features. All sensitive routes and mutations verify authorization on the server.
+- **Role Hierarchy**: `OWNER` has universal bypass; other roles enforce granular permissions.
 
 ## Design Principles
 
@@ -90,6 +112,6 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 
 ## Current Phase
 
-**Phase 1: Foundation & Design System**
+**Phase 2: Authentication & RBAC**
 
-Establishing the project structure, design system, responsive shell, and component library. No business logic, database, or authentication at this stage.
+Implemented database schema (Prisma + PostgreSQL), session engine, server-side authorization guards, responsive login experience, 403 Access Denied handling, and role-filtered navigation.

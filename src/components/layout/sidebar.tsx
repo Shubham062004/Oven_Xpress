@@ -14,10 +14,27 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { mainNavItems, bottomNavItems } from '@/config/navigation';
 import { useSidebar } from '@/providers/sidebar-provider';
+import type { AuthUser } from '@/lib/auth/types';
+import { hasPermission } from '@/lib/permissions/check';
 
-export function Sidebar() {
+interface SidebarProps {
+  user?: AuthUser | null;
+}
+
+export function Sidebar({ user }: SidebarProps) {
   const { isCollapsed, toggleCollapsed } = useSidebar();
   const pathname = usePathname();
+
+  // Filter navigation items based on user's assigned permissions
+  const visibleMainNavItems = mainNavItems.filter((item) => {
+    if (!item.requiredPermission) return true;
+    return hasPermission(user, item.requiredPermission);
+  });
+
+  const visibleBottomNavItems = bottomNavItems.filter((item) => {
+    if (!item.requiredPermission) return true;
+    return hasPermission(user, item.requiredPermission);
+  });
 
   return (
     <aside
@@ -49,7 +66,7 @@ export function Sidebar() {
         className="flex-1 space-y-1 overflow-y-auto px-2 py-3"
         aria-label="Main navigation"
       >
-        {mainNavItems.map((item) => {
+        {visibleMainNavItems.map((item) => {
           const isActive = pathname === item.href;
           const linkContent = (
             <Link
@@ -89,7 +106,7 @@ export function Sidebar() {
       {/* Bottom Section */}
       <div className="px-2 pb-3">
         <Separator className="mb-3" />
-        {bottomNavItems.map((item) => {
+        {visibleBottomNavItems.map((item) => {
           const isActive = pathname === item.href;
           const linkContent = (
             <Link

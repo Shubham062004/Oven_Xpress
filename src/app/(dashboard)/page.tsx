@@ -77,6 +77,9 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { useAuth } from '@/providers/auth-provider';
+import Link from 'next/link';
+import { Shield, ArrowRight } from 'lucide-react';
 
 const SAMPLE_TABLE_DATA = [
   { name: 'Sample Item A', status: 'Active', category: 'Type 1', value: '100' },
@@ -87,9 +90,64 @@ const SAMPLE_TABLE_DATA = [
 
 export default function DesignSystemPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const user = useAuth();
 
   return (
     <div className="space-y-10">
+      {/* ── Authenticated User & RBAC Overview ── */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Shield className="size-5 text-primary" />
+              <CardTitle className="text-base font-semibold">
+                Authenticated Session: {user.name}
+              </CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground font-mono">{user.email}</span>
+              <Badge variant="default" className="text-xs font-semibold">
+                {user.role}
+              </Badge>
+            </div>
+          </div>
+          <CardDescription>
+            You are securely authenticated. Your current permissions govern navigation visibility and server-side route access.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-0">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-medium text-muted-foreground">Active Permissions:</span>
+            {user.permissions.length === 0 ? (
+              <span className="text-muted-foreground italic">None (restricted)</span>
+            ) : (
+              user.permissions.map((perm) => (
+                <Badge key={perm} variant="outline" className="font-mono text-[11px] bg-background">
+                  {perm}
+                </Badge>
+              ))
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 pt-2 text-xs">
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+            >
+              <span>Test Settings Route (/settings)</span>
+              <ArrowRight className="size-3" />
+            </Link>
+            <span className="text-muted-foreground">•</span>
+            <Link
+              href="/users"
+              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+            >
+              <span>Test Users Route (/users)</span>
+              <ArrowRight className="size-3" />
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
       <PageHeader
         title="Design System"
         description="Component library and design tokens reference. All content below is sample data for demonstration."

@@ -138,3 +138,29 @@ Reusable prompt templates for development tasks. Copy and adapt as needed.
 - Fail: [count]
 - Notes: [any observations]
 ```
+
+### Authentication & Authorization (RBAC)
+
+```
+# Task: Enforce Authorization for [Module/Route/Action]
+
+## Context
+- Module: [e.g., Inventory / Branch Management]
+- Target Route / Action: [e.g., /branches, createBranchAction]
+- Required Permission(s): [e.g., branches.read, branches.create]
+- Permitted Roles: [e.g., OWNER, ADMIN]
+
+## Requirements
+- Enforce server guard: `requirePermission('[permission.code]')` at Server Component / Server Action boundary
+- Do NOT rely solely on client-side or UI navigation hiding
+- Update navigation config with `requiredPermission`
+- If unauthorized, redirect to `/unauthorized` (403) or return `{ success: false, error: 'Forbidden' }`
+- Validate and sanitize input with Zod
+- Ensure session validity and user.isActive status
+
+## Verification
+- Test access as permitted role -> succeeds
+- Test direct access as unpermitted role -> rejected by server (403)
+- Test unauthenticated access -> redirected to login
+- Test UI visibility -> navigation item hidden for unpermitted role
+```

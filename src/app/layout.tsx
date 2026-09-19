@@ -3,8 +3,6 @@ import { Inter } from 'next/font/google';
 import { Geist_Mono } from 'next/font/google';
 
 import { ThemeProvider } from '@/providers/theme-provider';
-import { SidebarProvider } from '@/providers/sidebar-provider';
-import { AppShell } from '@/components/layout/app-shell';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
@@ -29,7 +27,7 @@ export const metadata: Metadata = {
     'Multi-branch restaurant management system for operations, staff, inventory, orders, and analytics.',
 };
 
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
@@ -44,9 +42,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           disableTransitionOnChange
         >
           <TooltipProvider delay={300}>
-            <SidebarProvider>
-              <AppShell>{children}</AppShell>
-            </SidebarProvider>
+            {children}
           </TooltipProvider>
           <Toaster />
         </ThemeProvider>

@@ -6,6 +6,8 @@ Multi-branch restaurant management system for centralized operations, staff, inv
 
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
 - **Language**: TypeScript (strict mode)
+- **Database & ORM**: PostgreSQL with [Prisma ORM](https://www.prisma.io/)
+- **Authentication**: HTTP-only Cookie Sessions + [bcryptjs](https://github.com/dcodeIO/bcrypt.js)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
 - **Components**: [shadcn/ui](https://ui.shadcn.com/) (base-nova)
 - **Icons**: [Lucide React](https://lucide.dev/)
@@ -16,12 +18,34 @@ Multi-branch restaurant management system for centralized operations, staff, inv
 
 - Node.js 18.18+
 - pnpm 8+
+- Docker (optional, for running local PostgreSQL)
 
-## Installation
+## Installation & Setup
 
-```bash
-pnpm install
-```
+1. **Install dependencies**:
+   ```bash
+   pnpm install
+   ```
+
+2. **Environment Variables**:
+   Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Database Setup (PostgreSQL)**:
+   Start local PostgreSQL with Docker:
+   ```bash
+   docker compose up -d
+   ```
+   Push the database schema:
+   ```bash
+   pnpm prisma db push
+   ```
+   Seed development accounts and permissions:
+   ```bash
+   pnpm prisma db seed
+   ```
 
 ## Development
 
@@ -31,58 +55,61 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Build
+### Test Accounts
+
+| Role | Email | Password | Scope |
+|------|-------|----------|-------|
+| **Owner** | `owner@ovenxpress.com` | `Owner123!` | Universal access across all modules |
+| **Admin** | `admin@ovenxpress.com` | `Admin123!` | System settings & user management |
+| **Manager** | `manager@ovenxpress.com` | `Manager123!` | Branch oversight & reporting |
+| **Staff** | `staff@ovenxpress.com` | `Staff123!` | Operational dashboard only |
+| **Inactive** | `inactive@ovenxpress.com` | `Inactive123!` | Blocked / deactivated test account |
+
+## Build & Verify
 
 ```bash
-pnpm build
-pnpm start
-```
-
-## Lint
-
-```bash
-pnpm lint
+pnpm lint          # Run ESLint
+pnpm exec tsc --noEmit # Strict TypeScript verification
+pnpm build         # Production Next.js build
 ```
 
 ## Project Structure
 
 ```
 src/
-├── app/                    # Next.js App Router pages and layouts
-│   ├── globals.css         # Design system tokens and global styles
-│   ├── layout.tsx          # Root layout (font, theme, shell)
-│   └── page.tsx            # Design system demo page
+├── app/
+│   ├── (auth)/                 # Unauthenticated routes
+│   │   ├── login/              # Login page with show/hide password & validation
+│   │   └── unauthorized/       # 403 Forbidden Access Denied page
+│   ├── (dashboard)/            # Authenticated application shell routes
+│   │   ├── layout.tsx          # Server guard enforcing requireAuthentication()
+│   │   ├── page.tsx            # Dashboard overview & active session badge
+│   │   ├── settings/           # Protected settings (requires settings.read)
+│   │   └── users/              # Staff & user list (requires users.read)
+│   ├── globals.css             # Tailwind v4 theme tokens
+│   └── layout.tsx              # Root HTML, ThemeProvider, Toaster
 ├── components/
-│   ├── layout/             # Application shell components
-│   │   ├── app-shell.tsx   # Main layout wrapper
-│   │   ├── header.tsx      # Top header bar
-│   │   ├── mobile-sidebar.tsx  # Mobile drawer navigation
-│   │   └── sidebar.tsx     # Desktop sidebar navigation
-│   ├── ui/                 # shadcn/ui + custom components
-│   │   ├── empty-state.tsx # Reusable empty state
-│   │   ├── loading-skeleton.tsx # Skeleton loading patterns
-│   │   ├── page-header.tsx # Consistent page header
-│   │   └── ...             # shadcn/ui components
-│   └── theme-toggle.tsx    # Light/dark/system theme switcher
+│   ├── auth/                   # Authentication forms (login-form.tsx)
+│   ├── layout/                 # Application shell (header, sidebar, mobile-sidebar)
+│   ├── ui/                     # 16 accessible shadcn/ui components
+│   └── theme-toggle.tsx        # Dark / Light / System theme toggle
 ├── config/
-│   └── navigation.ts       # Sidebar navigation configuration
+│   └── navigation.ts           # Navigation items with requiredPermission metadata
 ├── lib/
-│   └── utils.ts            # Utility functions (cn)
+│   ├── auth/                   # Session, password hashing, actions, and guards
+│   ├── permissions/            # Granular permission codes, role mappings, check helpers
+│   ├── validations/            # Zod validation schemas
+│   ├── db/                     # Prisma singleton client
+│   └── utils.ts                # Class merging utility
 └── providers/
-    ├── sidebar-provider.tsx # Sidebar state context
-    └── theme-provider.tsx   # Theme provider wrapper
-docs/
-├── AI-PROMPTS.md           # Reusable prompt templates
-├── PROJECT-CONTEXT.md      # Project overview and architecture
-└── PROJECT-STATUS.md       # Current development status
+    ├── auth-provider.tsx       # Client authentication context
+    ├── sidebar-provider.tsx    # Sidebar collapse & drawer state
+    └── theme-provider.tsx      # next-themes wrapper
 ```
 
 ## Documentation
 
-- [Project Context](docs/PROJECT-CONTEXT.md) — Overview, target users, tech stack, principles
-- [Project Status](docs/PROJECT-STATUS.md) — Current phase and progress
-- [AI Prompts](docs/AI-PROMPTS.md) — Reusable prompt templates for development
-
-## Current Phase
-
-**Foundation & Design System** — Project scaffolding, design tokens, responsive shell, and component library. No business logic implemented yet.
+- [docs/PROJECT-CONTEXT.md](docs/PROJECT-CONTEXT.md) — Multi-branch vision, tech stack, and principles
+- [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) — Milestone tracker & completed tasks
+- [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) — Comprehensive Authentication & RBAC guide
+- [docs/AI-PROMPTS.md](docs/AI-PROMPTS.md) — Reusable prompt templates

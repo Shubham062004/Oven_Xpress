@@ -5,17 +5,23 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { MobileSidebar } from '@/components/layout/mobile-sidebar';
 import { Header } from '@/components/layout/header';
 import { useSidebar } from '@/providers/sidebar-provider';
+import type { AuthUser } from '@/lib/auth/types';
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+  user?: AuthUser | null;
+}
+
+export function AppShell({ children, user }: AppShellProps) {
   const { isCollapsed } = useSidebar();
 
   return (
     <div className="relative flex min-h-screen">
-      {/* Desktop sidebar */}
-      <Sidebar />
+      {/* Desktop sidebar with permission-filtered nav */}
+      <Sidebar user={user} />
 
       {/* Mobile sidebar (drawer) */}
-      <MobileSidebar />
+      <MobileSidebar user={user} />
 
       {/* Main content area */}
       <div
@@ -24,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           isCollapsed ? 'lg:ml-16' : 'lg:ml-60'
         )}
       >
-        <Header />
+        <Header user={user} />
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </div>
     </div>

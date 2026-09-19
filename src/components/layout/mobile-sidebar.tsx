@@ -13,10 +13,26 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { mainNavItems, bottomNavItems } from '@/config/navigation';
 import { useSidebar } from '@/providers/sidebar-provider';
+import type { AuthUser } from '@/lib/auth/types';
+import { hasPermission } from '@/lib/permissions/check';
 
-export function MobileSidebar() {
+interface MobileSidebarProps {
+  user?: AuthUser | null;
+}
+
+export function MobileSidebar({ user }: MobileSidebarProps) {
   const { isMobileOpen, setMobileOpen } = useSidebar();
   const pathname = usePathname();
+
+  const visibleMainNavItems = mainNavItems.filter((item) => {
+    if (!item.requiredPermission) return true;
+    return hasPermission(user, item.requiredPermission);
+  });
+
+  const visibleBottomNavItems = bottomNavItems.filter((item) => {
+    if (!item.requiredPermission) return true;
+    return hasPermission(user, item.requiredPermission);
+  });
 
   return (
     <Sheet open={isMobileOpen} onOpenChange={setMobileOpen}>
@@ -34,7 +50,7 @@ export function MobileSidebar() {
           className="flex-1 space-y-1 overflow-y-auto px-3 py-3"
           aria-label="Mobile navigation"
         >
-          {mainNavItems.map((item) => {
+          {visibleMainNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
@@ -60,7 +76,7 @@ export function MobileSidebar() {
 
         <div className="px-3 pb-3">
           <Separator className="mb-3" />
-          {bottomNavItems.map((item) => {
+          {visibleBottomNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
