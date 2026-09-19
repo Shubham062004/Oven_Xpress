@@ -60,6 +60,7 @@ export const mainNavItems: NavItem[] = [
     label: 'Menu',
     href: '/menu',
     icon: UtensilsCrossed,
+    requiredPermission: PERMISSIONS.MENU_ITEM_READ,
   },
   {
     label: 'Orders',

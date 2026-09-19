@@ -24,13 +24,23 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 - **User vs. Employee Distinction**: `User` represents a system login account (email, password hash, sessions, RBAC role). `Employee` represents physical staff working in the restaurant. An `Employee` may optionally link to a single `User` account (`userId` foreign key). Staff like cooks and delivery drivers work on-site without software accounts. Authentication credentials are never stored or duplicated inside `Employee`.
 - **Shift**: An operational working hours schedule for a branch (e.g. "Morning Shift" 09:00–17:00, "Night Shift" 21:00–05:00). Shifts are defined per-branch and have `ACTIVE` / `INACTIVE` status.
 - **Attendance**: Daily attendance records per employee per working date (`@@unique([employeeId, date])`). Captures status (`PRESENT`, `ABSENT`, `HALF_DAY`, `LEAVE`), check-in time, check-out time, calculated late arrival minutes, early departure minutes, operational notes, and audit user information (`markedBy`).
+- **MenuCategory**: Classification group for menu items (e.g. Pizzas, Beverages, Desserts). Has name, sort order, and soft `MenuStatus` (`ACTIVE` / `INACTIVE`).
+- **Ingredient**: Raw material inventory item used in recipes (e.g. Flour, Cheese, Tomato Sauce). Defined with standardized `IngredientUnit` and soft `MenuStatus`.
+- **MenuItem**: Sellable dish or beverage. Belongs to a `MenuCategory`, defines base price (> 0), preparation time in minutes (>= 0), optional photo URL, and soft `MenuStatus`.
+- **BranchMenuItem**: Branch-specific menu availability and price override join table (`@@unique([branchId, menuItemId])`). Controls whether a dish is available at a particular branch, with an optional localized price override.
+- **RecipeIngredient**: Bill of Materials (BOM) linking a `MenuItem` to an `Ingredient` (`@@unique([menuItemId, ingredientId])`). Specifies exact quantity (> 0) and measurement unit validated against the ingredient's unit family (Mass, Volume, Count).
 - **Entity Relationships**:
   - `Branch` → `Employee` (`1:N`): Employees belong to a branch.
   - `Branch` → `Shift` (`1:N`): Shifts belong to a branch.
   - `Branch` → `Attendance` (`1:N`): Attendance is scoped to a branch.
+  - `Branch` → `BranchMenuItem` (`1:N`): Branch availability & price overrides.
   - `Employee` → `Shift` (`N:1 optional`): Employee references `currentShiftId` for their ongoing active schedule.
   - `Employee` → `Attendance` (`1:N`): One attendance record per employee per date.
   - `Shift` → `Attendance` (`1:N optional`): Attendance snapshots `shiftId` at time of work so changing current shift never rewrites past attendance history.
+  - `MenuCategory` → `MenuItem` (`1:N`): Categories organize menu items.
+  - `MenuItem` → `BranchMenuItem` (`1:N`): Menu items can have per-branch availability/pricing.
+  - `MenuItem` → `RecipeIngredient` (`1:N`): Menu items define their BOM recipe ingredients.
+  - `Ingredient` → `RecipeIngredient` (`1:N`): Ingredients are consumed across recipes.
 
 ## Target Users
 

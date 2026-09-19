@@ -92,6 +92,7 @@ model Branch {
   employees   Employee[]
   shifts      Shift[]
   attendances Attendance[]
+  menuItems   BranchMenuItem[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -196,5 +197,103 @@ model Attendance {
   @@index([employeeId, date])
   @@index([status])
   @@index([shiftId])
+}
+
+// ─── Menu & Recipe / BOM Management ─────────────────────────────────────────
+
+enum MenuStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum IngredientUnit {
+  KG
+  GRAM
+  LITRE
+  ML
+  PIECE
+  PACK
+  DOZEN
+}
+
+model MenuCategory {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  sortOrder   Int        @default(0)
+  status      MenuStatus @default(ACTIVE)
+  items       MenuItem[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status])
+  @@index([sortOrder])
+}
+
+model Ingredient {
+  id          String             @id @default(cuid())
+  name        String             @unique
+  description String?
+  unit        IngredientUnit
+  status      MenuStatus         @default(ACTIVE)
+  recipes     RecipeIngredient[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([status])
+  @@index([name])
+}
+
+model MenuItem {
+  id                     String             @id @default(cuid())
+  name                   String
+  description            String?
+  categoryId             String
+  category               MenuCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  price                  Decimal            @db.Decimal(10, 2)
+  preparationTimeMinutes Int                @default(0)
+  imageUrl               String?
+  status                 MenuStatus         @default(ACTIVE)
+  branchAvailability     BranchMenuItem[]
+  recipeIngredients      RecipeIngredient[]
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([name])
+}
+
+model BranchMenuItem {
+  id          String     @id @default(cuid())
+  branchId    String
+  branch      Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  menuItemId  String
+  menuItem    MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  price       Decimal?   @db.Decimal(10, 2)
+  isAvailable Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([branchId, menuItemId])
+  @@index([branchId])
+  @@index([menuItemId])
+}
+
+model RecipeIngredient {
+  id           String         @id @default(cuid())
+  menuItemId   String
+  menuItem     MenuItem       @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient     @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  quantity     Decimal        @db.Decimal(10, 3)
+  unit         IngredientUnit
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([menuItemId, ingredientId])
+  @@index([menuItemId])
+  @@index([ingredientId])
 }
 

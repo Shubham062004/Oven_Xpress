@@ -1,6 +1,6 @@
 ## Current Feature
 
-Attendance & Shift Management
+Menu + Recipe/BOM Management
 
 ## Status
 
@@ -62,14 +62,23 @@ Completed
 - [x] Shift activation/deactivation confirmation dialog
 - [x] Seed data with 5 shifts and sample attendance records
 - [x] Feature documentation (`docs/features/attendance-management.md`)
+- [x] Menu Category, Ingredient, MenuItem, BranchMenuItem, and RecipeIngredient models (Prisma schema: MenuStatus, IngredientUnit enums, unique indexes)
+- [x] Menu RBAC permissions (17 permissions covering `menu.category.*`, `menu.ingredient.*`, `menu.item.*`, `menu.branch.*`, `menu.recipe.*`)
+- [x] Menu validation schemas with unit compatibility checks (`src/lib/validations/menu.ts`)
+- [x] Menu server actions (`category-actions.ts`, `ingredient-actions.ts`, `item-actions.ts`, `recipe-actions.ts` with atomic `$transaction` recipe saves)
+- [x] Menu management dashboard (`/menu`) with Overview, Dishes & Items, Categories, Ingredients, and Recipe BOM tabs
+- [x] Menu item detail page (`/menu/items/[id]`) with specs, branch availability matrix, and recipe BOM explorer
+- [x] Modals for category CRUD, ingredient CRUD, menu item CRUD, branch availability override, and dynamic recipe BOM builder
+- [x] Database seed for 4 categories, 16 ingredients, 7 menu items, branch overrides, and complete recipe BOMs
+- [x] Menu & Recipe documentation (`docs/features/menu-recipe-management.md`)
 
 ## Current Task
 
-Verification (tsc, lint, build)
+Completed verification and documentation.
 
 ## Next
 
-Phase 6: Salary & Bonuses / Payroll
+Phase 6: Salary & Bonuses / Payroll or Inventory Management
 
 ## Known Issues
 

@@ -6,6 +6,8 @@ import {
   SalaryType,
   ShiftStatus,
   AttendanceStatus,
+  MenuStatus,
+  IngredientUnit,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -51,6 +53,28 @@ async function main() {
     // Settings
     { code: 'settings.read', module: 'settings', description: 'View system and branch settings' },
     { code: 'settings.update', module: 'settings', description: 'Modify system and branch settings' },
+    // Menu Category Management
+    { code: 'menu.category.read', module: 'menu', description: 'View menu categories' },
+    { code: 'menu.category.create', module: 'menu', description: 'Create menu categories' },
+    { code: 'menu.category.update', module: 'menu', description: 'Update menu categories' },
+    { code: 'menu.category.deactivate', module: 'menu', description: 'Activate or deactivate menu categories' },
+    // Ingredient Management
+    { code: 'menu.ingredient.read', module: 'menu', description: 'View raw ingredients' },
+    { code: 'menu.ingredient.create', module: 'menu', description: 'Create raw ingredients' },
+    { code: 'menu.ingredient.update', module: 'menu', description: 'Update raw ingredients' },
+    { code: 'menu.ingredient.deactivate', module: 'menu', description: 'Activate or deactivate raw ingredients' },
+    // Menu Item Management
+    { code: 'menu.item.read', module: 'menu', description: 'View menu items' },
+    { code: 'menu.item.create', module: 'menu', description: 'Create menu items' },
+    { code: 'menu.item.update', module: 'menu', description: 'Update menu items' },
+    { code: 'menu.item.deactivate', module: 'menu', description: 'Activate or deactivate menu items' },
+    // Recipe / BOM Management
+    { code: 'menu.recipe.read', module: 'menu', description: 'View recipes and bills of materials' },
+    { code: 'menu.recipe.create', module: 'menu', description: 'Create recipes and bills of materials' },
+    { code: 'menu.recipe.update', module: 'menu', description: 'Update recipes and bills of materials' },
+    // Branch Menu Availability & Pricing
+    { code: 'menu.branch.read', module: 'menu', description: 'View branch menu availability and branch pricing' },
+    { code: 'menu.branch.update', module: 'menu', description: 'Update branch menu availability and branch pricing' },
   ];
 
   console.log('  → Seeding permissions...');
@@ -92,6 +116,23 @@ async function main() {
         'shift.deactivate',
         'settings.read',
         'settings.update',
+        'menu.category.read',
+        'menu.category.create',
+        'menu.category.update',
+        'menu.category.deactivate',
+        'menu.ingredient.read',
+        'menu.ingredient.create',
+        'menu.ingredient.update',
+        'menu.ingredient.deactivate',
+        'menu.item.read',
+        'menu.item.create',
+        'menu.item.update',
+        'menu.item.deactivate',
+        'menu.recipe.read',
+        'menu.recipe.create',
+        'menu.recipe.update',
+        'menu.branch.read',
+        'menu.branch.update',
       ],
     },
     {
@@ -117,6 +158,23 @@ async function main() {
         'shift.update',
         'shift.deactivate',
         'settings.read',
+        'menu.category.read',
+        'menu.category.create',
+        'menu.category.update',
+        'menu.category.deactivate',
+        'menu.ingredient.read',
+        'menu.ingredient.create',
+        'menu.ingredient.update',
+        'menu.ingredient.deactivate',
+        'menu.item.read',
+        'menu.item.create',
+        'menu.item.update',
+        'menu.item.deactivate',
+        'menu.recipe.read',
+        'menu.recipe.create',
+        'menu.recipe.update',
+        'menu.branch.read',
+        'menu.branch.update',
       ],
     },
     {
@@ -136,6 +194,12 @@ async function main() {
         'shift.create',
         'shift.update',
         'settings.read',
+        'menu.category.read',
+        'menu.ingredient.read',
+        'menu.item.read',
+        'menu.recipe.read',
+        'menu.branch.read',
+        'menu.branch.update',
       ],
     },
     {
@@ -144,6 +208,8 @@ async function main() {
       permissions: [
         'dashboard.read',
         'branch.read',
+        'menu.category.read',
+        'menu.item.read',
       ],
     },
   ];
@@ -686,6 +752,238 @@ async function main() {
       create: data,
     });
  }
+
+  // 8. Seed Menu Categories, Ingredients, Menu Items, Branch Availability, and Recipe BOMs
+  console.log('  → Seeding menu categories...');
+  const categoriesData = [
+    { name: 'Pizzas', description: 'Freshly baked artisanal stone-oven pizzas', sortOrder: 1 },
+    { name: 'Burgers', description: 'Gourmet handcrafted burgers with premium brioche buns', sortOrder: 2 },
+    { name: 'Sides & Appetizers', description: 'Crispy finger foods and accompaniment sides', sortOrder: 3 },
+    { name: 'Beverages', description: 'Specialty espresso, cold drinks, and refreshments', sortOrder: 4 },
+    { name: 'Desserts', description: 'Housemade sweet treats and ice creams', sortOrder: 5 },
+  ];
+
+  const categoryMap = new Map<string, string>();
+  for (const cat of categoriesData) {
+    const record = await prisma.menuCategory.upsert({
+      where: { name: cat.name },
+      update: { description: cat.description, sortOrder: cat.sortOrder },
+      create: {
+        name: cat.name,
+        description: cat.description,
+        sortOrder: cat.sortOrder,
+        status: MenuStatus.ACTIVE,
+      },
+    });
+    categoryMap.set(cat.name, record.id);
+    console.log(`    ✓ Category: ${record.name}`);
+  }
+
+  console.log('  → Seeding raw ingredients with centralized units...');
+  const ingredientsData: { name: string; description: string; unit: IngredientUnit }[] = [
+    { name: 'Pizza Dough', description: 'Fermented artisanal pizza dough balls', unit: IngredientUnit.KG },
+    { name: 'Mozzarella Cheese', description: 'Fresh shredded full-cream mozzarella', unit: IngredientUnit.KG },
+    { name: 'Tomato Sauce', description: 'San Marzano seasoned pizza sauce', unit: IngredientUnit.LITRE },
+    { name: 'Pepperoni', description: 'Cured and sliced beef pepperoni', unit: IngredientUnit.KG },
+    { name: 'Burger Bun', description: 'Toasted sesame brioche buns', unit: IngredientUnit.PIECE },
+    { name: 'Beef Patty', description: '150g prime Angus beef seasoned patty', unit: IngredientUnit.PIECE },
+    { name: 'Cheddar Cheese Slice', description: 'Aged sharp yellow cheddar slice', unit: IngredientUnit.PIECE },
+    { name: 'Special Burger Sauce', description: 'House tangy mayonnaise blend', unit: IngredientUnit.ML },
+    { name: 'Iceberg Lettuce', description: 'Crisp shredded iceberg lettuce', unit: IngredientUnit.GRAM },
+    { name: 'Red Onion', description: 'Freshly thinly sliced red onions', unit: IngredientUnit.GRAM },
+    { name: 'Potato Fries', description: 'Cut and blanched russet potatoes', unit: IngredientUnit.KG },
+    { name: 'Cooking Oil', description: 'High-smoke-point pure vegetable frying oil', unit: IngredientUnit.LITRE },
+    { name: 'Table Salt', description: 'Fine sea salt seasoning', unit: IngredientUnit.GRAM },
+    { name: 'Espresso Coffee Beans', description: 'Dark roasted Arabica blend beans', unit: IngredientUnit.KG },
+    { name: 'Whole Milk', description: 'Pasteurized whole milk 3.5% fat', unit: IngredientUnit.LITRE },
+    { name: 'Fudge Brownie', description: 'Rich Belgian chocolate baked brownie', unit: IngredientUnit.PIECE },
+    { name: 'Vanilla Ice Cream', description: 'Madagascar vanilla bean dairy ice cream', unit: IngredientUnit.ML },
+  ];
+
+  const ingredientMap = new Map<string, string>();
+  for (const ing of ingredientsData) {
+    const record = await prisma.ingredient.upsert({
+      where: { name: ing.name },
+      update: { description: ing.description, unit: ing.unit },
+      create: {
+        name: ing.name,
+        description: ing.description,
+        unit: ing.unit,
+        status: MenuStatus.ACTIVE,
+      },
+    });
+    ingredientMap.set(ing.name, record.id);
+    console.log(`    ✓ Ingredient: ${record.name} (${record.unit})`);
+  }
+
+  console.log('  → Seeding menu items...');
+  const menuItemsData = [
+    {
+      name: 'Margherita Pizza',
+      description: 'Classic Italian pizza with tomato sauce, fresh mozzarella, and aromatic basil olive oil.',
+      categoryName: 'Pizzas',
+      price: new Prisma.Decimal('12.99'),
+      preparationTimeMinutes: 15,
+      recipe: [
+        { ingredient: 'Pizza Dough', quantity: new Prisma.Decimal('0.250'), unit: IngredientUnit.KG, notes: 'Stretched to 12 inches' },
+        { ingredient: 'Tomato Sauce', quantity: new Prisma.Decimal('0.100'), unit: IngredientUnit.LITRE, notes: 'Evenly spread' },
+        { ingredient: 'Mozzarella Cheese', quantity: new Prisma.Decimal('0.150'), unit: IngredientUnit.KG, notes: 'Topped generously' },
+      ],
+    },
+    {
+      name: 'Pepperoni Feast Pizza',
+      description: 'Spicy seasoned pepperoni layered over mozzarella cheese and rich tomato base.',
+      categoryName: 'Pizzas',
+      price: new Prisma.Decimal('15.99'),
+      preparationTimeMinutes: 18,
+      recipe: [
+        { ingredient: 'Pizza Dough', quantity: new Prisma.Decimal('0.250'), unit: IngredientUnit.KG, notes: 'Stretched to 12 inches' },
+        { ingredient: 'Tomato Sauce', quantity: new Prisma.Decimal('0.100'), unit: IngredientUnit.LITRE, notes: 'Evenly spread' },
+        { ingredient: 'Mozzarella Cheese', quantity: new Prisma.Decimal('0.150'), unit: IngredientUnit.KG, notes: 'Base cheese' },
+        { ingredient: 'Pepperoni', quantity: new Prisma.Decimal('0.080'), unit: IngredientUnit.KG, notes: '24 slices' },
+      ],
+    },
+    {
+      name: 'Classic Cheeseburger',
+      description: '150g grilled Angus beef patty, melted cheddar, lettuce, onions, and signature burger sauce in a brioche bun.',
+      categoryName: 'Burgers',
+      price: new Prisma.Decimal('9.99'),
+      preparationTimeMinutes: 12,
+      recipe: [
+        { ingredient: 'Burger Bun', quantity: new Prisma.Decimal('1.000'), unit: IngredientUnit.PIECE, notes: 'Lightly toasted' },
+        { ingredient: 'Beef Patty', quantity: new Prisma.Decimal('1.000'), unit: IngredientUnit.PIECE, notes: 'Flame grilled' },
+        { ingredient: 'Cheddar Cheese Slice', quantity: new Prisma.Decimal('1.000'), unit: IngredientUnit.PIECE, notes: 'Melted over patty' },
+        { ingredient: 'Special Burger Sauce', quantity: new Prisma.Decimal('20.000'), unit: IngredientUnit.ML, notes: 'Applied to both buns' },
+        { ingredient: 'Iceberg Lettuce', quantity: new Prisma.Decimal('15.000'), unit: IngredientUnit.GRAM, notes: 'Bottom bun layer' },
+        { ingredient: 'Red Onion', quantity: new Prisma.Decimal('15.000'), unit: IngredientUnit.GRAM, notes: 'Top layer' },
+      ],
+    },
+    {
+      name: 'Crispy French Fries',
+      description: 'Golden fried russet potato fingers lightly tossed in fine sea salt.',
+      categoryName: 'Sides & Appetizers',
+      price: new Prisma.Decimal('4.49'),
+      preparationTimeMinutes: 8,
+      recipe: [
+        { ingredient: 'Potato Fries', quantity: new Prisma.Decimal('0.200'), unit: IngredientUnit.KG, notes: 'Deep fried at 175°C' },
+        { ingredient: 'Cooking Oil', quantity: new Prisma.Decimal('0.050'), unit: IngredientUnit.LITRE, notes: 'Frying absorption estimate' },
+        { ingredient: 'Table Salt', quantity: new Prisma.Decimal('2.000'), unit: IngredientUnit.GRAM, notes: 'Tossed hot' },
+      ],
+    },
+    {
+      name: 'Caffe Latte',
+      description: 'Velvety steamed whole milk poured over a rich double shot of dark-roast espresso.',
+      categoryName: 'Beverages',
+      price: new Prisma.Decimal('3.99'),
+      preparationTimeMinutes: 5,
+      recipe: [
+        { ingredient: 'Espresso Coffee Beans', quantity: new Prisma.Decimal('0.020'), unit: IngredientUnit.KG, notes: 'Double shot extraction' },
+        { ingredient: 'Whole Milk', quantity: new Prisma.Decimal('0.250'), unit: IngredientUnit.LITRE, notes: 'Steamed with silky microfoam' },
+      ],
+    },
+    {
+      name: 'Warm Fudge Brownie with Ice Cream',
+      description: 'Gooey warm Belgian chocolate fudge brownie served with a scoop of vanilla bean ice cream.',
+      categoryName: 'Desserts',
+      price: new Prisma.Decimal('6.99'),
+      preparationTimeMinutes: 7,
+      recipe: [
+        { ingredient: 'Fudge Brownie', quantity: new Prisma.Decimal('1.000'), unit: IngredientUnit.PIECE, notes: 'Warmed in oven' },
+        { ingredient: 'Vanilla Ice Cream', quantity: new Prisma.Decimal('60.000'), unit: IngredientUnit.ML, notes: 'One scoop on top' },
+      ],
+    },
+  ];
+
+  const allBranches = [dtBranch, bwBranch, andBranch, puneBranch];
+
+  for (const itemData of menuItemsData) {
+    const categoryId = categoryMap.get(itemData.categoryName);
+    if (!categoryId) continue;
+
+    let menuItem = await prisma.menuItem.findFirst({
+      where: { name: itemData.name },
+    });
+
+    if (menuItem) {
+      menuItem = await prisma.menuItem.update({
+        where: { id: menuItem.id },
+        data: {
+          description: itemData.description,
+          categoryId,
+          price: itemData.price,
+          preparationTimeMinutes: itemData.preparationTimeMinutes,
+          status: MenuStatus.ACTIVE,
+        },
+      });
+    } else {
+      menuItem = await prisma.menuItem.create({
+        data: {
+          name: itemData.name,
+          description: itemData.description,
+          categoryId,
+          price: itemData.price,
+          preparationTimeMinutes: itemData.preparationTimeMinutes,
+          status: MenuStatus.ACTIVE,
+        },
+      });
+    }
+
+    console.log(`    ✓ Menu Item: ${menuItem.name} ($${menuItem.price})`);
+
+    // Seed Branch Availability
+    for (const b of allBranches) {
+      // In Downtown branch, offer special premium branch price for Classic Cheeseburger ($10.99)
+      const isDtCheeseburger = b.code === 'OX-DT-001' && itemData.name === 'Classic Cheeseburger';
+      const branchPrice = isDtCheeseburger ? new Prisma.Decimal('10.99') : null;
+
+      await prisma.branchMenuItem.upsert({
+        where: {
+          branchId_menuItemId: {
+            branchId: b.id,
+            menuItemId: menuItem.id,
+          },
+        },
+        update: {
+          isAvailable: true,
+          price: branchPrice,
+        },
+        create: {
+          branchId: b.id,
+          menuItemId: menuItem.id,
+          isAvailable: true,
+          price: branchPrice,
+        },
+      });
+    }
+
+    // Seed Recipe / BOM
+    for (const ing of itemData.recipe) {
+      const ingredientId = ingredientMap.get(ing.ingredient);
+      if (!ingredientId) continue;
+
+      await prisma.recipeIngredient.upsert({
+        where: {
+          menuItemId_ingredientId: {
+            menuItemId: menuItem.id,
+            ingredientId,
+          },
+        },
+        update: {
+          quantity: ing.quantity,
+          unit: ing.unit,
+          notes: ing.notes,
+        },
+        create: {
+          menuItemId: menuItem.id,
+          ingredientId,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          notes: ing.notes,
+        },
+      });
+    }
+    console.log(`      ↳ BOM configured: ${itemData.recipe.length} ingredients`);
+  }
 
   console.log('✅ Seed completed successfully!');
   console.log('\n⚠️  SECURITY NOTICE: The seeded credentials are for local development/testing only.');
