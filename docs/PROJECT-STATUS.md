@@ -1,8 +1,6 @@
-# Project Status
-
 ## Current Feature
 
-Branch Management
+Employee / Staff Management
 
 ## Status
 
@@ -41,15 +39,26 @@ In Progress
 - [x] Branch activate/deactivate dialog (confirmation with consequences)
 - [x] Branch seed data (4 sample branches)
 - [x] Branch management documentation
+- [x] Employee model (Prisma schema with EmploymentStatus & SalaryType enums, branch & user relations)
+- [x] Employee RBAC permissions (`employee.read`, `employee.create`, `employee.update`, `employee.deactivate`)
+- [x] Employee validation schemas (Zod: createEmployeeSchema, updateEmployeeSchema, employeeFilterSchema)
+- [x] Employee server actions (getEmployees, getEmployeeById, getEmployeeStats, createEmployee, updateEmployee, toggleEmployeeStatus, account linking)
+- [x] Employee list page (`/employees`) with search debouncing, branch/status/designation filters, summary cards, responsive table, and mobile cards
+- [x] Employee detail page (`/employees/[id]`) with profile, employment, compensation, emergency contact, and user account linking cards
+- [x] Employee create/edit dialog (unified modal, real-time code uppercase, account linker)
+- [x] Employee activate/deactivate confirmation dialog
+- [x] Employee seed data (6 sample employees across branches, linked/unlinked accounts)
+- [x] Employee feature documentation (`docs/features/employee-management.md`)
 
 ## Current Task
 
-Verification (lint, build, manual testing)
+Verification (tsc, lint, build)
 
 ## Next
 
-Phase 4: Employee / Staff Management
+Phase 5: Attendance / Shift Management
 
 ## Known Issues
 
 None
+

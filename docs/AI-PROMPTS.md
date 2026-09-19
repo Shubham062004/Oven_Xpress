@@ -229,3 +229,26 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Responsive testing at 390px, 768px, 1024px, 1440px
 ```
 
+### Employee / Staff Management Pattern
+
+```
+# Module: Employee Management
+
+## Distinction: Employee vs. User
+- User = system login account (email, password, sessions, RBAC role)
+- Employee = physical restaurant staff (kitchen, service, delivery, management)
+- Optional 1:1 link via nullable userId (explicit linking only, never automatic)
+- Never store authentication credentials inside Employee
+
+## Data Model (PostgreSQL + Prisma)
+- Employee: id, employeeCode (unique, immutable), firstName, lastName, phone, email?, dateOfBirth?, joiningDate, designation, branchId, employmentStatus (ACTIVE/INACTIVE), salary, salaryType (MONTHLY/DAILY/HOURLY), address?, emergencyContactName?, emergencyContactPhone?, userId?
+- Foreign Keys: Branch (1:N, onDelete: Restrict), User (1:1 optional, onDelete: SetNull)
+- Controlled soft-delete: never hard-delete staff records; preserve historical records
+
+## RBAC & Security
+- Permissions: employee.read, employee.create, employee.update, employee.deactivate
+- Server Actions enforce requirePermission + Branch scoping
+- Never trust client-side branchId or hidden fields
+```
+
+

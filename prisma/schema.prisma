@@ -16,6 +16,7 @@ model User {
   role         Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
   isActive     Boolean   @default(true)
   sessions     Session[]
+  employee     Employee?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -88,9 +89,51 @@ model Branch {
   openingTime String?      // HH:mm format
   closingTime String?      // HH:mm format
   status      BranchStatus @default(ACTIVE)
+  employees   Employee[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   @@index([status])
   @@index([city])
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SalaryType {
+  MONTHLY
+  DAILY
+  HOURLY
+}
+
+model Employee {
+  id                    String           @id @default(cuid())
+  employeeCode          String           @unique
+  firstName             String
+  lastName              String
+  phone                 String
+  email                 String?
+  dateOfBirth           DateTime?
+  joiningDate           DateTime
+  designation           String
+  branchId              String
+  branch                Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  employmentStatus      EmploymentStatus @default(ACTIVE)
+  salary                Decimal          @db.Decimal(10, 2)
+  salaryType            SalaryType       @default(MONTHLY)
+  address               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  userId                String?          @unique
+  user                  User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([branchId])
+  @@index([employmentStatus])
+  @@index([phone])
+  @@index([joiningDate])
+  @@index([designation])
 }

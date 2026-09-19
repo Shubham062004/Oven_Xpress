@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Package,
   Settings,
+  Shield,
   ShoppingCart,
   Truck,
   UserCheck,
@@ -38,9 +39,15 @@ export const mainNavItems: NavItem[] = [
     requiredPermission: PERMISSIONS.BRANCH_READ,
   },
   {
-    label: 'Staff',
-    href: '/users',
+    label: 'Employees',
+    href: '/employees',
     icon: Users,
+    requiredPermission: PERMISSIONS.EMPLOYEE_READ,
+  },
+  {
+    label: 'System Users',
+    href: '/users',
+    icon: Shield,
     requiredPermission: PERMISSIONS.USERS_READ,
   },
   {

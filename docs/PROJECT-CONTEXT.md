@@ -20,6 +20,8 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 ## Core Business Entities
 
 - **Branch**: A physical restaurant location. All operational data (employees, orders, inventory, expenses) is scoped to a branch. Referenced by stable `cuid` ID. Branch codes are unique and immutable after creation. Supports `ACTIVE` / `INACTIVE` status (soft deletion).
+- **Employee**: A person physically working for the restaurant (kitchen, service, delivery, cashier, management). Scoped to an active Branch (`branchId` foreign key). Has an immutable `employeeCode` (e.g. `EMP-0001`), personal info, joining date, flexible designation, and base compensation (`salary`, `salaryType`). Soft-deletable via `employmentStatus` (`ACTIVE` / `INACTIVE`).
+- **User vs. Employee Distinction**: `User` represents a system login account (email, password hash, sessions, RBAC role). `Employee` represents physical staff working in the restaurant. An `Employee` may optionally link to a single `User` account (`userId` foreign key). Staff like cooks and delivery drivers work on-site without software accounts. Authentication credentials are never stored or duplicated inside `Employee`.
 
 ## Target Users
 

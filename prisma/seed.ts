@@ -26,6 +26,11 @@ async function main() {
     { code: 'branch.create', module: 'branch', description: 'Create new restaurant branches' },
     { code: 'branch.update', module: 'branch', description: 'Update existing branch details' },
     { code: 'branch.deactivate', module: 'branch', description: 'Activate or deactivate branches' },
+    // Employee Management
+    { code: 'employee.read', module: 'employee', description: 'View employee directory and employee profiles' },
+    { code: 'employee.create', module: 'employee', description: 'Create and onboard new restaurant employees' },
+    { code: 'employee.update', module: 'employee', description: 'Update employee details and compensation' },
+    { code: 'employee.deactivate', module: 'employee', description: 'Activate or deactivate restaurant employees' },
     // Settings
     { code: 'settings.read', module: 'settings', description: 'View system and branch settings' },
     { code: 'settings.update', module: 'settings', description: 'Modify system and branch settings' },
@@ -57,13 +62,17 @@ async function main() {
         'branch.create',
         'branch.update',
         'branch.deactivate',
+        'employee.read',
+        'employee.create',
+        'employee.update',
+        'employee.deactivate',
         'settings.read',
         'settings.update',
       ],
     },
     {
       name: 'ADMIN',
-      description: 'System Administrator - User and branch management without destructive owner controls',
+      description: 'System Administrator - User, branch, and staff management without destructive owner controls',
       permissions: [
         'dashboard.read',
         'users.read',
@@ -72,16 +81,23 @@ async function main() {
         'branch.read',
         'branch.create',
         'branch.update',
+        'employee.read',
+        'employee.create',
+        'employee.update',
+        'employee.deactivate',
         'settings.read',
       ],
     },
     {
       name: 'MANAGER',
-      description: 'Branch Manager - Operational oversight and team reporting',
+      description: 'Branch Manager - Operational oversight, team reporting, and employee management',
       permissions: [
         'dashboard.read',
         'users.read',
         'branch.read',
+        'employee.read',
+        'employee.create',
+        'employee.update',
         'settings.read',
       ],
     },
@@ -274,6 +290,147 @@ async function main() {
       create: b,
     });
     console.log(`    ✓ [${b.status}] ${b.name} (${b.code})`);
+  }
+
+  // 5. Seed Sample Employees
+  console.log('  → Seeding sample employees...');
+  const dtBranch = await prisma.branch.findUnique({ where: { code: 'DT-CENTRAL' } });
+  const bwBranch = await prisma.branch.findUnique({ where: { code: 'BW-001' } });
+  const andBranch = await prisma.branch.findUnique({ where: { code: 'AND-HUB' } });
+  const puneBranch = await prisma.branch.findUnique({ where: { code: 'PUNE-CAMP' } });
+
+  const managerUser = await prisma.user.findUnique({ where: { email: 'manager@ovenxpress.com' } });
+  const staffUser = await prisma.user.findUnique({ where: { email: 'staff@ovenxpress.com' } });
+
+  if (dtBranch && bwBranch && andBranch && puneBranch) {
+    const employeesData = [
+      {
+        employeeCode: 'EMP-0001',
+        firstName: 'Elena',
+        lastName: 'Rostova',
+        phone: '+91 98201 11223',
+        email: 'manager@ovenxpress.com',
+        joiningDate: new Date('2022-03-15'),
+        designation: 'General Manager',
+        branchId: dtBranch.id,
+        employmentStatus: 'ACTIVE' as const,
+        salary: 65000,
+        salaryType: 'MONTHLY' as const,
+        address: '14 Marine Drive, Nariman Point, Mumbai',
+        emergencyContactName: 'Sergei Rostov',
+        emergencyContactPhone: '+91 98201 99887',
+        userId: managerUser?.id ?? null,
+      },
+      {
+        employeeCode: 'EMP-0002',
+        firstName: 'David',
+        lastName: 'Chen',
+        phone: '+91 98334 22334',
+        email: 'staff@ovenxpress.com',
+        joiningDate: new Date('2023-06-01'),
+        designation: 'Senior Server',
+        branchId: dtBranch.id,
+        employmentStatus: 'ACTIVE' as const,
+        salary: 25000,
+        salaryType: 'MONTHLY' as const,
+        address: '22 Colaba Causeway, Mumbai',
+        emergencyContactName: 'Mei Chen',
+        emergencyContactPhone: '+91 98334 88776',
+        userId: staffUser?.id ?? null,
+      },
+      {
+        employeeCode: 'EMP-0003',
+        firstName: 'Rajesh',
+        lastName: 'Kumar',
+        phone: '+91 98112 33445',
+        email: 'rajesh.chef@ovenxpress.com',
+        joiningDate: new Date('2021-01-10'),
+        designation: 'Head Chef',
+        branchId: dtBranch.id,
+        employmentStatus: 'ACTIVE' as const,
+        salary: 55000,
+        salaryType: 'MONTHLY' as const,
+        address: '5 Sion West, Mumbai',
+        emergencyContactName: 'Sunita Kumar',
+        emergencyContactPhone: '+91 98112 77665',
+        userId: null,
+      },
+      {
+        employeeCode: 'EMP-0004',
+        firstName: 'Amit',
+        lastName: 'Patel',
+        phone: '+91 98765 44321',
+        email: 'amit.p@ovenxpress.com',
+        joiningDate: new Date('2023-11-20'),
+        designation: 'Delivery Staff',
+        branchId: bwBranch.id,
+        employmentStatus: 'ACTIVE' as const,
+        salary: 150,
+        salaryType: 'HOURLY' as const,
+        address: '77 Bandra Bazaar, Mumbai',
+        emergencyContactName: 'Ramesh Patel',
+        emergencyContactPhone: '+91 98765 11223',
+        userId: null,
+      },
+      {
+        employeeCode: 'EMP-0005',
+        firstName: 'Priya',
+        lastName: 'Sharma',
+        phone: '+91 98920 55667',
+        email: 'priya.s@ovenxpress.com',
+        joiningDate: new Date('2024-01-05'),
+        designation: 'Cashier & Front Desk',
+        branchId: andBranch.id,
+        employmentStatus: 'ACTIVE' as const,
+        salary: 28000,
+        salaryType: 'MONTHLY' as const,
+        address: '102 Lokhandwala, Andheri, Mumbai',
+        emergencyContactName: 'Anil Sharma',
+        emergencyContactPhone: '+91 98920 11234',
+        userId: null,
+      },
+      {
+        employeeCode: 'EMP-0006',
+        firstName: 'Vikram',
+        lastName: 'Singh',
+        phone: '+91 98231 66778',
+        email: 'vikram.s@ovenxpress.com',
+        joiningDate: new Date('2023-04-12'),
+        designation: 'Kitchen Assistant',
+        branchId: puneBranch.id,
+        employmentStatus: 'INACTIVE' as const,
+        salary: 22000,
+        salaryType: 'MONTHLY' as const,
+        address: '34 Koregaon Park, Pune',
+        emergencyContactName: 'Geeta Singh',
+        emergencyContactPhone: '+91 98231 99001',
+        userId: null,
+      },
+    ];
+
+    for (const emp of employeesData) {
+      await prisma.employee.upsert({
+        where: { employeeCode: emp.employeeCode },
+        update: {
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          phone: emp.phone,
+          email: emp.email,
+          joiningDate: emp.joiningDate,
+          designation: emp.designation,
+          branchId: emp.branchId,
+          employmentStatus: emp.employmentStatus,
+          salary: emp.salary,
+          salaryType: emp.salaryType,
+          address: emp.address,
+          emergencyContactName: emp.emergencyContactName,
+          emergencyContactPhone: emp.emergencyContactPhone,
+          userId: emp.userId,
+        },
+        create: emp,
+      });
+      console.log(`    ✓ [${emp.employmentStatus}] ${emp.firstName} ${emp.lastName} (${emp.employeeCode}) - ${emp.designation}`);
+    }
   }
 
   console.log('✅ Seed completed successfully!');
