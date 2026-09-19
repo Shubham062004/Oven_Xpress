@@ -2,11 +2,11 @@
 
 ## Current Feature
 
-Authentication + RBAC
+Branch Management
 
 ## Status
 
-In Verification
+In Progress
 
 ## Completed
 
@@ -31,14 +31,24 @@ In Verification
 - [x] Protected routes demonstrations: `/settings` (`settings.read`), `/users` (`users.read`)
 - [x] Development database seed with 4 role test accounts (`owner`, `admin`, `manager`, `staff`) + inactive account
 - [x] Docker compose for local PostgreSQL
+- [x] Branch model (Prisma schema with BranchStatus enum, indexes on code/status/city)
+- [x] Branch RBAC permissions (`branch.read`, `branch.create`, `branch.update`, `branch.deactivate`)
+- [x] Branch validation schemas (Zod: createBranchSchema, updateBranchSchema)
+- [x] Branch server actions (CRUD + status toggle with auth/permission/validation guards)
+- [x] Branch list page (`/branches`) with search, filter, summary cards, responsive table
+- [x] Branch detail page (`/branches/[id]`) with organized info sections
+- [x] Branch create/edit dialog (reusable form, client + server validation)
+- [x] Branch activate/deactivate dialog (confirmation with consequences)
+- [x] Branch seed data (4 sample branches)
+- [x] Branch management documentation
 
 ## Current Task
 
-Verification (build, lint, manual testing procedure)
+Verification (lint, build, manual testing)
 
 ## Next
 
-Phase 3: Branch Management
+Phase 4: Employee / Staff Management
 
 ## Known Issues
 

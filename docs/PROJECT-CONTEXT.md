@@ -17,6 +17,10 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 - Customer management
 - Analytics and reporting
 
+## Core Business Entities
+
+- **Branch**: A physical restaurant location. All operational data (employees, orders, inventory, expenses) is scoped to a branch. Referenced by stable `cuid` ID. Branch codes are unique and immutable after creation. Supports `ACTIVE` / `INACTIVE` status (soft deletion).
+
 ## Target Users
 
 - **Restaurant Owner** — Full system access, cross-branch analytics
@@ -79,7 +83,7 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 - `User`: Accounts with `email` (@unique), `name`, `passwordHash` (bcrypt salt 12), `roleId`, and `isActive` status.
 - `Session`: Database-backed sessions with cryptographically random `sessionToken` and 7-day expiration.
 - `Role`: Supported roles (`OWNER`, `ADMIN`, `MANAGER`, `STAFF`).
-- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `settings.*`).
+- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `branch.*`, `settings.*`).
 - `RolePermission`: Many-to-many link between roles and permissions.
 
 ### 2. Session Approach
@@ -112,6 +116,6 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 
 ## Current Phase
 
-**Phase 2: Authentication & RBAC**
+**Phase 3: Branch Management**
 
-Implemented database schema (Prisma + PostgreSQL), session engine, server-side authorization guards, responsive login experience, 403 Access Denied handling, and role-filtered navigation.
+Implemented Branch model (Prisma + PostgreSQL), branch CRUD server actions with auth/permission/validation guards, branch list page with search and filtering, branch detail page, create/edit dialogs, activate/deactivate with confirmation, and comprehensive documentation.

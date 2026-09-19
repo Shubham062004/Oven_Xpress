@@ -164,3 +164,68 @@ Reusable prompt templates for development tasks. Copy and adapt as needed.
 - Test unauthenticated access -> redirected to login
 - Test UI visibility -> navigation item hidden for unpermitted role
 ```
+
+### CRUD Feature Implementation
+
+```
+# CRUD Feature: [Entity Name] Management
+
+## Context
+- Entity: [Entity name] (e.g., Branch, Employee, MenuItem)
+- Dependencies: [Entities this depends on, e.g., Branch → none, Employee → Branch]
+- Module permission prefix: [e.g., branch, employee]
+
+## Database Model (Prisma)
+- Model name: [Entity]
+- Key fields: [list fields with types]
+- Unique constraints: [e.g., code @unique]
+- Indexes: [justified by expected queries]
+- Status enum if applicable: [e.g., ACTIVE/INACTIVE]
+- Soft deletion: [yes/no, explain rationale]
+
+## Permissions (extend existing RBAC)
+- [entity].read — View list and details
+- [entity].create — Create new records
+- [entity].update — Edit existing records
+- [entity].deactivate — Toggle status (if applicable)
+- Assign to roles: OWNER (all), ADMIN (read/create/update), MANAGER (read), STAFF (read)
+- Add to seed.ts, definitions.ts, navigation.ts
+
+## Validation (Zod schemas in src/lib/validations/[entity].ts)
+- createSchema — all fields with validation rules
+- updateSchema — same but omit immutable fields
+- Share between client and server
+
+## Server Actions (src/lib/[entity]/actions.ts)
+Pattern: Auth → Permission → Validation → DB → Response
+- getAll(params?) — list with search/filter, requires [entity].read
+- getById(id) — single record, requires [entity].read
+- create(data) — create, requires [entity].create
+- update(id, data) — update, requires [entity].update
+- toggleStatus(id) — activate/deactivate, requires [entity].deactivate
+- getStats() — aggregate counts, requires [entity].read
+All actions return ActionResult<T>. Re-throw Next.js redirect errors.
+
+## Pages
+- /[entities] — Server Component, requirePermission guard, SSR data fetch
+- /[entities]/[id] — Server Component, detail page with generateMetadata
+
+## Components (src/components/[entities]/)
+- [Entity]ListClient — search, filter, table, summary cards, action menus
+- [Entity]FormDialog — reusable create/edit dialog with client+server validation
+- [Entity]StatusDialog — confirmation dialog for activate/deactivate
+- [Entity]DetailClient — organized detail view with info sections
+
+## States
+- Loading: TableSkeleton, CardSkeleton
+- Empty: EmptyState with CTA
+- Error: Toast + inline messages
+- Pending: Button loading state, prevent double submit
+
+## Verification
+- pnpm lint && pnpm build
+- Manual CRUD testing
+- Authorization testing per role
+- Responsive testing at 390px, 768px, 1024px, 1440px
+```
+

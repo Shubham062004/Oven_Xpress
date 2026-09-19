@@ -35,6 +35,7 @@ export const mainNavItems: NavItem[] = [
     label: 'Branches',
     href: '/branches',
     icon: Building2,
+    requiredPermission: PERMISSIONS.BRANCH_READ,
   },
   {
     label: 'Staff',
