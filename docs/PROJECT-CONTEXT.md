@@ -19,9 +19,18 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 
 ## Core Business Entities
 
-- **Branch**: A physical restaurant location. All operational data (employees, orders, inventory, expenses) is scoped to a branch. Referenced by stable `cuid` ID. Branch codes are unique and immutable after creation. Supports `ACTIVE` / `INACTIVE` status (soft deletion).
-- **Employee**: A person physically working for the restaurant (kitchen, service, delivery, cashier, management). Scoped to an active Branch (`branchId` foreign key). Has an immutable `employeeCode` (e.g. `EMP-0001`), personal info, joining date, flexible designation, and base compensation (`salary`, `salaryType`). Soft-deletable via `employmentStatus` (`ACTIVE` / `INACTIVE`).
+- **Branch**: A physical restaurant location. All operational data (employees, shifts, attendance, orders, inventory, expenses) is scoped to a branch. Referenced by stable `cuid` ID. Branch codes are unique and immutable after creation. Supports `ACTIVE` / `INACTIVE` status (soft deletion).
+- **Employee**: A person physically working for the restaurant (kitchen, service, delivery, cashier, management). Scoped to an active Branch (`branchId` foreign key). Has an immutable `employeeCode` (e.g. `EMP-0001`), personal info, joining date, flexible designation, base compensation (`salary`, `salaryType`), and optional `currentShiftId` referencing their active work schedule. Soft-deletable via `employmentStatus` (`ACTIVE` / `INACTIVE`).
 - **User vs. Employee Distinction**: `User` represents a system login account (email, password hash, sessions, RBAC role). `Employee` represents physical staff working in the restaurant. An `Employee` may optionally link to a single `User` account (`userId` foreign key). Staff like cooks and delivery drivers work on-site without software accounts. Authentication credentials are never stored or duplicated inside `Employee`.
+- **Shift**: An operational working hours schedule for a branch (e.g. "Morning Shift" 09:00–17:00, "Night Shift" 21:00–05:00). Shifts are defined per-branch and have `ACTIVE` / `INACTIVE` status.
+- **Attendance**: Daily attendance records per employee per working date (`@@unique([employeeId, date])`). Captures status (`PRESENT`, `ABSENT`, `HALF_DAY`, `LEAVE`), check-in time, check-out time, calculated late arrival minutes, early departure minutes, operational notes, and audit user information (`markedBy`).
+- **Entity Relationships**:
+  - `Branch` → `Employee` (`1:N`): Employees belong to a branch.
+  - `Branch` → `Shift` (`1:N`): Shifts belong to a branch.
+  - `Branch` → `Attendance` (`1:N`): Attendance is scoped to a branch.
+  - `Employee` → `Shift` (`N:1 optional`): Employee references `currentShiftId` for their ongoing active schedule.
+  - `Employee` → `Attendance` (`1:N`): One attendance record per employee per date.
+  - `Shift` → `Attendance` (`1:N optional`): Attendance snapshots `shiftId` at time of work so changing current shift never rewrites past attendance history.
 
 ## Target Users
 
@@ -35,7 +44,7 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 |--------|---------|
 | Branch Management | Add/edit branches, branch-level settings |
 | Staff Management | Employee records, roles, permissions |
-| Attendance | Clock-in/out, attendance tracking |
+| Attendance & Shift Management | Shifts, clock-in/out, daily attendance tracking, lateness/early departure |
 | Salary & Bonuses | Payroll, bonus calculations |
 | Menu Management | Menu items, categories, pricing |
 | Recipes | Recipe details, ingredient lists |
@@ -85,7 +94,7 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 - `User`: Accounts with `email` (@unique), `name`, `passwordHash` (bcrypt salt 12), `roleId`, and `isActive` status.
 - `Session`: Database-backed sessions with cryptographically random `sessionToken` and 7-day expiration.
 - `Role`: Supported roles (`OWNER`, `ADMIN`, `MANAGER`, `STAFF`).
-- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `branch.*`, `settings.*`).
+- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `branch.*`, `employee.*`, `shift.*`, `attendance.*`, `settings.*`).
 - `RolePermission`: Many-to-many link between roles and permissions.
 
 ### 2. Session Approach
@@ -118,6 +127,6 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 
 ## Current Phase
 
-**Phase 3: Branch Management**
+**Phase 5: Attendance & Shift Management**
 
-Implemented Branch model (Prisma + PostgreSQL), branch CRUD server actions with auth/permission/validation guards, branch list page with search and filtering, branch detail page, create/edit dialogs, activate/deactivate with confirmation, and comprehensive documentation.
+Implemented Shift model and Attendance model (Prisma + PostgreSQL), daily attendance tracking (PRESENT, ABSENT, HALF_DAY, LEAVE), check-in and check-out with automated lateness and early departure calculation, manual attendance marking and corrections, daily multi-branch summary metrics, shift management with duration and overnight schedule support, branch-scoped authorization guards, and comprehensive documentation.

@@ -251,4 +251,31 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Never trust client-side branchId or hidden fields
 ```
 
+### Attendance & Shift Management Pattern
+
+```
+# Module: Attendance & Shift Management
+
+## Entity Architecture
+- Employee → Branch → Shift → Attendance
+- Shift: id, name, branchId, startTime (HH:mm), endTime (HH:mm), status (ACTIVE/INACTIVE)
+- Attendance: id, employeeId, branchId, shiftId?, date (@db.Date), status (PRESENT/ABSENT/HALF_DAY/LEAVE), checkIn?, checkOut?, lateMinutes, earlyDepartureMinutes, note?, markedBy
+- Historical Preservation: Attendance retains snapshot shiftId; changing employee currentShiftId never mutates past logs
+- Database Uniqueness: @@unique([employeeId, date]) prevents duplicate records per employee per day
+
+## Calculations & Facts
+- Late minutes: checkIn > shiftStart ? (checkIn - shiftStart) : 0
+- Early departure: checkOut < shiftEnd ? (shiftEnd - checkOut) : 0
+- Overnight shifts: if endTime < startTime, shiftEnd = shiftEnd + 24 hours
+- Lateness & departures are recorded as facts, not automatic financial deductions
+
+## RBAC & Security
+- Permissions: attendance.read, attendance.create, attendance.update, shift.read, shift.create, shift.update, shift.deactivate
+- Strict exclusion: NO attendance.delete (attendance is historical business data)
+- Server-side branch scoping: OWNER/ADMIN have global access; MANAGER is strictly scoped to assigned branch
+- Cross-entity validation: employee.branchId === branchId && shift.branchId === branchId
+- STAFF cannot view or modify other staff attendance
+```
+
+
 

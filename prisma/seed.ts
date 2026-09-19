@@ -1,4 +1,12 @@
-import { PrismaClient } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  BranchStatus,
+  EmploymentStatus,
+  SalaryType,
+  ShiftStatus,
+  AttendanceStatus,
+} from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -31,6 +39,15 @@ async function main() {
     { code: 'employee.create', module: 'employee', description: 'Create and onboard new restaurant employees' },
     { code: 'employee.update', module: 'employee', description: 'Update employee details and compensation' },
     { code: 'employee.deactivate', module: 'employee', description: 'Activate or deactivate restaurant employees' },
+    // Attendance Management
+    { code: 'attendance.read', module: 'attendance', description: 'View staff attendance records and daily summaries' },
+    { code: 'attendance.create', module: 'attendance', description: 'Mark employee check-in, check-out, and attendance' },
+    { code: 'attendance.update', module: 'attendance', description: 'Correct or update employee attendance records' },
+    // Shift Management
+    { code: 'shift.read', module: 'shift', description: 'View restaurant shift schedules' },
+    { code: 'shift.create', module: 'shift', description: 'Create new shift schedules per branch' },
+    { code: 'shift.update', module: 'shift', description: 'Update shift schedules and timing' },
+    { code: 'shift.deactivate', module: 'shift', description: 'Activate or deactivate branch shifts' },
     // Settings
     { code: 'settings.read', module: 'settings', description: 'View system and branch settings' },
     { code: 'settings.update', module: 'settings', description: 'Modify system and branch settings' },
@@ -66,6 +83,13 @@ async function main() {
         'employee.create',
         'employee.update',
         'employee.deactivate',
+        'attendance.read',
+        'attendance.create',
+        'attendance.update',
+        'shift.read',
+        'shift.create',
+        'shift.update',
+        'shift.deactivate',
         'settings.read',
         'settings.update',
       ],
@@ -85,6 +109,13 @@ async function main() {
         'employee.create',
         'employee.update',
         'employee.deactivate',
+        'attendance.read',
+        'attendance.create',
+        'attendance.update',
+        'shift.read',
+        'shift.create',
+        'shift.update',
+        'shift.deactivate',
         'settings.read',
       ],
     },
@@ -98,6 +129,12 @@ async function main() {
         'employee.read',
         'employee.create',
         'employee.update',
+        'attendance.read',
+        'attendance.create',
+        'attendance.update',
+        'shift.read',
+        'shift.create',
+        'shift.update',
         'settings.read',
       ],
     },
@@ -211,7 +248,7 @@ async function main() {
   }
 
   // 4. Seed Sample Branches
-  const branchesData = [
+  const branchesData: Prisma.BranchCreateInput[] = [
     {
       name: 'Downtown Central',
       code: 'DT-CENTRAL',
@@ -224,7 +261,7 @@ async function main() {
       email: 'downtown@ovenxpress.com',
       openingTime: '09:00',
       closingTime: '23:00',
-      status: 'ACTIVE' as const,
+      status: BranchStatus.ACTIVE,
     },
     {
       name: 'Bandra West',
@@ -238,7 +275,7 @@ async function main() {
       email: 'bandra@ovenxpress.com',
       openingTime: '10:00',
       closingTime: '22:30',
-      status: 'ACTIVE' as const,
+      status: BranchStatus.ACTIVE,
     },
     {
       name: 'Andheri Hub',
@@ -252,7 +289,7 @@ async function main() {
       email: 'andheri@ovenxpress.com',
       openingTime: '08:00',
       closingTime: '23:30',
-      status: 'ACTIVE' as const,
+      status: BranchStatus.ACTIVE,
     },
     {
       name: 'Pune Camp',
@@ -266,7 +303,7 @@ async function main() {
       email: 'pune@ovenxpress.com',
       openingTime: '10:00',
       closingTime: '22:00',
-      status: 'INACTIVE' as const,
+      status: BranchStatus.INACTIVE,
     },
   ];
 
@@ -299,139 +336,356 @@ async function main() {
   const andBranch = await prisma.branch.findUnique({ where: { code: 'AND-HUB' } });
   const puneBranch = await prisma.branch.findUnique({ where: { code: 'PUNE-CAMP' } });
 
-  const managerUser = await prisma.user.findUnique({ where: { email: 'manager@ovenxpress.com' } });
-  const staffUser = await prisma.user.findUnique({ where: { email: 'staff@ovenxpress.com' } });
+  const managerEmail = process.env.SEED_MANAGER_EMAIL || 'manager@ovenxpress.com';
+  const staffEmail = process.env.SEED_STAFF_EMAIL || 'staff@ovenxpress.com';
 
-  if (dtBranch && bwBranch && andBranch && puneBranch) {
-    const employeesData = [
-      {
-        employeeCode: 'EMP-0001',
-        firstName: 'Elena',
-        lastName: 'Rostova',
-        phone: '+91 98201 11223',
-        email: 'manager@ovenxpress.com',
-        joiningDate: new Date('2022-03-15'),
-        designation: 'General Manager',
-        branchId: dtBranch.id,
-        employmentStatus: 'ACTIVE' as const,
-        salary: 65000,
-        salaryType: 'MONTHLY' as const,
-        address: '14 Marine Drive, Nariman Point, Mumbai',
-        emergencyContactName: 'Sergei Rostov',
-        emergencyContactPhone: '+91 98201 99887',
-        userId: managerUser?.id ?? null,
-      },
-      {
-        employeeCode: 'EMP-0002',
-        firstName: 'David',
-        lastName: 'Chen',
-        phone: '+91 98334 22334',
-        email: 'staff@ovenxpress.com',
-        joiningDate: new Date('2023-06-01'),
-        designation: 'Senior Server',
-        branchId: dtBranch.id,
-        employmentStatus: 'ACTIVE' as const,
-        salary: 25000,
-        salaryType: 'MONTHLY' as const,
-        address: '22 Colaba Causeway, Mumbai',
-        emergencyContactName: 'Mei Chen',
-        emergencyContactPhone: '+91 98334 88776',
-        userId: staffUser?.id ?? null,
-      },
-      {
-        employeeCode: 'EMP-0003',
-        firstName: 'Rajesh',
-        lastName: 'Kumar',
-        phone: '+91 98112 33445',
-        email: 'rajesh.chef@ovenxpress.com',
-        joiningDate: new Date('2021-01-10'),
-        designation: 'Head Chef',
-        branchId: dtBranch.id,
-        employmentStatus: 'ACTIVE' as const,
-        salary: 55000,
-        salaryType: 'MONTHLY' as const,
-        address: '5 Sion West, Mumbai',
-        emergencyContactName: 'Sunita Kumar',
-        emergencyContactPhone: '+91 98112 77665',
-        userId: null,
-      },
-      {
-        employeeCode: 'EMP-0004',
-        firstName: 'Amit',
-        lastName: 'Patel',
-        phone: '+91 98765 44321',
-        email: 'amit.p@ovenxpress.com',
-        joiningDate: new Date('2023-11-20'),
-        designation: 'Delivery Staff',
-        branchId: bwBranch.id,
-        employmentStatus: 'ACTIVE' as const,
-        salary: 150,
-        salaryType: 'HOURLY' as const,
-        address: '77 Bandra Bazaar, Mumbai',
-        emergencyContactName: 'Ramesh Patel',
-        emergencyContactPhone: '+91 98765 11223',
-        userId: null,
-      },
-      {
-        employeeCode: 'EMP-0005',
-        firstName: 'Priya',
-        lastName: 'Sharma',
-        phone: '+91 98920 55667',
-        email: 'priya.s@ovenxpress.com',
-        joiningDate: new Date('2024-01-05'),
-        designation: 'Cashier & Front Desk',
-        branchId: andBranch.id,
-        employmentStatus: 'ACTIVE' as const,
-        salary: 28000,
-        salaryType: 'MONTHLY' as const,
-        address: '102 Lokhandwala, Andheri, Mumbai',
-        emergencyContactName: 'Anil Sharma',
-        emergencyContactPhone: '+91 98920 11234',
-        userId: null,
-      },
-      {
-        employeeCode: 'EMP-0006',
-        firstName: 'Vikram',
-        lastName: 'Singh',
-        phone: '+91 98231 66778',
-        email: 'vikram.s@ovenxpress.com',
-        joiningDate: new Date('2023-04-12'),
-        designation: 'Kitchen Assistant',
-        branchId: puneBranch.id,
-        employmentStatus: 'INACTIVE' as const,
-        salary: 22000,
-        salaryType: 'MONTHLY' as const,
-        address: '34 Koregaon Park, Pune',
-        emergencyContactName: 'Geeta Singh',
-        emergencyContactPhone: '+91 98231 99001',
-        userId: null,
-      },
-    ];
+  const managerUser = await prisma.user.findUnique({ where: { email: managerEmail } });
+  const staffUser = await prisma.user.findUnique({ where: { email: staffEmail } });
 
-    for (const emp of employeesData) {
-      await prisma.employee.upsert({
-        where: { employeeCode: emp.employeeCode },
-        update: {
-          firstName: emp.firstName,
-          lastName: emp.lastName,
-          phone: emp.phone,
-          email: emp.email,
-          joiningDate: emp.joiningDate,
-          designation: emp.designation,
-          branchId: emp.branchId,
-          employmentStatus: emp.employmentStatus,
-          salary: emp.salary,
-          salaryType: emp.salaryType,
-          address: emp.address,
-          emergencyContactName: emp.emergencyContactName,
-          emergencyContactPhone: emp.emergencyContactPhone,
-          userId: emp.userId,
-        },
-        create: emp,
-      });
-      console.log(`    ✓ [${emp.employmentStatus}] ${emp.firstName} ${emp.lastName} (${emp.employeeCode}) - ${emp.designation}`);
-    }
+  if (!dtBranch || !bwBranch || !andBranch || !puneBranch) {
+    throw new Error('Required seeded branches were not found to seed employees, shifts, and attendance.');
   }
+
+  const employeesData: Prisma.EmployeeUncheckedCreateInput[] = [
+    {
+      employeeCode: 'EMP-0001',
+      firstName: 'Elena',
+      lastName: 'Rostova',
+      phone: '+91 98201 11223',
+      email: managerEmail,
+      joiningDate: new Date('2022-03-15'),
+      designation: 'General Manager',
+      branchId: dtBranch.id,
+      employmentStatus: EmploymentStatus.ACTIVE,
+      salary: 65000,
+      salaryType: SalaryType.MONTHLY,
+      address: '14 Marine Drive, Nariman Point, Mumbai',
+      emergencyContactName: 'Sergei Rostov',
+      emergencyContactPhone: '+91 98201 99887',
+      userId: managerUser?.id ?? null,
+    },
+    {
+      employeeCode: 'EMP-0002',
+      firstName: 'David',
+      lastName: 'Chen',
+      phone: '+91 98334 22334',
+      email: staffEmail,
+      joiningDate: new Date('2023-06-01'),
+      designation: 'Senior Server',
+      branchId: dtBranch.id,
+      employmentStatus: EmploymentStatus.ACTIVE,
+      salary: 25000,
+      salaryType: SalaryType.MONTHLY,
+      address: '22 Colaba Causeway, Mumbai',
+      emergencyContactName: 'Mei Chen',
+      emergencyContactPhone: '+91 98334 88776',
+      userId: staffUser?.id ?? null,
+    },
+    {
+      employeeCode: 'EMP-0003',
+      firstName: 'Rajesh',
+      lastName: 'Kumar',
+      phone: '+91 98112 33445',
+      email: 'rajesh.chef@ovenxpress.com',
+      joiningDate: new Date('2021-01-10'),
+      designation: 'Head Chef',
+      branchId: dtBranch.id,
+      employmentStatus: EmploymentStatus.ACTIVE,
+      salary: 55000,
+      salaryType: SalaryType.MONTHLY,
+      address: '5 Sion West, Mumbai',
+      emergencyContactName: 'Sunita Kumar',
+      emergencyContactPhone: '+91 98112 77665',
+      userId: null,
+    },
+    {
+      employeeCode: 'EMP-0004',
+      firstName: 'Amit',
+      lastName: 'Patel',
+      phone: '+91 98765 44321',
+      email: 'amit.p@ovenxpress.com',
+      joiningDate: new Date('2023-11-20'),
+      designation: 'Delivery Staff',
+      branchId: bwBranch.id,
+      employmentStatus: EmploymentStatus.ACTIVE,
+      salary: 150,
+      salaryType: SalaryType.HOURLY,
+      address: '77 Bandra Bazaar, Mumbai',
+      emergencyContactName: 'Ramesh Patel',
+      emergencyContactPhone: '+91 98765 11223',
+      userId: null,
+    },
+    {
+      employeeCode: 'EMP-0005',
+      firstName: 'Priya',
+      lastName: 'Sharma',
+      phone: '+91 98920 55667',
+      email: 'priya.s@ovenxpress.com',
+      joiningDate: new Date('2024-01-05'),
+      designation: 'Cashier & Front Desk',
+      branchId: andBranch.id,
+      employmentStatus: EmploymentStatus.ACTIVE,
+      salary: 28000,
+      salaryType: SalaryType.MONTHLY,
+      address: '102 Lokhandwala, Andheri, Mumbai',
+      emergencyContactName: 'Anil Sharma',
+      emergencyContactPhone: '+91 98920 11234',
+      userId: null,
+    },
+    {
+      employeeCode: 'EMP-0006',
+      firstName: 'Vikram',
+      lastName: 'Singh',
+      phone: '+91 98231 66778',
+      email: 'vikram.s@ovenxpress.com',
+      joiningDate: new Date('2023-04-12'),
+      designation: 'Kitchen Assistant',
+      branchId: puneBranch.id,
+      employmentStatus: EmploymentStatus.INACTIVE,
+      salary: 22000,
+      salaryType: SalaryType.MONTHLY,
+      address: '34 Koregaon Park, Pune',
+      emergencyContactName: 'Geeta Singh',
+      emergencyContactPhone: '+91 98231 99001',
+      userId: null,
+    },
+  ];
+
+  for (const emp of employeesData) {
+    await prisma.employee.upsert({
+      where: { employeeCode: emp.employeeCode },
+      update: {
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        phone: emp.phone,
+        email: emp.email,
+        joiningDate: emp.joiningDate,
+        designation: emp.designation,
+        branchId: emp.branchId,
+        employmentStatus: emp.employmentStatus,
+        salary: emp.salary,
+        salaryType: emp.salaryType,
+        address: emp.address,
+        emergencyContactName: emp.emergencyContactName,
+        emergencyContactPhone: emp.emergencyContactPhone,
+        userId: emp.userId,
+      },
+      create: emp,
+    });
+    console.log(`    ✓ [${emp.employmentStatus}] ${emp.firstName} ${emp.lastName} (${emp.employeeCode}) - ${emp.designation}`);
+  }
+
+  // 6. Seed Shifts
+  console.log('  → Seeding sample shifts...');
+  const shiftsData: Prisma.ShiftUncheckedCreateInput[] = [
+    {
+      name: 'Morning Shift',
+      branchId: dtBranch.id,
+      startTime: '08:00',
+      endTime: '16:00',
+      status: ShiftStatus.ACTIVE,
+    },
+    {
+      name: 'Evening Shift',
+      branchId: dtBranch.id,
+      startTime: '15:00',
+      endTime: '23:00',
+      status: ShiftStatus.ACTIVE,
+    },
+    {
+      name: 'Full Day Shift',
+      branchId: bwBranch.id,
+      startTime: '10:00',
+      endTime: '19:00',
+      status: ShiftStatus.ACTIVE,
+    },
+    {
+      name: 'Night Shift',
+      branchId: bwBranch.id,
+      startTime: '18:00',
+      endTime: '02:00',
+      status: ShiftStatus.ACTIVE,
+    },
+    {
+      name: 'General Shift',
+      branchId: andBranch.id,
+      startTime: '09:00',
+      endTime: '18:00',
+      status: ShiftStatus.ACTIVE,
+    },
+  ];
+
+  const seededShifts: Record<string, string> = {};
+  for (const s of shiftsData) {
+    const existing = await prisma.shift.findFirst({
+      where: { name: s.name, branchId: s.branchId },
+    });
+    const record = existing
+      ? await prisma.shift.update({
+          where: { id: existing.id },
+          data: s as Prisma.ShiftUncheckedUpdateInput,
+        })
+      : await prisma.shift.create({ data: s });
+    seededShifts[`${s.branchId}_${s.name}`] = record.id;
+    console.log(`    ✓ [${record.status}] ${record.name} (${s.startTime} - ${s.endTime})`);
+  }
+
+  // Assign current shifts to employees
+  const dtMorningShiftId = seededShifts[`${dtBranch.id}_Morning Shift`];
+  const dtEveningShiftId = seededShifts[`${dtBranch.id}_Evening Shift`];
+  const bwFullDayShiftId = seededShifts[`${bwBranch.id}_Full Day Shift`];
+  const andGeneralShiftId = seededShifts[`${andBranch.id}_General Shift`];
+
+  if (dtMorningShiftId) {
+    await prisma.employee.updateMany({
+      where: { employeeCode: { in: ['EMP-0001', 'EMP-0003'] } },
+      data: { currentShiftId: dtMorningShiftId },
+    });
+  }
+  if (dtEveningShiftId) {
+    await prisma.employee.updateMany({
+      where: { employeeCode: 'EMP-0002' },
+      data: { currentShiftId: dtEveningShiftId },
+    });
+  }
+  if (bwFullDayShiftId) {
+    await prisma.employee.updateMany({
+      where: { employeeCode: 'EMP-0004' },
+      data: { currentShiftId: bwFullDayShiftId },
+    });
+  }
+  if (andGeneralShiftId) {
+    await prisma.employee.updateMany({
+      where: { employeeCode: 'EMP-0005' },
+      data: { currentShiftId: andGeneralShiftId },
+    });
+  }
+
+  // 7. Seed Attendance Records for Today
+  console.log('  → Seeding sample attendance records...');
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+
+  const emp1 = await prisma.employee.findUnique({ where: { employeeCode: 'EMP-0001' } });
+  const emp2 = await prisma.employee.findUnique({ where: { employeeCode: 'EMP-0002' } });
+  const emp3 = await prisma.employee.findUnique({ where: { employeeCode: 'EMP-0003' } });
+  const emp4 = await prisma.employee.findUnique({ where: { employeeCode: 'EMP-0004' } });
+  const emp5 = await prisma.employee.findUnique({ where: { employeeCode: 'EMP-0005' } });
+
+  if (emp1 && dtMorningShiftId) {
+    const checkIn1 = new Date(today);
+    checkIn1.setHours(7, 55, 0, 0);
+    const data: Prisma.AttendanceUncheckedCreateInput = {
+      employeeId: emp1.id,
+      branchId: dtBranch.id,
+      shiftId: dtMorningShiftId,
+      date: today,
+      status: AttendanceStatus.PRESENT,
+      checkIn: checkIn1,
+      checkOut: null,
+      lateMinutes: 0,
+      earlyDepartureMinutes: 0,
+      note: 'On time for morning opening',
+      markedBy: 'System Auto-CheckIn',
+    };
+    await prisma.attendance.upsert({
+      where: { employeeId_date: { employeeId: emp1.id, date: today } },
+      update: data as Prisma.AttendanceUncheckedUpdateInput,
+      create: data,
+    });
+  }
+
+  if (emp2 && dtEveningShiftId) {
+    const checkIn2 = new Date(today);
+    checkIn2.setHours(15, 17, 0, 0); // 17 mins late
+    const data: Prisma.AttendanceUncheckedCreateInput = {
+      employeeId: emp2.id,
+      branchId: dtBranch.id,
+      shiftId: dtEveningShiftId,
+      date: today,
+      status: AttendanceStatus.PRESENT,
+      checkIn: checkIn2,
+      checkOut: null,
+      lateMinutes: 17,
+      earlyDepartureMinutes: 0,
+      note: 'Delayed due to metro signal delay',
+      markedBy: 'Elena Rostova',
+    };
+    await prisma.attendance.upsert({
+      where: { employeeId_date: { employeeId: emp2.id, date: today } },
+      update: data as Prisma.AttendanceUncheckedUpdateInput,
+      create: data,
+    });
+  }
+
+  if (emp3 && dtMorningShiftId) {
+    const checkIn3 = new Date(today);
+    checkIn3.setHours(8, 0, 0, 0);
+    const data: Prisma.AttendanceUncheckedCreateInput = {
+      employeeId: emp3.id,
+      branchId: dtBranch.id,
+      shiftId: dtMorningShiftId,
+      date: today,
+      status: AttendanceStatus.PRESENT,
+      checkIn: checkIn3,
+      checkOut: null,
+      lateMinutes: 0,
+      earlyDepartureMinutes: 0,
+      note: 'Breakfast kitchen prep',
+      markedBy: 'System Auto-CheckIn',
+    };
+    await prisma.attendance.upsert({
+      where: { employeeId_date: { employeeId: emp3.id, date: today } },
+      update: data as Prisma.AttendanceUncheckedUpdateInput,
+      create: data,
+    });
+  }
+
+  if (emp4 && bwFullDayShiftId) {
+    const checkIn4 = new Date(today);
+    checkIn4.setHours(10, 0, 0, 0);
+    const checkOut4 = new Date(today);
+    checkOut4.setHours(14, 0, 0, 0); // Half-day
+    const data: Prisma.AttendanceUncheckedCreateInput = {
+      employeeId: emp4.id,
+      branchId: bwBranch.id,
+      shiftId: bwFullDayShiftId,
+      date: today,
+      status: AttendanceStatus.HALF_DAY,
+      checkIn: checkIn4,
+      checkOut: checkOut4,
+      lateMinutes: 0,
+      earlyDepartureMinutes: 300,
+      note: 'Approved personal emergency half-day',
+      markedBy: 'Marcus Vance',
+    };
+    await prisma.attendance.upsert({
+      where: { employeeId_date: { employeeId: emp4.id, date: today } },
+      update: data as Prisma.AttendanceUncheckedUpdateInput,
+      create: data,
+    });
+  }
+
+  if (emp5 && andGeneralShiftId) {
+    const data: Prisma.AttendanceUncheckedCreateInput = {
+      employeeId: emp5.id,
+      branchId: andBranch.id,
+      shiftId: andGeneralShiftId,
+      date: today,
+      status: AttendanceStatus.LEAVE,
+      checkIn: null,
+      checkOut: null,
+      lateMinutes: 0,
+      earlyDepartureMinutes: 0,
+      note: 'Pre-approved medical leave',
+      markedBy: 'Sarah Jenkins',
+    };
+    await prisma.attendance.upsert({
+      where: { employeeId_date: { employeeId: emp5.id, date: today } },
+      update: data as Prisma.AttendanceUncheckedUpdateInput,
+      create: data,
+    });
+ }
 
   console.log('✅ Seed completed successfully!');
   console.log('\n⚠️  SECURITY NOTICE: The seeded credentials are for local development/testing only.');

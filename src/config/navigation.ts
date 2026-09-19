@@ -54,6 +54,7 @@ export const mainNavItems: NavItem[] = [
     label: 'Attendance',
     href: '/attendance',
     icon: UserCheck,
+    requiredPermission: PERMISSIONS.ATTENDANCE_READ,
   },
   {
     label: 'Menu',

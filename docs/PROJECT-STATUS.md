@@ -1,10 +1,10 @@
 ## Current Feature
 
-Employee / Staff Management
+Attendance & Shift Management
 
 ## Status
 
-In Progress
+Completed
 
 ## Completed
 
@@ -38,7 +38,7 @@ In Progress
 - [x] Branch create/edit dialog (reusable form, client + server validation)
 - [x] Branch activate/deactivate dialog (confirmation with consequences)
 - [x] Branch seed data (4 sample branches)
-- [x] Branch management documentation
+- [x] Branch management documentation (`docs/features/branch-management.md`)
 - [x] Employee model (Prisma schema with EmploymentStatus & SalaryType enums, branch & user relations)
 - [x] Employee RBAC permissions (`employee.read`, `employee.create`, `employee.update`, `employee.deactivate`)
 - [x] Employee validation schemas (Zod: createEmployeeSchema, updateEmployeeSchema, employeeFilterSchema)
@@ -49,6 +49,19 @@ In Progress
 - [x] Employee activate/deactivate confirmation dialog
 - [x] Employee seed data (6 sample employees across branches, linked/unlinked accounts)
 - [x] Employee feature documentation (`docs/features/employee-management.md`)
+- [x] Shift & Attendance models (Prisma schema: ShiftStatus, AttendanceStatus, composite indexes, `@@unique([employeeId, date])`)
+- [x] Shift & Attendance RBAC permissions (7 permissions: `attendance.read`, `attendance.create`, `attendance.update`, `shift.read`, `shift.create`, `shift.update`, `shift.deactivate`)
+- [x] Shift & Attendance validation schemas (Zod: shiftSchema, updateShiftSchema, attendanceRecordSchema, attendanceUpdateSchema, attendanceFilterSchema)
+- [x] Attendance & Shift server actions (`getShifts`, `createShift`, `updateShift`, `toggleShiftStatus`, `getAttendanceRecords`, `getAttendanceById`, `getAttendanceSummary`, `markAttendance`, `updateAttendance`, `quickCheckIn`, `quickCheckOut`, `getAuthorizedBranches`, `getAuthorizedEmployees`)
+- [x] Server-side branch scoping authorization & cross-entity branch verification
+- [x] Late arrival & early departure calculations (with overnight schedule support)
+- [x] Attendance dashboard (`/attendance`) with Daily Attendance & Shift Schedules tabs, date navigator, multi-filters, summary KPI cards, desktop table, and mobile cards
+- [x] Attendance record details page (`/attendance/[id]`) with employee card, schedule vs actual timing, audit trail, and correction dialog
+- [x] Manual attendance marking and correction dialog with real-time lateness preview
+- [x] Shift creation and editing dialog with live duration calculation
+- [x] Shift activation/deactivation confirmation dialog
+- [x] Seed data with 5 shifts and sample attendance records
+- [x] Feature documentation (`docs/features/attendance-management.md`)
 
 ## Current Task
 
@@ -56,9 +69,8 @@ Verification (tsc, lint, build)
 
 ## Next
 
-Phase 5: Attendance / Shift Management
+Phase 6: Salary & Bonuses / Payroll
 
 ## Known Issues
 
 None
-
