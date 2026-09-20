@@ -67,6 +67,7 @@ export const mainNavItems: NavItem[] = [
     label: 'Orders',
     href: '/orders',
     icon: ShoppingCart,
+    requiredPermission: PERMISSIONS.ORDER_READ,
   },
   {
     label: 'Kitchen',

@@ -13,6 +13,9 @@ import {
   WastageReason,
   SupplierStatus,
   PurchaseOrderStatus,
+  OrderType,
+  OrderStatus,
+  TableStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -100,6 +103,21 @@ async function main() {
     { code: 'purchase.update', module: 'purchase', description: 'Update purchase orders' },
     { code: 'purchase.receive', module: 'purchase', description: 'Receive purchase order stock into inventory' },
     { code: 'purchase.cancel', module: 'purchase', description: 'Cancel purchase orders' },
+    // Order Management
+    { code: 'order.read', module: 'order', description: 'View restaurant orders and order history' },
+    { code: 'order.create', module: 'order', description: 'Create dine-in, takeaway, and delivery orders' },
+    { code: 'order.update', module: 'order', description: 'Update pending restaurant orders' },
+    { code: 'order.status', module: 'order', description: 'Progress order lifecycle status' },
+    { code: 'order.cancel', module: 'order', description: 'Cancel active restaurant orders' },
+    // Customer Management
+    { code: 'customer.read', module: 'customer', description: 'View customer directory and order history' },
+    { code: 'customer.create', module: 'customer', description: 'Register or link new customers' },
+    { code: 'customer.update', module: 'customer', description: 'Update customer contact and address details' },
+    // Table Management
+    { code: 'table.read', module: 'table', description: 'View branch tables and occupancy status' },
+    { code: 'table.create', module: 'table', description: 'Add new restaurant dining tables' },
+    { code: 'table.update', module: 'table', description: 'Update table number, capacity, and details' },
+    { code: 'table.status', module: 'table', description: 'Update table occupancy and cleaning status' },
   ];
 
   console.log('  → Seeding permissions...');
@@ -175,6 +193,18 @@ async function main() {
         'purchase.update',
         'purchase.receive',
         'purchase.cancel',
+        'order.read',
+        'order.create',
+        'order.update',
+        'order.status',
+        'order.cancel',
+        'customer.read',
+        'customer.create',
+        'customer.update',
+        'table.read',
+        'table.create',
+        'table.update',
+        'table.status',
       ],
     },
     {
@@ -234,6 +264,18 @@ async function main() {
         'purchase.update',
         'purchase.receive',
         'purchase.cancel',
+        'order.read',
+        'order.create',
+        'order.update',
+        'order.status',
+        'order.cancel',
+        'customer.read',
+        'customer.create',
+        'customer.update',
+        'table.read',
+        'table.create',
+        'table.update',
+        'table.status',
       ],
     },
     {
@@ -274,6 +316,18 @@ async function main() {
         'purchase.update',
         'purchase.receive',
         'purchase.cancel',
+        'order.read',
+        'order.create',
+        'order.update',
+        'order.status',
+        'order.cancel',
+        'customer.read',
+        'customer.create',
+        'customer.update',
+        'table.read',
+        'table.create',
+        'table.update',
+        'table.status',
       ],
     },
     {
@@ -287,6 +341,13 @@ async function main() {
         'inventory.read',
         'supplier.read',
         'purchase.read',
+        'order.read',
+        'order.create',
+        'order.status',
+        'customer.read',
+        'customer.create',
+        'table.read',
+        'table.status',
       ],
     },
   ];
@@ -1523,6 +1584,343 @@ async function main() {
       },
     });
     console.log(`    ✓ Purchase Order: PO-2026-000004 (DRAFT)`);
+  }
+
+  // 14. Seed Restaurant Tables
+  console.log('  → Seeding restaurant dining tables...');
+  const tableConfigs = [
+    // Downtown Central
+    { branchId: dtBranch.id, tableNumber: 'T-01', capacity: 2, status: TableStatus.AVAILABLE },
+    { branchId: dtBranch.id, tableNumber: 'T-02', capacity: 4, status: TableStatus.OCCUPIED },
+    { branchId: dtBranch.id, tableNumber: 'T-03', capacity: 4, status: TableStatus.AVAILABLE },
+    { branchId: dtBranch.id, tableNumber: 'T-04', capacity: 6, status: TableStatus.AVAILABLE },
+    { branchId: dtBranch.id, tableNumber: 'T-05', capacity: 8, status: TableStatus.AVAILABLE },
+    // Bandra West
+    { branchId: bwBranch.id, tableNumber: 'T-01', capacity: 2, status: TableStatus.AVAILABLE },
+    { branchId: bwBranch.id, tableNumber: 'T-02', capacity: 4, status: TableStatus.AVAILABLE },
+    { branchId: bwBranch.id, tableNumber: 'T-03', capacity: 4, status: TableStatus.AVAILABLE },
+    { branchId: bwBranch.id, tableNumber: 'T-04', capacity: 6, status: TableStatus.AVAILABLE },
+    // Andheri Hub
+    { branchId: andBranch.id, tableNumber: 'T-01', capacity: 2, status: TableStatus.AVAILABLE },
+    { branchId: andBranch.id, tableNumber: 'T-02', capacity: 4, status: TableStatus.AVAILABLE },
+    { branchId: andBranch.id, tableNumber: 'T-03', capacity: 4, status: TableStatus.AVAILABLE },
+  ];
+
+  const seededTables = new Map<string, string>();
+  for (const tc of tableConfigs) {
+    const table = await prisma.restaurantTable.upsert({
+      where: {
+        branchId_tableNumber: {
+          branchId: tc.branchId,
+          tableNumber: tc.tableNumber,
+        },
+      },
+      update: { capacity: tc.capacity, status: tc.status },
+      create: tc,
+    });
+    seededTables.set(`${tc.branchId}_${tc.tableNumber}`, table.id);
+  }
+  console.log(`    ✓ Seeded ${tableConfigs.length} restaurant tables across 3 branches`);
+
+  // 15. Seed Customers
+  console.log('  → Seeding customers directory...');
+  const customersData = [
+    {
+      name: 'Rahul Sharma',
+      phone: '+91 98201 12345',
+      email: 'rahul.sharma@example.com',
+      address: 'Flat 402, Sea Green Apts, Worli, Mumbai',
+      notes: 'VIP guest, prefers corner tables',
+    },
+    {
+      name: 'Priya Patel',
+      phone: '+91 98202 23456',
+      email: 'priya.patel@example.com',
+      address: '12 Pali Hill Road, Bandra West, Mumbai',
+      notes: 'Lactose intolerant, requests dairy-free cheese',
+    },
+    {
+      name: 'Amit Verma',
+      phone: '+91 98203 34567',
+      email: 'amit.verma@example.com',
+      address: 'Flat 801, Oberoi Splendor, JVLR, Andheri East, Mumbai',
+      notes: 'Regular delivery customer',
+    },
+    {
+      name: 'Ananya Desai',
+      phone: '+91 98204 45678',
+      email: 'ananya.desai@example.com',
+      address: '24 Marine Drive, Nariman Point, Mumbai',
+      notes: 'Office lunch orders',
+    },
+  ];
+
+  const seededCustomers = new Map<string, string>();
+  for (const cd of customersData) {
+    const cust = await prisma.customer.upsert({
+      where: { phone: cd.phone },
+      update: { name: cd.name, email: cd.email, address: cd.address, notes: cd.notes },
+      create: cd,
+    });
+    seededCustomers.set(cd.name, cust.id);
+  }
+  console.log(`    ✓ Seeded ${customersData.length} customer records`);
+
+  // 16. Seed Sample Orders
+  console.log('  → Seeding restaurant orders...');
+  const margheritaItem = await prisma.menuItem.findFirst({
+    where: { name: { contains: 'Margherita' } },
+  });
+  const pepperoniItem = await prisma.menuItem.findFirst({
+    where: { name: { contains: 'Pepperoni' } },
+  });
+  const burgerItem = await prisma.menuItem.findFirst({
+    where: { name: { contains: 'Cheeseburger' } },
+  });
+
+  const rahulId = seededCustomers.get('Rahul Sharma');
+  const priyaId = seededCustomers.get('Priya Patel');
+  const amitId = seededCustomers.get('Amit Verma');
+  const dtT02Id = seededTables.get(`${dtBranch.id}_T-02`);
+  const dtT01Id = seededTables.get(`${dtBranch.id}_T-01`);
+
+  // Order 1: DINE_IN, CONFIRMED (Downtown Central, Table T-02)
+  if (margheritaItem && burgerItem && dtT02Id) {
+    const existingOrd1 = await prisma.order.findUnique({
+      where: { orderNumber: 'ORD-2026-000001' },
+    });
+    if (!existingOrd1) {
+      await prisma.order.create({
+        data: {
+          orderNumber: 'ORD-2026-000001',
+          branchId: dtBranch.id,
+          orderType: OrderType.DINE_IN,
+          status: OrderStatus.CONFIRMED,
+          customerId: rahulId,
+          tableId: dtT02Id,
+          customerName: 'Rahul Sharma',
+          customerPhone: '+91 98201 12345',
+          subtotal: new Prisma.Decimal('35.97'),
+          discountAmount: new Prisma.Decimal('0.00'),
+          taxAmount: new Prisma.Decimal('1.80'),
+          deliveryCharge: new Prisma.Decimal('0.00'),
+          totalAmount: new Prisma.Decimal('37.77'),
+          notes: 'Customer requested extra napkins and crushed red peppers',
+          createdBy: 'Sarah Jenkins',
+          items: {
+            create: [
+              {
+                menuItemId: margheritaItem.id,
+                itemName: margheritaItem.name,
+                quantity: 2,
+                unitPrice: margheritaItem.price,
+                discountAmount: new Prisma.Decimal('0.00'),
+                totalPrice: new Prisma.Decimal(margheritaItem.price.toNumber() * 2),
+                notes: 'Crispy crust',
+              },
+              {
+                menuItemId: burgerItem.id,
+                itemName: burgerItem.name,
+                quantity: 1,
+                unitPrice: burgerItem.price,
+                discountAmount: new Prisma.Decimal('0.00'),
+                totalPrice: burgerItem.price,
+                notes: 'Medium well, no onions',
+              },
+            ],
+          },
+        },
+      });
+      console.log('    ✓ Order: ORD-2026-000001 (DINE_IN, CONFIRMED)');
+    }
+  }
+
+  // Order 2: DINE_IN, COMPLETED (Downtown Central, Table T-01)
+  if (pepperoniItem && dtT01Id) {
+    const existingOrd2 = await prisma.order.findUnique({
+      where: { orderNumber: 'ORD-2026-000002' },
+    });
+    if (!existingOrd2) {
+      await prisma.order.create({
+        data: {
+          orderNumber: 'ORD-2026-000002',
+          branchId: dtBranch.id,
+          orderType: OrderType.DINE_IN,
+          status: OrderStatus.COMPLETED,
+          customerId: null,
+          tableId: dtT01Id,
+          customerName: 'Guest Diner',
+          customerPhone: null,
+          subtotal: new Prisma.Decimal('31.98'),
+          discountAmount: new Prisma.Decimal('3.00'),
+          taxAmount: new Prisma.Decimal('1.45'),
+          deliveryCharge: new Prisma.Decimal('0.00'),
+          totalAmount: new Prisma.Decimal('30.43'),
+          notes: 'Dine-in guest bill completed',
+          createdBy: 'Sarah Jenkins',
+          items: {
+            create: [
+              {
+                menuItemId: pepperoniItem.id,
+                itemName: pepperoniItem.name,
+                quantity: 2,
+                unitPrice: pepperoniItem.price,
+                discountAmount: new Prisma.Decimal('3.00'),
+                totalPrice: new Prisma.Decimal(pepperoniItem.price.toNumber() * 2 - 3),
+                notes: 'Standard prep',
+              },
+            ],
+          },
+        },
+      });
+      console.log('    ✓ Order: ORD-2026-000002 (DINE_IN, COMPLETED)');
+    }
+  }
+
+  // Order 3: TAKEAWAY, READY (Bandra West)
+  if (margheritaItem && pepperoniItem) {
+    const existingOrd3 = await prisma.order.findUnique({
+      where: { orderNumber: 'ORD-2026-000003' },
+    });
+    if (!existingOrd3) {
+      await prisma.order.create({
+        data: {
+          orderNumber: 'ORD-2026-000003',
+          branchId: bwBranch.id,
+          orderType: OrderType.TAKEAWAY,
+          status: OrderStatus.READY,
+          customerId: priyaId,
+          tableId: null,
+          customerName: 'Priya Patel',
+          customerPhone: '+91 98202 23456',
+          subtotal: new Prisma.Decimal('28.98'),
+          discountAmount: new Prisma.Decimal('0.00'),
+          taxAmount: new Prisma.Decimal('1.45'),
+          deliveryCharge: new Prisma.Decimal('0.00'),
+          totalAmount: new Prisma.Decimal('30.43'),
+          notes: 'Customer will pick up at 7:30 PM. Box with green ribbon',
+          createdBy: 'Marcus Vance',
+          items: {
+            create: [
+              {
+                menuItemId: margheritaItem.id,
+                itemName: margheritaItem.name,
+                quantity: 1,
+                unitPrice: margheritaItem.price,
+                discountAmount: new Prisma.Decimal('0.00'),
+                totalPrice: margheritaItem.price,
+              },
+              {
+                menuItemId: pepperoniItem.id,
+                itemName: pepperoniItem.name,
+                quantity: 1,
+                unitPrice: pepperoniItem.price,
+                discountAmount: new Prisma.Decimal('0.00'),
+                totalPrice: pepperoniItem.price,
+              },
+            ],
+          },
+        },
+      });
+      console.log('    ✓ Order: ORD-2026-000003 (TAKEAWAY, READY)');
+    }
+  }
+
+  // Order 4: DELIVERY, PREPARING (Andheri Hub)
+  if (burgerItem && margheritaItem) {
+    const existingOrd4 = await prisma.order.findUnique({
+      where: { orderNumber: 'ORD-2026-000004' },
+    });
+    if (!existingOrd4) {
+      await prisma.order.create({
+        data: {
+          orderNumber: 'ORD-2026-000004',
+          branchId: andBranch.id,
+          orderType: OrderType.DELIVERY,
+          status: OrderStatus.PREPARING,
+          customerId: amitId,
+          tableId: null,
+          customerName: 'Amit Verma',
+          customerPhone: '+91 98203 34567',
+          deliveryAddress: 'Flat 801, Oberoi Splendor, JVLR, Andheri East, Mumbai',
+          deliveryNotes: 'Call upon arrival; leave at gate security if tenant is unreachable.',
+          subtotal: new Prisma.Decimal('22.98'),
+          discountAmount: new Prisma.Decimal('0.00'),
+          taxAmount: new Prisma.Decimal('1.15'),
+          deliveryCharge: new Prisma.Decimal('4.00'),
+          totalAmount: new Prisma.Decimal('28.13'),
+          notes: 'Deliver hot with thermal bag',
+          createdBy: 'Elena Rostova',
+          items: {
+            create: [
+              {
+                menuItemId: burgerItem.id,
+                itemName: burgerItem.name,
+                quantity: 1,
+                unitPrice: burgerItem.price,
+                discountAmount: new Prisma.Decimal('0.00'),
+                totalPrice: burgerItem.price,
+              },
+              {
+                menuItemId: margheritaItem.id,
+                itemName: margheritaItem.name,
+                quantity: 1,
+                unitPrice: margheritaItem.price,
+                discountAmount: new Prisma.Decimal('0.00'),
+                totalPrice: margheritaItem.price,
+              },
+            ],
+          },
+        },
+      });
+      console.log('    ✓ Order: ORD-2026-000004 (DELIVERY, PREPARING)');
+    }
+  }
+
+  // Order 5: DELIVERY, CANCELLED (Downtown Central)
+  if (margheritaItem) {
+    const existingOrd5 = await prisma.order.findUnique({
+      where: { orderNumber: 'ORD-2026-000005' },
+    });
+    if (!existingOrd5) {
+      await prisma.order.create({
+        data: {
+          orderNumber: 'ORD-2026-000005',
+          branchId: dtBranch.id,
+          orderType: OrderType.DELIVERY,
+          status: OrderStatus.CANCELLED,
+          customerId: null,
+          tableId: null,
+          customerName: 'Ananya Desai',
+          customerPhone: '+91 98204 45678',
+          deliveryAddress: '24 Marine Drive, Nariman Point, Mumbai',
+          deliveryNotes: 'Near Air India building',
+          subtotal: new Prisma.Decimal('12.99'),
+          discountAmount: new Prisma.Decimal('0.00'),
+          taxAmount: new Prisma.Decimal('0.65'),
+          deliveryCharge: new Prisma.Decimal('3.50'),
+          totalAmount: new Prisma.Decimal('17.14'),
+          notes: 'Cancelled before kitchen dispatch',
+          cancellationReason: 'Customer called to cancel due to meeting reschedule',
+          cancelledAt: new Date(),
+          cancelledBy: 'Sarah Jenkins',
+          createdBy: 'Sarah Jenkins',
+          items: {
+            create: [
+              {
+                menuItemId: margheritaItem.id,
+                itemName: margheritaItem.name,
+                quantity: 1,
+                unitPrice: margheritaItem.price,
+                discountAmount: new Prisma.Decimal('0.00'),
+                totalPrice: margheritaItem.price,
+              },
+            ],
+          },
+        },
+      });
+      console.log('    ✓ Order: ORD-2026-000005 (DELIVERY, CANCELLED)');
+    }
   }
 
   console.log('✅ Seed completed successfully!');
