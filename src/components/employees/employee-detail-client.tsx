@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -15,14 +15,32 @@ import {
   XCircle,
   Briefcase,
   AlertCircle,
+  TrendingUp,
+  Gift,
+  Lock,
+  History,
+  Eye,
 } from 'lucide-react';
 
 import type { EmployeeItem, BranchOption } from '@/lib/employees/actions';
 import { useAuth } from '@/providers/auth-provider';
 import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
+import { getEmployeeCompensation } from '@/lib/salary/actions';
+import type { EmployeeCompensationSummary } from '@/lib/salary/types';
+import {
+  formatINR,
+  formatDateShort,
+  formatDateRange,
+  SALARY_RECORD_STATUS_META,
+  BONUS_STATUS_META,
+  BONUS_TYPE_LABELS,
+} from '@/lib/salary/constants';
+import { SalaryRevisionDialog } from '@/components/salary/salary-revision-dialog';
+import { BonusCreateDialog } from '@/components/salary/bonus-create-dialog';
+import { SalaryPeriodDialog } from '@/components/salary/salary-period-dialog';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -53,9 +71,29 @@ export function EmployeeDetailClient({
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
+  const [bonusDialogOpen, setBonusDialogOpen] = useState(false);
+  const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
+
+  const [compSummary, setCompSummary] = useState<EmployeeCompensationSummary | null>(null);
+  const [activeCompTab, setActiveCompTab] = useState<'timeline' | 'increments' | 'bonuses' | 'periods'>('timeline');
 
   const canUpdate = hasPermission(authUser, PERMISSIONS.EMPLOYEE_UPDATE);
   const canDeactivate = hasPermission(authUser, PERMISSIONS.EMPLOYEE_DEACTIVATE);
+  const canReadSalary = hasPermission(authUser, PERMISSIONS.SALARY_READ);
+  const canCreateSalary = hasPermission(authUser, PERMISSIONS.SALARY_CREATE);
+  const canCreateIncrement = hasPermission(authUser, PERMISSIONS.INCREMENT_CREATE);
+  const canCreateBonus = hasPermission(authUser, PERMISSIONS.BONUS_CREATE);
+
+  useEffect(() => {
+    if (canReadSalary && employee.id) {
+      getEmployeeCompensation(employee.id).then((res) => {
+        if (res.success && res.data) {
+          setCompSummary(res.data);
+        }
+      });
+    }
+  }, [canReadSalary, employee.id]);
 
   const handleFormSuccess = () => {
     setEditDialogOpen(false);
@@ -300,35 +338,95 @@ export function EmployeeDetailClient({
           </CardContent>
         </Card>
 
-        {/* Card 3: Compensation */}
+        {/* Card 3: Compensation & Base Structure */}
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <CreditCard className="size-4 text-primary" />
-              <CardTitle className="text-base">Compensation</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="size-4 text-primary" />
+                <CardTitle className="text-base">Compensation</CardTitle>
+              </div>
+              {canReadSalary && (
+                <div className="flex items-center gap-1">
+                  {canCreateIncrement && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRevisionDialogOpen(true)}
+                      className="h-7 gap-1 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                    >
+                      <TrendingUp className="size-3" />
+                      Revise
+                    </Button>
+                  )}
+                  {canCreateBonus && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBonusDialogOpen(true)}
+                      className="h-7 gap-1 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                    >
+                      <Gift className="size-3" />
+                      Bonus
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs text-muted-foreground">Base Salary</span>
-                <p className="text-xl font-bold tracking-tight">
-                  {formatCurrency(employee.salary)}
-                </p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground">Payment Frequency</span>
-                <p className="text-sm font-medium capitalize mt-1">
-                  <Badge variant="outline">{employee.salaryType}</Badge>
-                </p>
-              </div>
-            </div>
+            {canReadSalary ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-muted-foreground">Current Base Salary</span>
+                    <p className="text-xl font-bold tracking-tight text-foreground">
+                      {formatCurrency(
+                        compSummary?.currentStructure?.salary ?? employee.salary
+                      )}
+                    </p>
+                    {compSummary?.currentStructure?.effectiveFrom && (
+                      <span className="text-[10px] text-muted-foreground">
+                        Active since {formatDateShort(compSummary.currentStructure.effectiveFrom)}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Salary Type</span>
+                    <p className="text-sm font-medium capitalize mt-1">
+                      <Badge variant="outline">
+                        {compSummary?.currentStructure?.salaryType ?? employee.salaryType}
+                      </Badge>
+                    </p>
+                  </div>
+                </div>
 
-            <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">Note: </span>
-              This record tracks base agreed compensation. Detailed payroll calculations,
-              attendance deductions, overtime, and bonuses will be managed through the upcoming Payroll module.
-            </div>
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground flex items-center justify-between">
+                  <div>
+                    <span className="font-semibold text-foreground">Salary Records: </span>
+                    {compSummary?.salaryRecords.length || 0} periods generated
+                  </div>
+                  {canCreateSalary && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setPeriodDialogOpen(true)}
+                      className="h-auto p-0 text-xs font-semibold"
+                    >
+                      + Generate Period
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-lg border border-border/80 bg-muted/30 p-4 text-center">
+                <Lock className="mx-auto size-5 text-muted-foreground/60 mb-1" />
+                <p className="text-xs font-medium text-foreground">Compensation Restricted</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  You do not have permission to view this employee&apos;s salary and compensation details.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -426,6 +524,396 @@ export function EmployeeDetailClient({
           )}
         </CardContent>
       </Card>
+
+      {/* Card 6: Comprehensive Compensation History & Timeline */}
+      {canReadSalary && compSummary && (
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b bg-muted/20">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <History className="size-5 text-primary" />
+                <div>
+                  <CardTitle className="text-base font-bold">
+                    Compensation History & Ledger
+                  </CardTitle>
+                  <CardDescription>
+                    Complete timeline of historical salary revisions, increment records, bonuses, and period calculations.
+                  </CardDescription>
+                </div>
+              </div>
+
+              {/* Sub Tabs */}
+              <div className="flex rounded-lg bg-muted p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setActiveCompTab('timeline')}
+                  className={`rounded-md px-3 py-1 font-medium transition-colors ${
+                    activeCompTab === 'timeline'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Salary History ({compSummary.structures.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCompTab('increments')}
+                  className={`rounded-md px-3 py-1 font-medium transition-colors ${
+                    activeCompTab === 'increments'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Increments ({compSummary.increments.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCompTab('bonuses')}
+                  className={`rounded-md px-3 py-1 font-medium transition-colors ${
+                    activeCompTab === 'bonuses'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Bonuses ({compSummary.bonuses.length + compSummary.incentives.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCompTab('periods')}
+                  className={`rounded-md px-3 py-1 font-medium transition-colors ${
+                    activeCompTab === 'periods'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Periods ({compSummary.salaryRecords.length})
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-4">
+            {/* Tab 1: Salary History Timeline */}
+            {activeCompTab === 'timeline' && (
+              <div className="space-y-4">
+                {compSummary.structures.length > 0 ? (
+                  <div className="relative border-l-2 border-primary/30 pl-4 space-y-6 my-2 ml-2">
+                    {compSummary.structures.map((s) => (
+                      <div key={s.id} className="relative">
+                        <div
+                          className={`absolute -left-5.75 top-1.5 size-3 rounded-full border-2 border-background ${
+                            s.status === 'ACTIVE'
+                              ? 'bg-primary ring-2 ring-primary/20'
+                              : 'bg-muted-foreground/50'
+                          }`}
+                        />
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-bold text-foreground">
+                              {formatINR(s.salary)}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={
+                                s.status === 'ACTIVE'
+                                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 text-xs'
+                                  : 'text-xs text-muted-foreground'
+                              }
+                            >
+                              {s.status}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px]">
+                              {s.salaryType}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateShort(s.effectiveFrom)} –{' '}
+                            {s.effectiveTo ? formatDateShort(s.effectiveTo) : 'Present'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {s.reason || 'Structure rate modification'} • Recorded by {s.createdBy}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-6">
+                    No historical salary structures found.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Tab 2: Increments */}
+            {activeCompTab === 'increments' && (
+              <div>
+                {compSummary.increments.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="border-b bg-muted/40 font-semibold text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2">Effective Date</th>
+                          <th className="px-3 py-2 text-right">Previous</th>
+                          <th className="px-3 py-2 text-right">New Salary</th>
+                          <th className="px-3 py-2 text-right">Increase</th>
+                          <th className="px-3 py-2 text-center">Percentage</th>
+                          <th className="px-3 py-2">Reason</th>
+                          <th className="px-3 py-2">Applied By</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {compSummary.increments.map((inc) => (
+                          <tr key={inc.id} className="hover:bg-muted/20">
+                            <td className="px-3 py-2 font-medium">
+                              {formatDateShort(inc.effectiveDate)}
+                            </td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {formatINR(inc.previousSalary)}
+                            </td>
+                            <td className="px-3 py-2 text-right font-bold text-foreground">
+                              {formatINR(inc.newSalary)}
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                              +{formatINR(inc.difference)}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <Badge
+                                variant="outline"
+                                className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px]"
+                              >
+                                +{inc.percentage}%
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground max-w-[200px] truncate">
+                              {inc.reason || 'Appraisal'}
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              {inc.createdBy}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-6">
+                    No salary increments recorded for this employee yet.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Tab 3: Bonuses & Incentives */}
+            {activeCompTab === 'bonuses' && (
+              <div>
+                {compSummary.bonuses.length > 0 || compSummary.incentives.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="border-b bg-muted/40 font-semibold text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2">Date</th>
+                          <th className="px-3 py-2">Award Category</th>
+                          <th className="px-3 py-2 text-right">Amount</th>
+                          <th className="px-3 py-2">Reason</th>
+                          <th className="px-3 py-2 text-center">Status</th>
+                          <th className="px-3 py-2">Recorded By</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {compSummary.bonuses.map((b) => {
+                          const meta = BONUS_STATUS_META[b.status] || BONUS_STATUS_META.DRAFT;
+                          return (
+                            <tr key={b.id} className="hover:bg-muted/20">
+                              <td className="px-3 py-2 font-medium">
+                                {formatDateShort(b.bonusDate)}
+                              </td>
+                              <td className="px-3 py-2">
+                                {BONUS_TYPE_LABELS[b.type] || b.type}
+                              </td>
+                              <td className="px-3 py-2 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                                +{formatINR(b.amount)}
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground max-w-[200px] truncate">
+                                {b.reason}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <Badge variant="outline" className={`text-[10px] ${meta.badgeClass}`}>
+                                  {meta.label}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground">
+                                {b.createdBy}
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                        {compSummary.incentives.map((i) => {
+                          const meta = BONUS_STATUS_META[i.status] || BONUS_STATUS_META.APPROVED;
+                          return (
+                            <tr key={i.id} className="hover:bg-muted/20">
+                              <td className="px-3 py-2 font-medium">
+                                {formatDateShort(i.incentiveDate)}
+                              </td>
+                              <td className="px-3 py-2">
+                                Target / Sales Incentive
+                              </td>
+                              <td className="px-3 py-2 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                                +{formatINR(i.amount)}
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground max-w-[200px] truncate">
+                                {i.reason}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <Badge variant="outline" className={`text-[10px] ${meta.badgeClass}`}>
+                                  {meta.label}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground">
+                                {i.createdBy}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-6">
+                    No bonus awards recorded for this employee yet.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Tab 4: Salary Periods */}
+            {activeCompTab === 'periods' && (
+              <div>
+                {compSummary.salaryRecords.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="border-b bg-muted/40 font-semibold text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2">Salary #</th>
+                          <th className="px-3 py-2">Period</th>
+                          <th className="px-3 py-2 text-right">Base Salary</th>
+                          <th className="px-3 py-2 text-right">Bonus / Inc</th>
+                          <th className="px-3 py-2 text-right">Adjustment</th>
+                          <th className="px-3 py-2 text-right">Gross Total</th>
+                          <th className="px-3 py-2 text-center">Status</th>
+                          <th className="px-3 py-2 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {compSummary.salaryRecords.map((r) => {
+                          const meta =
+                            SALARY_RECORD_STATUS_META[r.status] ||
+                            SALARY_RECORD_STATUS_META.DRAFT;
+
+                          return (
+                            <tr key={r.id} className="hover:bg-muted/20">
+                              <td className="px-3 py-2 font-mono font-medium">
+                                <Link
+                                  href={`/salary/${r.id}`}
+                                  className="text-primary hover:underline"
+                                >
+                                  {r.salaryNumber}
+                                </Link>
+                              </td>
+                              <td className="px-3 py-2">
+                                {formatDateRange(r.periodStart, r.periodEnd)}
+                              </td>
+                              <td className="px-3 py-2 text-right text-muted-foreground">
+                                {formatINR(r.baseSalary)}
+                              </td>
+                              <td className="px-3 py-2 text-right text-emerald-600 dark:text-emerald-400">
+                                +{formatINR(r.bonusAmount + r.incentiveAmount)}
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                {r.adjustmentAmount !== 0 ? formatINR(r.adjustmentAmount) : '₹0'}
+                              </td>
+                              <td className="px-3 py-2 text-right font-bold text-foreground">
+                                {formatINR(r.grossAmount)}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <Badge variant="outline" className={`text-[10px] ${meta.badgeClass}`}>
+                                  {meta.label}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                <Link
+                                  href={`/salary/${r.id}`}
+                                  className={buttonVariants({
+                                    variant: 'ghost',
+                                    size: 'xs',
+                                    className: 'gap-1 text-[11px]',
+                                  })}
+                                >
+                                  <Eye className="size-3" />
+                                  Review
+                                </Link>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-6">
+                    No salary period records generated for this employee yet.
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Salary Revision Dialog */}
+      <SalaryRevisionDialog
+        open={revisionDialogOpen}
+        onOpenChange={setRevisionDialogOpen}
+        defaultEmployeeId={employee.id}
+        branchId={employee.branch.id}
+        onSuccess={() => {
+          if (canReadSalary) {
+            getEmployeeCompensation(employee.id).then((res) => {
+              if (res.success && res.data) setCompSummary(res.data);
+            });
+          }
+        }}
+      />
+
+      {/* Bonus Award Dialog */}
+      <BonusCreateDialog
+        open={bonusDialogOpen}
+        onOpenChange={setBonusDialogOpen}
+        defaultEmployeeId={employee.id}
+        branchId={employee.branch.id}
+        onSuccess={() => {
+          if (canReadSalary) {
+            getEmployeeCompensation(employee.id).then((res) => {
+              if (res.success && res.data) setCompSummary(res.data);
+            });
+          }
+        }}
+      />
+
+      {/* Period Dialog */}
+      <SalaryPeriodDialog
+        open={periodDialogOpen}
+        onOpenChange={setPeriodDialogOpen}
+        branchId={employee.branch.id}
+        onSuccess={() => {
+          if (canReadSalary) {
+            getEmployeeCompensation(employee.id).then((res) => {
+              if (res.success && res.data) setCompSummary(res.data);
+            });
+          }
+        }}
+      />
 
       {/* Edit Dialog */}
       <EmployeeFormDialog

@@ -138,14 +138,29 @@ Completed
 - [x] Daily tender & cash drawer reconciliation (`/payments/reconciliation`): Aggregates system cash and multi-tender totals, captures physical drawer count, and computes objective variance (`Actual - System Cash`) with neutral status indicators
 - [x] Database seed with multi-method payments, partial splits, failed attempts, refund records, and historical reconciliations
 - [x] Payment management documentation (`docs/features/payment-management.md`)
+- [x] Expenses Management: ExpenseCategory, Expense, ExpenseAuditLog, and ExpenseTemplate models with Prisma enums and relations
+- [x] Expense RBAC permissions (`expense.read`, `expense.create`, `expense.update`, `expense.approve`, `expense.reject`, `expense.cancel`, `expense.category.manage`, `expense.template.manage`)
+- [x] Sequential expense number generation (`EXP-YYYY-000001`) with PostgreSQL advisory locks
+- [x] Expense approval lifecycle (`DRAFT` → `PENDING_APPROVAL` → `APPROVED` / `REJECTED` | `CANCELLED`)
+- [x] Recurring expense templates with auto-fill and manual/automated run support
+- [x] Expenses dashboard (`/expenses`), Category Manager (`/expenses/categories`), Recurring Templates (`/expenses/templates`), and Detail View (`/expenses/[id]`)
+- [x] Salary, Bonus & Increment Management: SalaryStructure, SalaryIncrement, Bonus, Incentive, SalaryRecord, and SalaryAuditLog models
+- [x] Compensation RBAC permissions (13 permissions: `salary.read`, `salary.create`, `salary.update`, `salary.approve`, `salary.cancel`, `bonus.read`, `bonus.create`, `bonus.update`, `bonus.approve`, `bonus.cancel`, `increment.read`, `increment.create`, `increment.update`)
+- [x] Decoupled compensation history: Active & superseded `SalaryStructure` spans preserving employee pay history
+- [x] Sequential salary record numbering (`SAL-YYYY-000001`) with transaction advisory locks
+- [x] Salary period live calculation preview with base salary lookup, approved bonus aggregation, and informational attendance summaries
+- [x] Salary revision & increment tracking with real-time percentage and delta analytics
+- [x] Maker-checker bonus approval workflow with mandatory rejection reason capture
+- [x] Compensation dashboard (`/salary`), increments ledger (`/salary/increments`), bonus queue (`/salary/bonuses`), period detail (`/salary/[id]`), and employee compensation ledger (`/employees/[id]`)
+- [x] Salary & Bonus management documentation (`docs/features/salary-bonus-management.md`)
 
 ## Current Task
 
-Payments & Payment Reconciliation fully implemented, verified, tested, and documented.
+Salary, Bonus & Increment Management fully implemented, verified, tested, and documented.
 
 ## Next
 
-Phase 12: Customer Management & Loyalty (Customer profiles, order history, loyalty points, feedback)
+Phase 13: Customer Management & Loyalty (Customer profiles, order history, loyalty points, feedback)
 
 ## Known Issues
 

@@ -64,6 +64,18 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
   - `Payment` → `PaymentRefund` (`1:N`): Payments can have partial or full refund records.
   - `Payment` → `PaymentAuditLog` (`1:N`): Audit trail of payment mutations and reversals.
   - `Branch` → `PaymentReconciliation` (`1:N`): Daily tender and cash drawer reconciliation records.
+  - `Branch` → `Expense` (`1:N`): Branch operating expenses.
+  - `ExpenseCategory` → `Expense` (`1:N`): Categorized expenses with deletion protection.
+  - `Expense` → `ExpenseAuditLog` (`1:N`): Audit trail of expense status transitions and modifications.
+  - `Branch` → `SalaryStructure` (`1:N`): Historical compensation rate spans.
+  - `Branch` → `SalaryIncrement` (`1:N`): Salary raise events and percentage change logs.
+  - `Branch` → `Bonus` / `Incentive` (`1:N`): Bonuses and incentives awarded to branch employees.
+  - `Branch` → `SalaryRecord` (`1:N`): Branch salary period ledger records.
+  - `Employee` → `SalaryStructure` (`1:N`): Employee historical and active salary structures.
+  - `Employee` → `SalaryIncrement` (`1:N`): Employee compensation raises.
+  - `Employee` → `Bonus` / `Incentive` (`1:N`): Employee performance and festival bonus records.
+  - `Employee` → `SalaryRecord` (`1:N`): Employee salary periods.
+  - `SalaryRecord` → `SalaryAuditLog` (`1:N`): Audit trail of salary review, approval, and cancellation.
 
 ## Target Users
 

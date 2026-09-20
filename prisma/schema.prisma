@@ -102,6 +102,11 @@ model Branch {
   paymentReconciliations PaymentReconciliation[]
   expenses          Expense[]
   expenseTemplates  ExpenseTemplate[]
+  salaryStructures  SalaryStructure[]
+  salaryIncrements  SalaryIncrement[]
+  bonuses           Bonus[]
+  incentives        Incentive[]
+  salaryRecords     SalaryRecord[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -143,6 +148,11 @@ model Employee {
   userId                String?          @unique
   user                  User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   attendances           Attendance[]
+  salaryStructures      SalaryStructure[]
+  salaryIncrements      SalaryIncrement[]
+  bonuses               Bonus[]
+  incentives            Incentive[]
+  salaryRecords         SalaryRecord[]
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
@@ -886,4 +896,200 @@ model ExpenseAuditLog {
   @@index([expenseId])
   @@index([createdAt])
 }
+
+// ─── Salary, Bonus & Increment Management ─────────────────────────────────────
+
+enum SalaryStructureStatus {
+  ACTIVE
+  SUPERSEDED
+  CANCELLED
+}
+
+enum BonusType {
+  PERFORMANCE
+  FESTIVAL
+  ATTENDANCE
+  SALES_INCENTIVE
+  SPECIAL
+  OTHER
+}
+
+enum BonusStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum IncrementStatus {
+  APPLIED
+  CANCELLED
+}
+
+enum SalaryRecordStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+model SalaryStructure {
+  id            String                @id @default(cuid())
+  employeeId    String
+  employee      Employee              @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  branchId      String
+  branch        Branch                @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  salary        Decimal               @db.Decimal(10, 2)
+  salaryType    SalaryType            @default(MONTHLY)
+  effectiveFrom DateTime              @db.Date
+  effectiveTo   DateTime?             @db.Date
+  reason        String?
+  status        SalaryStructureStatus @default(ACTIVE)
+  createdBy     String
+  increments    SalaryIncrement[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([employeeId, effectiveFrom])
+  @@index([branchId])
+  @@index([status])
+}
+
+model SalaryIncrement {
+  id                String           @id @default(cuid())
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  branchId          String
+  branch            Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  previousSalary    Decimal          @db.Decimal(10, 2)
+  newSalary         Decimal          @db.Decimal(10, 2)
+  difference        Decimal          @db.Decimal(10, 2)
+  percentage        Decimal          @db.Decimal(5, 2)
+  effectiveDate     DateTime         @db.Date
+  reason            String?
+  notes             String?
+  status            IncrementStatus  @default(APPLIED)
+  salaryStructureId String?
+  salaryStructure   SalaryStructure? @relation(fields: [salaryStructureId], references: [id], onDelete: SetNull)
+  createdBy         String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([employeeId])
+  @@index([branchId])
+  @@index([effectiveDate])
+}
+
+model Bonus {
+  id              String        @id @default(cuid())
+  employeeId      String
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  branchId        String
+  branch          Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  amount          Decimal       @db.Decimal(10, 2)
+  type            BonusType     @default(PERFORMANCE)
+  reason          String
+  bonusDate       DateTime      @db.Date
+  status          BonusStatus   @default(DRAFT)
+  rejectionReason String?
+  salaryRecordId  String?
+  salaryRecord    SalaryRecord? @relation(fields: [salaryRecordId], references: [id], onDelete: SetNull)
+  createdBy       String
+  approvedBy      String?
+  approvedAt      DateTime?
+  cancelledBy     String?
+  cancelledAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([employeeId])
+  @@index([branchId])
+  @@index([status])
+  @@index([bonusDate])
+  @@index([salaryRecordId])
+}
+
+model Incentive {
+  id              String        @id @default(cuid())
+  employeeId      String
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  branchId        String
+  branch          Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  amount          Decimal       @db.Decimal(10, 2)
+  reason          String
+  incentiveDate   DateTime      @db.Date
+  status          BonusStatus   @default(APPROVED)
+  rejectionReason String?
+  salaryRecordId  String?
+  salaryRecord    SalaryRecord? @relation(fields: [salaryRecordId], references: [id], onDelete: SetNull)
+  createdBy       String
+  approvedBy      String?
+  approvedAt      DateTime?
+  cancelledBy     String?
+  cancelledAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([employeeId])
+  @@index([branchId])
+  @@index([status])
+  @@index([incentiveDate])
+  @@index([salaryRecordId])
+}
+
+model SalaryRecord {
+  id                 String             @id @default(cuid())
+  salaryNumber       String             @unique // e.g. SAL-2026-000001
+  employeeId         String
+  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  branchId           String
+  branch             Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  periodStart        DateTime           @db.Date
+  periodEnd          DateTime           @db.Date
+  baseSalary         Decimal            @db.Decimal(10, 2)
+  bonusAmount        Decimal            @default(0) @db.Decimal(10, 2)
+  incentiveAmount    Decimal            @default(0) @db.Decimal(10, 2)
+  adjustmentAmount   Decimal            @default(0) @db.Decimal(10, 2)
+  grossAmount        Decimal            @db.Decimal(10, 2)
+  status             SalaryRecordStatus @default(DRAFT)
+  notes              String?
+  attendanceSummary  Json?
+  bonuses            Bonus[]
+  incentives         Incentive[]
+  auditLogs          SalaryAuditLog[]
+  createdBy          String
+  approvedBy         String?
+  approvedAt         DateTime?
+  cancelledBy        String?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([employeeId])
+  @@index([branchId])
+  @@index([status])
+  @@index([periodStart, periodEnd])
+  @@index([salaryNumber])
+}
+
+model SalaryAuditLog {
+  id             String       @id @default(cuid())
+  salaryRecordId String
+  salaryRecord   SalaryRecord @relation(fields: [salaryRecordId], references: [id], onDelete: Cascade)
+  action         String       // 'CREATED', 'SUBMITTED_FOR_REVIEW', 'APPROVED', 'CANCELLED', 'REVISED'
+  fromStatus     String?
+  toStatus       String?
+  grossAmount    Decimal?     @db.Decimal(10, 2)
+  performedBy    String
+  notes          String?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([salaryRecordId])
+  @@index([createdAt])
+}
+
 

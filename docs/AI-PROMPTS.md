@@ -362,3 +362,31 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Defense-in-depth: Server actions validate branch access and status transitions server-side
 ```
 
+### Salary, Bonus & Increment Management Pattern
+
+```
+# Module: Salary, Bonus & Increment Management
+
+## Entity Architecture
+- SalaryStructure: id, employeeId, branchId, salary, salaryType (MONTHLY/DAILY/HOURLY), effectiveFrom, effectiveTo?, reason?, status (ACTIVE/SUPERSEDED/CANCELLED), createdBy
+- SalaryIncrement: id, employeeId, branchId, previousSalary, newSalary, difference, percentage, effectiveDate, reason?, notes?, status (APPLIED/CANCELLED), createdBy
+- Bonus: id, employeeId, branchId, amount, type (PERFORMANCE/FESTIVAL/ATTENDANCE/SALES_INCENTIVE/SPECIAL/OTHER), reason, bonusDate, status (DRAFT/PENDING_APPROVAL/APPROVED/REJECTED/CANCELLED), rejectionReason?, salaryRecordId?, createdBy, approvedBy, approvedAt
+- Incentive: id, employeeId, branchId, amount, reason, incentiveDate, status (DRAFT/PENDING_APPROVAL/APPROVED/REJECTED/CANCELLED), rejectionReason?, salaryRecordId?, createdBy, approvedBy, approvedAt
+- SalaryRecord: id, salaryNumber (SAL-YYYY-NNNNNN), employeeId, branchId, periodStart, periodEnd, baseSalary, bonusAmount, incentiveAmount, adjustmentAmount, grossAmount, status (DRAFT/PENDING_REVIEW/APPROVED/PAID/CANCELLED), attendanceSummary (JSON), notes?, createdBy, approvedBy, approvedAt
+- SalaryAuditLog: id, salaryRecordId, action, fromStatus?, toStatus?, grossAmount?, performedBy, notes?, metadata?
+
+## Business Rules & Integrity
+- Decoupled Compensation History: Employee base salary is tracked through versioned SalaryStructure records rather than mutating a single field
+- Informational Attendance: Attendance logs (present, half-day, leave, absent) are aggregated for operational visibility without automatic deductions
+- Sequential Numbering: Server-side sequential salary number generation (SAL-YYYY-000001) using PostgreSQL transaction-level advisory locks
+- Period Overlap Prevention: Blocks generation of overlapping active periods for the same employee
+- Maker-Checker Workflow: Bonuses require independent approval; rejection mandates capturing an audit reason
+- Immutability on Approval: Approved records lock all attached bonuses and cannot be edited; errors require formal cancellation with audit documentation
+
+## RBAC & Security
+- Permissions: salary.read, salary.create, salary.update, salary.approve, salary.cancel, bonus.read, bonus.create, bonus.update, bonus.approve, bonus.cancel, increment.read, increment.create, increment.update
+- Branch Tenancy: Managers operate strictly within employee.branchId; Owners & Admins retain cross-branch management
+- Privacy: Compensation ledgers and revision history are restricted from operational staff
+```
+
+

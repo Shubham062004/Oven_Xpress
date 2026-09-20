@@ -2,7 +2,7 @@ import {
   BarChart3,
   Building2,
   ChefHat,
-  ClipboardList,
+  Banknote,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -108,8 +108,9 @@ export const mainNavItems: NavItem[] = [
   },
   {
     label: 'Salaries',
-    href: '/salaries',
-    icon: ClipboardList,
+    href: '/salary',
+    icon: Banknote,
+    requiredPermission: PERMISSIONS.SALARY_READ,
   },
   {
     label: 'Customers',

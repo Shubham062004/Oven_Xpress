@@ -155,6 +155,20 @@ async function main() {
     { code: 'expense.template.create', module: 'expense', description: 'Create recurring expense templates' },
     { code: 'expense.template.update', module: 'expense', description: 'Update recurring expense templates' },
     { code: 'expense.template.deactivate', module: 'expense', description: 'Activate or deactivate recurring expense templates' },
+    // Salary, Bonus & Increment Management
+    { code: 'salary.read', module: 'salary', description: 'View salary structures, employee compensation history, and salary period records' },
+    { code: 'salary.create', module: 'salary', description: 'Create initial salary structures and salary period records' },
+    { code: 'salary.update', module: 'salary', description: 'Modify draft salary structures or salary period records' },
+    { code: 'salary.approve', module: 'salary', description: 'Review and approve salary period compensation records' },
+    { code: 'salary.cancel', module: 'salary', description: 'Cancel pending or draft salary period records' },
+    { code: 'bonus.read', module: 'bonus', description: 'View employee bonuses and incentives' },
+    { code: 'bonus.create', module: 'bonus', description: 'Draft and submit employee bonus awards' },
+    { code: 'bonus.update', module: 'bonus', description: 'Update draft employee bonuses' },
+    { code: 'bonus.approve', module: 'bonus', description: 'Approve pending employee bonus awards' },
+    { code: 'bonus.cancel', module: 'bonus', description: 'Cancel draft or rejected employee bonuses' },
+    { code: 'increment.read', module: 'increment', description: 'View employee salary revision and increment ledger' },
+    { code: 'increment.create', module: 'increment', description: 'Record employee salary revisions and increments' },
+    { code: 'increment.update', module: 'increment', description: 'Update employee salary revision details' },
   ];
 
   console.log('  → Seeding permissions...');
@@ -266,6 +280,19 @@ async function main() {
         'expense.template.create',
         'expense.template.update',
         'expense.template.deactivate',
+        'salary.read',
+        'salary.create',
+        'salary.update',
+        'salary.approve',
+        'salary.cancel',
+        'bonus.read',
+        'bonus.create',
+        'bonus.update',
+        'bonus.approve',
+        'bonus.cancel',
+        'increment.read',
+        'increment.create',
+        'increment.update',
       ],
     },
     {
@@ -361,6 +388,19 @@ async function main() {
         'expense.template.create',
         'expense.template.update',
         'expense.template.deactivate',
+        'salary.read',
+        'salary.create',
+        'salary.update',
+        'salary.approve',
+        'salary.cancel',
+        'bonus.read',
+        'bonus.create',
+        'bonus.update',
+        'bonus.approve',
+        'bonus.cancel',
+        'increment.read',
+        'increment.create',
+        'increment.update',
       ],
     },
     {
@@ -433,6 +473,14 @@ async function main() {
         'expense.template.create',
         'expense.template.update',
         'expense.template.deactivate',
+        'salary.read',
+        'salary.create',
+        'salary.update',
+        'bonus.read',
+        'bonus.create',
+        'bonus.update',
+        'increment.read',
+        'increment.create',
       ],
     },
     {
@@ -2420,6 +2468,33 @@ async function main() {
     }
   }
   console.log(`    ✓ ${sampleExpenses.length} Sample Expenses seeded with full audit trail`);
+
+  // 17. Seed Baseline Salary Structures for Employees
+  console.log('  → Seeding baseline salary structures for employees...');
+  const allEmployees = await prisma.employee.findMany();
+  let seededStructures = 0;
+  for (const emp of allEmployees) {
+    const existing = await prisma.salaryStructure.findFirst({
+      where: { employeeId: emp.id, status: 'ACTIVE' },
+    });
+    if (!existing) {
+      await prisma.salaryStructure.create({
+        data: {
+          employeeId: emp.id,
+          branchId: emp.branchId,
+          salary: emp.salary,
+          salaryType: emp.salaryType,
+          effectiveFrom: emp.joiningDate,
+          effectiveTo: null,
+          reason: 'Initial onboarding salary agreement',
+          status: 'ACTIVE',
+          createdBy: 'System Seed',
+        },
+      });
+      seededStructures++;
+    }
+  }
+  console.log(`    ✓ ${seededStructures} Baseline Salary Structures seeded`);
 
   console.log('✅ Seed completed successfully!');
   console.log('\n⚠️  SECURITY NOTICE: The seeded credentials are for local development/testing only.');
