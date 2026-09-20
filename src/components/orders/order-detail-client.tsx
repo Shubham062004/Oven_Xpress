@@ -20,10 +20,21 @@ import {
   Sparkles,
   Info,
   Loader2,
-  ShieldCheck,
+  CreditCard,
+  RotateCcw,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderType, OrderStatus } from '@prisma/client';
+import {
+  PAYMENT_METHODS,
+  PAYMENT_STATUS_META,
+  ORDER_PAYMENT_STATUS_META,
+} from '@/lib/payments/constants';
+import type { PaymentRecord } from '@/lib/payments/types';
+import { PaymentCreateDialog } from '@/components/payments/payment-create-dialog';
+import { PaymentRefundDialog } from '@/components/payments/payment-refund-dialog';
 
 import { updateOrderStatus } from '@/lib/orders/actions';
 import type { OrderDetail } from '@/lib/orders/types';
@@ -71,8 +82,16 @@ export function OrderDetailClient({ initialOrder }: OrderDetailClientProps) {
   // Cancel dialog state
   const [cancelDialogOpen, setCancelDialogOpen] = useState<boolean>(false);
 
+  // Payment & Refund dialog state
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState<boolean>(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState<boolean>(false);
+  const [selectedPaymentForRefund, setSelectedPaymentForRefund] = useState<PaymentRecord | null>(null);
+  const [expandedRefunds, setExpandedRefunds] = useState<Record<string, boolean>>({});
+
   const canUpdateStatus = hasPermission(user, PERMISSIONS.ORDER_STATUS);
   const canCancel = hasPermission(user, PERMISSIONS.ORDER_CANCEL);
+  const canCreatePayment = hasPermission(user, PERMISSIONS.PAYMENT_CREATE);
+  const canRefundPayment = hasPermission(user, PERMISSIONS.PAYMENT_REFUND);
 
   // Status transition progression mapping
   const getNextAction = (status: OrderStatus): { nextStatus: OrderStatus; label: string; icon: React.ComponentType<{ className?: string }> } | null => {
@@ -188,9 +207,13 @@ export function OrderDetailClient({ initialOrder }: OrderDetailClientProps) {
             </h1>
             {getOrderTypeBadge(order.orderType)}
             {getStatusBadge(order.status)}
-            <Badge variant="outline" className="border-dashed text-xs text-muted-foreground">
-              Payment: UNPAID (Placeholder)
-            </Badge>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                ORDER_PAYMENT_STATUS_META[order.paymentSummary.status].className
+              }`}
+            >
+              Payment: {ORDER_PAYMENT_STATUS_META[order.paymentSummary.status].label}
+            </span>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             Created on {new Date(order.createdAt).toLocaleString()} by {order.createdBy}
@@ -199,6 +222,16 @@ export function OrderDetailClient({ initialOrder }: OrderDetailClientProps) {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {canCreatePayment && !isTerminalState && order.paymentSummary.remainingAmount > 0 && (
+            <Button
+              onClick={() => setPaymentDialogOpen(true)}
+              className="gap-2 shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <CreditCard className="h-4 w-4" />
+              Record Payment
+            </Button>
+          )}
+
           {canUpdateStatus && nextAction && !isTerminalState && (
             <Button
               onClick={() => handleStatusTransition(nextAction.nextStatus)}
@@ -393,9 +426,28 @@ export function OrderDetailClient({ initialOrder }: OrderDetailClientProps) {
                   </div>
                 )}
 
-                <div className="flex justify-between text-lg font-bold text-foreground pt-3 border-t">
+                <div className="flex justify-between text-base font-bold text-foreground pt-3 border-t">
                   <span>Grand Total</span>
-                  <span className="text-primary text-xl">₹{order.totalAmount.toFixed(2)}</span>
+                  <span className="text-xl font-bold">₹{order.totalAmount.toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400 font-semibold pt-1">
+                  <span>Total Paid</span>
+                  <span>₹{order.paymentSummary.totalPaid.toFixed(2)}</span>
+                </div>
+
+                {order.paymentSummary.refundedAmount > 0 && (
+                  <div className="flex justify-between text-sm text-purple-600 dark:text-purple-400 font-medium">
+                    <span>Refunded</span>
+                    <span>-₹{order.paymentSummary.refundedAmount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-base font-bold pt-2 border-t text-foreground">
+                  <span>Remaining Payable</span>
+                  <span className={order.paymentSummary.remainingAmount > 0 ? 'text-primary' : 'text-emerald-600 dark:text-emerald-400'}>
+                    ₹{order.paymentSummary.remainingAmount.toFixed(2)}
+                  </span>
                 </div>
               </div>
             </CardFooter>
@@ -416,18 +468,225 @@ export function OrderDetailClient({ initialOrder }: OrderDetailClientProps) {
             </Card>
           )}
 
-          {/* Architecture Readiness Box */}
-          <Card className="border-dashed bg-muted/10">
-            <CardContent className="p-4 flex items-start gap-3">
-              <ShieldCheck className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-              <div className="text-xs text-muted-foreground space-y-1">
-                <span className="font-semibold text-foreground">
-                  Ready for Future System Integrations
-                </span>
-                <p>
-                  This order maintains normalized menu foreign keys for automatic Recipe/BOM inventory deduction upon kitchen dispatch. Payment processing and driver assignment will connect in upcoming feature milestones.
-                </p>
+          {/* Payment Ledger & Transactions Card */}
+          <Card className="border shadow-xs">
+            <CardHeader className="py-3 px-6 border-b bg-muted/20">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-base font-semibold text-foreground">
+                    Payment Ledger ({order.payments.length})
+                  </CardTitle>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                      ORDER_PAYMENT_STATUS_META[order.paymentSummary.status].className
+                    }`}
+                  >
+                    {ORDER_PAYMENT_STATUS_META[order.paymentSummary.status].label}
+                  </span>
+                </div>
+
+                {canCreatePayment && !isTerminalState && order.paymentSummary.remainingAmount > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={() => setPaymentDialogOpen(true)}
+                    className="gap-1.5 text-xs font-semibold shadow-xs"
+                  >
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Record Payment
+                  </Button>
+                )}
               </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              {/* Payment Summary Metrics Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-muted/10 border-b text-xs">
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
+                    Order Total
+                  </span>
+                  <span className="text-sm font-bold text-foreground">
+                    ₹{order.totalAmount.toFixed(2)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
+                    Total Paid
+                  </span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    ₹{order.paymentSummary.totalPaid.toFixed(2)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
+                    Remaining
+                  </span>
+                  <span className={`text-sm font-bold ${order.paymentSummary.remainingAmount > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                    ₹{order.paymentSummary.remainingAmount.toFixed(2)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
+                    Refunded
+                  </span>
+                  <span className={`text-sm font-bold ${order.paymentSummary.refundedAmount > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-muted-foreground'}`}>
+                    {order.paymentSummary.refundedAmount > 0 ? `₹${order.paymentSummary.refundedAmount.toFixed(2)}` : '₹0.00'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Transactions List */}
+              {order.payments.length === 0 ? (
+                <div className="p-6 text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    No payment transactions recorded for this order yet.
+                  </p>
+                  {canCreatePayment && !isTerminalState && order.paymentSummary.remainingAmount > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPaymentDialogOpen(true)}
+                      className="gap-1.5"
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Record First Payment
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {order.payments.map((payment) => {
+                    const MethodIcon = PAYMENT_METHODS[payment.method]?.icon || CreditCard;
+                    const isExpanded = !!expandedRefunds[payment.id];
+                    const hasRefunds = payment.refunds.length > 0;
+
+                    return (
+                      <div key={payment.id} className="p-4 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-2 rounded-lg bg-muted/60 text-foreground shrink-0">
+                              <MethodIcon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-foreground">
+                                  {payment.paymentNumber}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                                    PAYMENT_STATUS_META[payment.status].className
+                                  }`}
+                                >
+                                  {PAYMENT_STATUS_META[payment.status].label}
+                                </span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2">
+                                <span>{PAYMENT_METHODS[payment.method]?.label}</span>
+                                {payment.referenceNumber && (
+                                  <>
+                                    <span>•</span>
+                                    <span>Ref: <span className="font-medium text-foreground">{payment.referenceNumber}</span></span>
+                                  </>
+                                )}
+                                <span>•</span>
+                                <span>By {payment.processedBy}</span>
+                                <span>•</span>
+                                <span>{new Date(payment.processedAt).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 self-end sm:self-center">
+                            <div className="text-right">
+                              <span className={`text-base font-bold block ${payment.status === 'FAILED' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                ₹{payment.amount.toFixed(2)}
+                              </span>
+                              {payment.refundedAmount > 0 && (
+                                <span className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
+                                  Refunded: ₹{payment.refundedAmount.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Refund Button */}
+                            {canRefundPayment && payment.refundableAmount > 0 && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedPaymentForRefund(payment);
+                                  setRefundDialogOpen(true);
+                                }}
+                                className="h-8 text-xs text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 border-purple-500/30 gap-1"
+                              >
+                                <RotateCcw className="h-3 w-3" />
+                                Refund
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {payment.notes && (
+                          <p className="text-xs text-muted-foreground italic pl-10">
+                            Note: {payment.notes}
+                          </p>
+                        )}
+
+                        {/* Collapsible Refunds History */}
+                        {hasRefunds && (
+                          <div className="pl-10 pt-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedRefunds((prev) => ({
+                                  ...prev,
+                                  [payment.id]: !prev[payment.id],
+                                }))
+                              }
+                              className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 font-medium hover:underline cursor-pointer"
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              )}
+                              {payment.refunds.length} Refund Record{payment.refunds.length > 1 ? 's' : ''} (₹{payment.refundedAmount.toFixed(2)})
+                            </button>
+
+                            {isExpanded && (
+                              <div className="mt-2 space-y-2 border-l-2 border-purple-500/30 pl-3">
+                                {payment.refunds.map((ref) => (
+                                  <div
+                                    key={ref.id}
+                                    className="p-2.5 rounded-lg bg-purple-500/5 border border-purple-500/15 text-xs space-y-1"
+                                  >
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-semibold text-purple-700 dark:text-purple-300">
+                                        {ref.refundNumber}
+                                      </span>
+                                      <span className="font-bold text-destructive">
+                                        -₹{ref.amount.toFixed(2)}
+                                      </span>
+                                    </div>
+                                    <p className="text-foreground">
+                                      <span className="text-muted-foreground">Reason:</span> {ref.reason}
+                                    </p>
+                                    <div className="text-[11px] text-muted-foreground flex justify-between pt-0.5">
+                                      <span>By {ref.processedBy}</span>
+                                      <span>{new Date(ref.processedAt).toLocaleString()}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -565,6 +824,26 @@ export function OrderDetailClient({ initialOrder }: OrderDetailClientProps) {
         orderId={order.id}
         orderNumber={order.orderNumber}
         onSuccess={handleCancelSuccess}
+      />
+
+      {/* Payment Recording Modal */}
+      <PaymentCreateDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        orderId={order.id}
+        orderNumber={order.orderNumber}
+        orderTotal={order.totalAmount}
+        totalPaid={order.paymentSummary.totalPaid}
+        remainingAmount={order.paymentSummary.remainingAmount}
+        onSuccess={() => router.refresh()}
+      />
+
+      {/* Payment Refund Modal */}
+      <PaymentRefundDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        payment={selectedPaymentForRefund}
+        onSuccess={() => router.refresh()}
       />
     </div>
   );

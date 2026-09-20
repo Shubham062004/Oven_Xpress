@@ -60,6 +60,10 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
   - `Order` → `OrderItem` (`1:N`): Items ordered in an order.
   - `Order` → `OrderAuditLog` (`1:N`): Audit trail of order status transitions.
   - `Order` → `StockTransaction` (`1:N`): Order preparation triggers stock consumption.
+  - `Order` → `Payment` (`1:N`): Orders have zero, one, or multiple split payment transactions.
+  - `Payment` → `PaymentRefund` (`1:N`): Payments can have partial or full refund records.
+  - `Payment` → `PaymentAuditLog` (`1:N`): Audit trail of payment mutations and reversals.
+  - `Branch` → `PaymentReconciliation` (`1:N`): Daily tender and cash drawer reconciliation records.
 
 ## Target Users
 
@@ -123,7 +127,7 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 - `User`: Accounts with `email` (@unique), `name`, `passwordHash` (bcrypt salt 12), `roleId`, and `isActive` status.
 - `Session`: Database-backed sessions with cryptographically random `sessionToken` and 7-day expiration.
 - `Role`: Supported roles (`OWNER`, `ADMIN`, `MANAGER`, `STAFF`).
-- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `branch.*`, `employee.*`, `shift.*`, `attendance.*`, `menu.*`, `inventory.*`, `supplier.*`, `purchase.*`, `order.*`, `kitchen.*`, `table.*`, `settings.*`).
+- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `branch.*`, `employee.*`, `shift.*`, `attendance.*`, `menu.*`, `inventory.*`, `supplier.*`, `purchase.*`, `order.*`, `kitchen.*`, `table.*`, `payment.*`, `settings.*`).
 - `RolePermission`: Many-to-many link between roles and permissions.
 
 ### 2. Session Approach

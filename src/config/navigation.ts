@@ -70,6 +70,12 @@ export const mainNavItems: NavItem[] = [
     requiredPermission: PERMISSIONS.ORDER_READ,
   },
   {
+    label: 'Payments',
+    href: '/payments',
+    icon: CreditCard,
+    requiredPermission: PERMISSIONS.PAYMENT_READ,
+  },
+  {
     label: 'Kitchen',
     href: '/kitchen',
     icon: ChefHat,

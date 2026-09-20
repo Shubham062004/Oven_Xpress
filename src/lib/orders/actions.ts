@@ -26,8 +26,11 @@ import {
   OrderType,
   OrderStatus,
   TableStatus,
+  PaymentStatus,
+  RefundStatus,
   Prisma,
 } from '@prisma/client';
+import { deriveOrderPaymentSummary } from '@/lib/payments/constants';
 
 function isRedirectError(error: unknown): boolean {
   return (
@@ -382,6 +385,17 @@ export async function getOrderById(id: string): Promise<ActionResult<OrderDetail
         items: {
           orderBy: { createdAt: 'asc' },
         },
+        payments: {
+          include: {
+            order: { select: { orderNumber: true } },
+            branch: { select: { name: true, code: true } },
+            refunds: {
+              where: { status: RefundStatus.SUCCESS },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+          orderBy: { processedAt: 'desc' },
+        },
       },
     });
 
@@ -393,6 +407,55 @@ export async function getOrderById(id: string): Promise<ActionResult<OrderDetail
     if (!isBranchAuthorized(scope, order.branchId)) {
       return { success: false, error: 'Unauthorized branch access' };
     }
+
+    const mappedPayments = order.payments.map((p) => {
+      const pAmt = p.amount.toNumber();
+      const refundedSum = p.refunds.reduce((sum, r) => sum + r.amount.toNumber(), 0);
+      const roundedRefunded = Math.round(refundedSum * 100) / 100;
+      const isRefundable =
+        p.status === PaymentStatus.SUCCESS || p.status === PaymentStatus.PARTIALLY_REFUNDED;
+      const refundable = isRefundable
+        ? Math.max(0, Math.round((pAmt - roundedRefunded) * 100) / 100)
+        : 0;
+
+      return {
+        id: p.id,
+        paymentNumber: p.paymentNumber,
+        orderId: p.orderId,
+        orderNumber: p.order.orderNumber,
+        branchId: p.branchId,
+        branchName: p.branch.name,
+        branchCode: p.branch.code,
+        amount: pAmt,
+        method: p.method,
+        status: p.status,
+        referenceNumber: p.referenceNumber,
+        notes: p.notes,
+        processedBy: p.processedBy,
+        processedAt: p.processedAt.toISOString(),
+        refundedAmount: roundedRefunded,
+        refundableAmount: refundable,
+        refunds: p.refunds.map((r) => ({
+          id: r.id,
+          refundNumber: r.refundNumber,
+          paymentId: r.paymentId,
+          amount: r.amount.toNumber(),
+          reason: r.reason,
+          status: r.status,
+          processedBy: r.processedBy,
+          processedAt: r.processedAt.toISOString(),
+          referenceNumber: r.referenceNumber,
+          notes: r.notes,
+          createdAt: r.createdAt.toISOString(),
+        })),
+        createdAt: p.createdAt.toISOString(),
+      };
+    });
+
+    const paymentSummary = deriveOrderPaymentSummary(
+      order.totalAmount.toNumber(),
+      mappedPayments
+    );
 
     return {
       success: true,
@@ -435,6 +498,8 @@ export async function getOrderById(id: string): Promise<ActionResult<OrderDetail
           notes: i.notes,
           createdAt: i.createdAt.toISOString(),
         })),
+        paymentSummary,
+        payments: mappedPayments,
       },
     };
   } catch (error) {

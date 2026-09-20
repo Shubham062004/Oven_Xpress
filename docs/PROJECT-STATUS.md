@@ -125,14 +125,29 @@ Completed
 - [x] Auto-refresh countdown loop (15s), manual sync, fullscreen toggle, branch filter, and order type filter
 - [x] KDS feature documentation (`docs/features/kitchen-management.md`)
 
+- [x] Payment, PaymentRefund, PaymentReconciliation, and PaymentAuditLog models (Prisma schema: PaymentMethod, PaymentStatus, RefundStatus, ReconciliationStatus enums, composite unique constraints, indexes)
+- [x] Payment RBAC permissions (6 permissions: `payment.read`, `payment.create`, `payment.update`, `payment.refund`, `payment.reconcile`, `payment.cancel`) with strict Owner & Admin refund restrictions
+- [x] Centralized payment methods: CASH, UPI, CARD, ONLINE, OTHER with tender-specific reference metadata
+- [x] Concurrency-safe sequential payment numbering (`PAY-YYYY-000001`) and refund numbering (`REF-YYYY-000001`) using PostgreSQL advisory transactions locks (`pg_advisory_xact_lock`)
+- [x] Derived order payment summary logic (`UNPAID`, `PARTIALLY_PAID`, `PAID`, `PARTIALLY_REFUNDED`, `REFUNDED`) supporting split tender and preserving kitchen/delivery order status
+- [x] Strict overpayment rejection: Validates `totalPaid + newAmount <= orderTotal` inside atomic `$transaction`
+- [x] Non-destructive failed payment handling: Preserved with status `FAILED`, 0 contribution to paid balance, full audit trail
+- [x] Full and partial refund management: Caps refunds to remaining paid balance with mandatory operational reason capture
+- [x] Payments management dashboard (`/payments`) with 7 KPI summary cards, branch/method/status/date filters, real-time search, responsive desktop table, and mobile cards
+- [x] Order payment ledger integration (`/orders/[id]`): Live payment summary card, record payment dialog, refund dialog, and nested payment/refund ledger
+- [x] Daily tender & cash drawer reconciliation (`/payments/reconciliation`): Aggregates system cash and multi-tender totals, captures physical drawer count, and computes objective variance (`Actual - System Cash`) with neutral status indicators
+- [x] Database seed with multi-method payments, partial splits, failed attempts, refund records, and historical reconciliations
+- [x] Payment management documentation (`docs/features/payment-management.md`)
+
 ## Current Task
 
-Kitchen Display System (KDS) + Order Preparation Workflow fully implemented, verified, tested, and documented.
+Payments & Payment Reconciliation fully implemented, verified, tested, and documented.
 
 ## Next
 
-Phase 11: Payments & Billing (Payment Processing, Split Bills, Invoicing, Tender Types, and Cash Drawer Reconciliation)
+Phase 12: Customer Management & Loyalty (Customer profiles, order history, loyalty points, feedback)
 
 ## Known Issues
 
 None
+

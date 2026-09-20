@@ -1,4 +1,5 @@
 import type { OrderType, OrderStatus, TableStatus } from '@prisma/client';
+import type { PaymentRecord, OrderPaymentSummary } from '@/lib/payments/types';
 
 export interface OrderItemDetail {
   id: string;
@@ -81,6 +82,8 @@ export interface OrderDetail {
   cancelledBy: string | null;
   createdBy: string;
   items: OrderItemDetail[];
+  paymentSummary: OrderPaymentSummary;
+  payments: PaymentRecord[];
   createdAt: string;
   updatedAt: string;
 }

@@ -16,6 +16,10 @@ import {
   OrderType,
   OrderStatus,
   TableStatus,
+  PaymentMethod,
+  PaymentStatus,
+  RefundStatus,
+  ReconciliationStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -123,6 +127,13 @@ async function main() {
     { code: 'kitchen.start', module: 'kitchen', description: 'Start order preparation and trigger atomic inventory consumption' },
     { code: 'kitchen.ready', module: 'kitchen', description: 'Mark prepared orders as ready for service or delivery' },
     { code: 'kitchen.complete', module: 'kitchen', description: 'Mark ready kitchen orders as completed' },
+    // Payment Management & Reconciliation
+    { code: 'payment.read', module: 'payment', description: 'View payments, transaction ledger, and summary metrics' },
+    { code: 'payment.create', module: 'payment', description: 'Record customer tender and digital order payments' },
+    { code: 'payment.update', module: 'payment', description: 'Update payment notes and metadata' },
+    { code: 'payment.refund', module: 'payment', description: 'Process payment reversals and refunds' },
+    { code: 'payment.reconcile', module: 'payment', description: 'Perform daily tender reconciliation and record cash variances' },
+    { code: 'payment.cancel', module: 'payment', description: 'Cancel pending payment attempts' },
   ];
 
   console.log('  → Seeding permissions...');
@@ -214,6 +225,12 @@ async function main() {
         'kitchen.start',
         'kitchen.ready',
         'kitchen.complete',
+        'payment.read',
+        'payment.create',
+        'payment.update',
+        'payment.refund',
+        'payment.reconcile',
+        'payment.cancel',
       ],
     },
     {
@@ -289,6 +306,12 @@ async function main() {
         'kitchen.start',
         'kitchen.ready',
         'kitchen.complete',
+        'payment.read',
+        'payment.create',
+        'payment.update',
+        'payment.refund',
+        'payment.reconcile',
+        'payment.cancel',
       ],
     },
     {
@@ -345,6 +368,11 @@ async function main() {
         'kitchen.start',
         'kitchen.ready',
         'kitchen.complete',
+        'payment.read',
+        'payment.create',
+        'payment.update',
+        'payment.reconcile',
+        'payment.cancel',
       ],
     },
     {
@@ -368,6 +396,8 @@ async function main() {
         'kitchen.read',
         'kitchen.start',
         'kitchen.ready',
+        'payment.read',
+        'payment.create',
       ],
     },
   ];
@@ -1941,6 +1971,150 @@ async function main() {
       });
       console.log('    ✓ Order: ORD-2026-000005 (DELIVERY, CANCELLED)');
     }
+  }
+
+  // 12. Seed Sample Payments & Reconciliations
+  console.log('  → Seeding sample payments and daily reconciliation...');
+  const order1 = await prisma.order.findUnique({ where: { orderNumber: 'ORD-2026-000001' } });
+  const order2 = await prisma.order.findUnique({ where: { orderNumber: 'ORD-2026-000002' } });
+  const order3 = await prisma.order.findUnique({ where: { orderNumber: 'ORD-2026-000003' } });
+  const order4 = await prisma.order.findUnique({ where: { orderNumber: 'ORD-2026-000004' } });
+
+  if (order1) {
+    const existingP1 = await prisma.payment.findUnique({ where: { paymentNumber: 'PAY-2026-000001' } });
+    if (!existingP1) {
+      await prisma.payment.create({
+        data: {
+          paymentNumber: 'PAY-2026-000001',
+          orderId: order1.id,
+          branchId: order1.branchId,
+          amount: order1.totalAmount,
+          method: PaymentMethod.CASH,
+          status: PaymentStatus.SUCCESS,
+          referenceNumber: 'CASH-REG-01',
+          notes: 'Customer paid exact cash at counter',
+          processedBy: 'Sarah Jenkins',
+        },
+      });
+      console.log('    ✓ Payment: PAY-2026-000001 (CASH, Full Paid)');
+    }
+  }
+
+  if (order2) {
+    const existingP2 = await prisma.payment.findUnique({ where: { paymentNumber: 'PAY-2026-000002' } });
+    if (!existingP2) {
+      await prisma.payment.create({
+        data: {
+          paymentNumber: 'PAY-2026-000002',
+          orderId: order2.id,
+          branchId: order2.branchId,
+          amount: order2.totalAmount,
+          method: PaymentMethod.UPI,
+          status: PaymentStatus.SUCCESS,
+          referenceNumber: 'UPI-982341762109',
+          notes: 'Google Pay scanned at delivery counter',
+          processedBy: 'Sarah Jenkins',
+        },
+      });
+      console.log('    ✓ Payment: PAY-2026-000002 (UPI, Full Paid)');
+    }
+  }
+
+  if (order3) {
+    const existingP3 = await prisma.payment.findUnique({ where: { paymentNumber: 'PAY-2026-000003' } });
+    if (!existingP3) {
+      const p3 = await prisma.payment.create({
+        data: {
+          paymentNumber: 'PAY-2026-000003',
+          orderId: order3.id,
+          branchId: order3.branchId,
+          amount: order3.totalAmount,
+          method: PaymentMethod.CARD,
+          status: PaymentStatus.PARTIALLY_REFUNDED,
+          referenceNumber: 'POS-AUTH-449102',
+          notes: 'Dine-in credit card swipe',
+          processedBy: 'David Kim',
+        },
+      });
+
+      // Partial refund on order 3
+      const existingR1 = await prisma.paymentRefund.findUnique({ where: { refundNumber: 'REF-2026-000001' } });
+      if (!existingR1) {
+        await prisma.paymentRefund.create({
+          data: {
+            refundNumber: 'REF-2026-000001',
+            paymentId: p3.id,
+            amount: new Prisma.Decimal('5.00'),
+            reason: 'Customer reported cold beverage, manager approved goodwill courtesy refund',
+            status: RefundStatus.SUCCESS,
+            processedBy: 'David Kim',
+          },
+        });
+      }
+      console.log('    ✓ Payment: PAY-2026-000003 (CARD, Partially Refunded with REF-2026-000001)');
+    }
+  }
+
+  if (order4) {
+    // Split tender: Partial CASH + Failed UPI attempt
+    const existingP4 = await prisma.payment.findUnique({ where: { paymentNumber: 'PAY-2026-000004' } });
+    if (!existingP4) {
+      await prisma.payment.create({
+        data: {
+          paymentNumber: 'PAY-2026-000004',
+          orderId: order4.id,
+          branchId: order4.branchId,
+          amount: new Prisma.Decimal('15.00'),
+          method: PaymentMethod.CASH,
+          status: PaymentStatus.SUCCESS,
+          referenceNumber: null,
+          notes: 'Customer paid partial cash deposit',
+          processedBy: 'Sarah Jenkins',
+        },
+      });
+
+      // Failed UPI attempt
+      await prisma.payment.create({
+        data: {
+          paymentNumber: 'PAY-2026-000005',
+          orderId: order4.id,
+          branchId: order4.branchId,
+          amount: new Prisma.Decimal('10.00'),
+          method: PaymentMethod.UPI,
+          status: PaymentStatus.FAILED,
+          referenceNumber: 'UPI-FAIL-TIMEOUT',
+          notes: 'Customer bank server timed out, transaction failed',
+          processedBy: 'Sarah Jenkins',
+        },
+      });
+      console.log('    ✓ Payment: PAY-2026-000004 (Partial CASH) & PAY-2026-000005 (FAILED UPI)');
+    }
+  }
+
+  // Daily Reconciliation Seed for Downtown Central
+  const todayRec = new Date();
+  const todayDateOnly = new Date(Date.UTC(todayRec.getFullYear(), todayRec.getMonth(), todayRec.getDate()));
+  const existingReconciliation = await prisma.paymentReconciliation.findFirst({
+    where: {
+      branchId: dtBranch.id,
+      date: todayDateOnly,
+    },
+  });
+
+  if (!existingReconciliation) {
+    await prisma.paymentReconciliation.create({
+      data: {
+        branchId: dtBranch.id,
+        date: todayDateOnly,
+        systemCash: new Prisma.Decimal('15.00'),
+        actualCash: new Prisma.Decimal('15.00'),
+        variance: new Prisma.Decimal('0.00'),
+        note: 'Mid-day drawer audit completed. Physical drawer perfectly balanced.',
+        reconciledBy: 'Sarah Jenkins',
+        status: ReconciliationStatus.RECONCILED,
+      },
+    });
+    console.log('    ✓ Daily Reconciliation: Downtown Central (RECONCILED, Balanced)');
   }
 
   console.log('✅ Seed completed successfully!');

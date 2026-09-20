@@ -98,6 +98,8 @@ model Branch {
   purchaseOrders    PurchaseOrder[]
   tables            RestaurantTable[]
   orders            Order[]
+  payments          Payment[]
+  paymentReconciliations PaymentReconciliation[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -583,6 +585,7 @@ model Order {
   inventoryConsumedAt DateTime?
   items              OrderItem[]
   auditLogs          OrderAuditLog[]
+  payments           Payment[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -630,6 +633,133 @@ model OrderAuditLog {
   createdAt   DateTime    @default(now())
 
   @@index([orderId])
+  @@index([createdAt])
+}
+
+// ─── Payments & Payment Reconciliation ──────────────────────────────────────
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  ONLINE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum ReconciliationStatus {
+  OPEN
+  RECONCILED
+}
+
+model Payment {
+  id                   String          @id @default(cuid())
+  paymentNumber        String          @unique // e.g. PAY-2026-000001
+  orderId              String
+  order                Order           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  branchId             String
+  branch               Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  amount               Decimal         @db.Decimal(10, 2)
+  method               PaymentMethod
+  status               PaymentStatus   @default(SUCCESS)
+  referenceNumber      String?
+  notes                String?
+  processedBy          String
+  processedAt          DateTime        @default(now())
+
+  // Extensibility fields for future payment gateway integrations
+  gatewayProvider      String?
+  gatewayTransactionId String?
+  gatewayStatus        String?
+  gatewayMetadata      Json?
+
+  refunds              PaymentRefund[]
+  auditLogs            PaymentAuditLog[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@index([orderId])
+  @@index([branchId])
+  @@index([status])
+  @@index([method])
+  @@index([processedAt])
+  @@index([referenceNumber])
+  @@index([paymentNumber])
+  @@index([branchId, processedAt])
+  @@index([branchId, status])
+}
+
+model PaymentRefund {
+  id              String        @id @default(cuid())
+  refundNumber    String        @unique // e.g. REF-2026-000001
+  paymentId       String
+  payment         Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  amount          Decimal       @db.Decimal(10, 2)
+  reason          String
+  status          RefundStatus  @default(SUCCESS)
+  processedBy     String
+  processedAt     DateTime      @default(now())
+  referenceNumber String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([paymentId])
+  @@index([status])
+  @@index([processedAt])
+  @@index([refundNumber])
+}
+
+model PaymentReconciliation {
+  id           String               @id @default(cuid())
+  branchId     String
+  branch       Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  date         DateTime             @db.Date
+  systemCash   Decimal              @db.Decimal(10, 2)
+  actualCash   Decimal              @db.Decimal(10, 2)
+  variance     Decimal              @db.Decimal(10, 2)
+  note         String?
+  reconciledBy String
+  reconciledAt DateTime             @default(now())
+  status       ReconciliationStatus @default(OPEN)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([branchId, date])
+  @@index([branchId])
+  @@index([date])
+  @@index([status])
+}
+
+model PaymentAuditLog {
+  id          String   @id @default(cuid())
+  paymentId   String
+  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  action      String   // 'PAYMENT_CREATED', 'PAYMENT_FAILED', 'REFUND_CREATED', 'STATUS_CHANGE'
+  fromStatus  String?
+  toStatus    String?
+  amount      Decimal? @db.Decimal(10, 2)
+  performedBy String
+  notes       String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([paymentId])
   @@index([createdAt])
 }
 
