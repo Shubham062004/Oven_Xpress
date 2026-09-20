@@ -153,14 +153,25 @@ Completed
 - [x] Maker-checker bonus approval workflow with mandatory rejection reason capture
 - [x] Compensation dashboard (`/salary`), increments ledger (`/salary/increments`), bonus queue (`/salary/bonuses`), period detail (`/salary/[id]`), and employee compensation ledger (`/employees/[id]`)
 - [x] Salary & Bonus management documentation (`docs/features/salary-bonus-management.md`)
+- [x] Sales & Financial Reporting RBAC permissions (6 permissions: `report.sales.read`, `report.sales.export`, `report.finance.read`, `report.finance.export`, `report.branch.read`, `report.product.read`)
+- [x] Primary source-of-truth reporting engine: Aggregates directly from Orders, Payments, Refunds, Expenses, and SalaryRecords without duplicate sales tables
+- [x] Operational revenue & sales metrics with safe division (AOV, gross sales, promotional discounts, customer refunds, net revenue)
+- [x] Multi-branch database-level scoping: Cross-branch access for OWNER/ADMIN and strict single-branch scoping for MANAGER/STAFF
+- [x] Sales Overview dashboard (`/sales`): 8 KPI cards, tabular daily sales ledger, revenue area chart, hourly velocity bar chart, order channels and payment methods donut charts, and multi-branch comparison
+- [x] Product Sales reporting (`/sales/products`): Historical pricing via `OrderItem.unitPrice`, search, sorting, category filtering, and category revenue share distribution
+- [x] Operational Profit & Loss statement (`/reports/profit-loss`): Clear operational management report (`Net Revenue − Approved Operating Expenses − Approved Salary = Operating Result`), category expense shares, salary record audit, and separate inventory procurement ledger
+- [x] Executive Owner Dashboard (`/` route): Operational command center for today's sales, orders, expenses, result, top sellers, low stock alerts, and pending approval counters
+- [x] Recharts visual component library integration with CSS variable theming and SSR hydration safety (`useSyncExternalStore`)
+- [x] Streaming RFC-4180 CSV report exports for daily sales, product velocity, branch comparisons, and P&L statements
+- [x] Sales, Revenue & Financial Reporting documentation (`docs/features/sales-financial-reporting.md`)
 
 ## Current Task
 
-Salary, Bonus & Increment Management fully implemented, verified, tested, and documented.
+Sales, Revenue & Profit/Loss Reporting fully implemented, verified, tested, and documented.
 
 ## Next
 
-Phase 13: Customer Management & Loyalty (Customer profiles, order history, loyalty points, feedback)
+Phase 14: Customer Management & Loyalty (Customer profiles, order history, loyalty points, feedback)
 
 ## Known Issues
 

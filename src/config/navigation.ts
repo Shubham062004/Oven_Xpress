@@ -1,10 +1,8 @@
 import {
-  BarChart3,
   Building2,
   ChefHat,
   Banknote,
   CreditCard,
-  FileText,
   LayoutDashboard,
   Package,
   Receipt,
@@ -16,6 +14,8 @@ import {
   UserCheck,
   Users,
   UtensilsCrossed,
+  TrendingUp,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 import { PERMISSIONS } from '@/lib/permissions/definitions';
@@ -118,14 +118,16 @@ export const mainNavItems: NavItem[] = [
     icon: Users,
   },
   {
-    label: 'Reports',
-    href: '/reports',
-    icon: FileText,
+    label: 'Sales',
+    href: '/sales',
+    icon: TrendingUp,
+    requiredPermission: PERMISSIONS.REPORT_SALES_READ,
   },
   {
-    label: 'Analytics',
-    href: '/analytics',
-    icon: BarChart3,
+    label: 'Reports',
+    href: '/reports/profit-loss',
+    icon: FileSpreadsheet,
+    requiredPermission: PERMISSIONS.REPORT_FINANCE_READ,
   },
 ];
 

@@ -172,6 +172,11 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 
 ## Current Phase
 
-**Phase 10: Kitchen Display System (KDS) & Order Preparation Workflow**
+**Phase 13: Sales, Revenue & Profit/Loss Reporting**
 
-Implemented dedicated high-contrast operational KDS (`/kitchen`) with 3-column kanban board (New Orders, In Preparation, Ready for Service), chronological order queueing, operational timestamps (`confirmedAt`, `preparingAt`, `readyAt`, `completedAt`), staff attribution (`preparedBy`, `readyBy`, `completedBy`), append-only `OrderAuditLog`, and automatic atomic inventory consumption upon preparation start (`OrderItem.quantity × RecipeIngredient.quantity`). Includes unit conversion (`KG` ↔ `GRAM`, `LITRE` ↔ `ML`, `DOZEN` ↔ `PIECE`), strict insufficient-stock pre-check with atomic rollback and shortage modal, missing recipe detection ("No BOM"), idempotency safeguards (`inventoryConsumed`), auto-refresh loop (15s), branch isolation, and comprehensive documentation.
+Implemented operational reporting layer for restaurant owners and managers. All data is derived directly on-the-fly from underlying transactional models (`Order`, `OrderItem`, `Payment`, `PaymentRefund`, `Expense`, `SalaryRecord`, `PurchaseOrder`) without duplicate sales tables.
+- **Reporting Core**: Deterministic financial formulas (`Gross Sales = SUM(completed Order.totalAmount)`, `Discounts = SUM(discountAmount)`, `Refunds = SUM(successful refund amount)`, `Net Revenue = Gross − Discounts − Refunds`, `Operating Result = Net Revenue − Approved Expenses − Approved Salary Costs`).
+- **Access Control & Scoping**: 6 new RBAC permissions (`report.sales.read`, `report.sales.export`, `report.finance.read`, `report.finance.export`, `report.branch.read`, `report.product.read`). Cross-branch multi-unit summaries for `OWNER`/`ADMIN`; strict database-level branch scoping for `MANAGER`/`STAFF`.
+- **Views**: Executive Today's Dashboard (`/`), Sales & Revenue Overview (`/sales`), Product & Category Sales (`/sales/products`), and Operational Profit & Loss Statement (`/reports/profit-loss`).
+- **Features**: Visualizations via Recharts (area, bar, donut charts), streaming RFC-4180 CSV exports, historical pricing integrity via `OrderItem.unitPrice`, and independent tracking for inventory purchases.
+

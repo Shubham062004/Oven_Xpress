@@ -389,4 +389,36 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Privacy: Compensation ledgers and revision history are restricted from operational staff
 ```
 
+### Sales, Revenue & Profit/Loss Reporting Pattern
+
+```
+# Module: Sales, Revenue & Profit/Loss Reporting
+
+## Entity Architecture
+- Zero-Duplicate Tables: All reporting queries derive directly from Order, OrderItem, Payment, PaymentRefund, Expense, SalaryRecord, and PurchaseOrder.
+- Revenue Sources:
+  * Gross Sales = SUM(Order.totalAmount) for COMPLETED / REFUNDED orders
+  * Discounts   = SUM(Order.discountAmount)
+  * Refunds     = SUM(PaymentRefund.amount) with status SUCCESS
+  * Net Revenue = Gross Sales − Discounts − Refunds
+- Operational Costs:
+  * Approved Expenses = SUM(Expense.amount) with status APPROVED
+  * Approved Salary   = SUM(SalaryRecord.grossAmount) with status APPROVED / PAID (overlapping period)
+  * Operating Result  = Net Revenue − Approved Expenses − Approved Salary
+- Independent Procurement:
+  * PurchaseOrder ordered vs received amounts tracked separately from operational expenses
+
+## Business Rules & Integrity
+- Single Source of Truth: Operational records remain the sole source of truth; no synthetic "Sales" fact tables
+- Exclusions: Cancelled orders, in-flight orders, and failed payment attempts are excluded from revenue
+- Historical Pricing: Product sales aggregate OrderItem.unitPrice, preserving pricing integrity across menu changes
+- Safe Division: All ratios (AOV, percentages) return 0 when denominator is zero, eliminating NaN/Infinity errors
+- Multi-Branch Tenancy: OWNER/ADMIN view cross-branch rollups or filter dynamically; MANAGER/STAFF are scoped at query level to their assigned branch
+
+## RBAC & Security
+- Permissions: report.sales.read, report.sales.export, report.finance.read, report.finance.export, report.branch.read, report.product.read
+- Export Safeguards: CSV generation enforced via dedicated server-side export permissions
+```
+
+
 
