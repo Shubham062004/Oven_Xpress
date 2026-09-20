@@ -73,6 +73,7 @@ export const mainNavItems: NavItem[] = [
     label: 'Kitchen',
     href: '/kitchen',
     icon: ChefHat,
+    requiredPermission: PERMISSIONS.KITCHEN_READ,
   },
   {
     label: 'Inventory',

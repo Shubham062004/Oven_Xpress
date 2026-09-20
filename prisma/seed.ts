@@ -118,6 +118,11 @@ async function main() {
     { code: 'table.create', module: 'table', description: 'Add new restaurant dining tables' },
     { code: 'table.update', module: 'table', description: 'Update table number, capacity, and details' },
     { code: 'table.status', module: 'table', description: 'Update table occupancy and cleaning status' },
+    // Kitchen Display System & Food Preparation
+    { code: 'kitchen.read', module: 'kitchen', description: 'View kitchen display system (KDS) and active order queue' },
+    { code: 'kitchen.start', module: 'kitchen', description: 'Start order preparation and trigger atomic inventory consumption' },
+    { code: 'kitchen.ready', module: 'kitchen', description: 'Mark prepared orders as ready for service or delivery' },
+    { code: 'kitchen.complete', module: 'kitchen', description: 'Mark ready kitchen orders as completed' },
   ];
 
   console.log('  → Seeding permissions...');
@@ -205,6 +210,10 @@ async function main() {
         'table.create',
         'table.update',
         'table.status',
+        'kitchen.read',
+        'kitchen.start',
+        'kitchen.ready',
+        'kitchen.complete',
       ],
     },
     {
@@ -276,6 +285,10 @@ async function main() {
         'table.create',
         'table.update',
         'table.status',
+        'kitchen.read',
+        'kitchen.start',
+        'kitchen.ready',
+        'kitchen.complete',
       ],
     },
     {
@@ -328,6 +341,10 @@ async function main() {
         'table.create',
         'table.update',
         'table.status',
+        'kitchen.read',
+        'kitchen.start',
+        'kitchen.ready',
+        'kitchen.complete',
       ],
     },
     {
@@ -348,6 +365,9 @@ async function main() {
         'customer.create',
         'table.read',
         'table.status',
+        'kitchen.read',
+        'kitchen.start',
+        'kitchen.ready',
       ],
     },
   ];

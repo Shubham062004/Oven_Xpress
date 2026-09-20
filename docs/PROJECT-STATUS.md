@@ -1,6 +1,6 @@
 ## Current Feature
 
-Suppliers & Purchase Management
+Kitchen Display System (KDS) + Order Preparation Workflow
 
 ## Status
 
@@ -107,14 +107,31 @@ Completed
 - [x] Supplier creation, edit, and status toggle dialogs with Zod validation
 - [x] Database seed with 5 suppliers and 4 purchase orders across multiple lifecycle states and receiving logs
 - [x] Supplier & Purchase Management feature documentation (`docs/features/supplier-purchase-management.md`)
+- [x] Order Management models (Order, OrderItem, RestaurantTable with OrderType, OrderStatus, PaymentStatus, TableStatus enums, composite indexes, and sequential order numbering `ORD-YYYY-000001`)
+- [x] Order RBAC permissions (`order.read`, `order.create`, `order.update`, `order.status`, `order.cancel`, `table.read`, `table.manage`)
+- [x] Order management dashboard (`/orders`) with KPI summary, order types, status workflow, search, and date filters
+- [x] Interactive POS order creation form (`/orders/new`) with visual menu selector, category tabs, cart, dine-in table picker, and live tax/discount calculations
+- [x] Order details page (`/orders/[id]`) with live status timeline, customer details, table status, and receipt printing
+- [x] Dedicated Kitchen Display System (`/kitchen`) with 3-column kanban board (New Orders, Preparing, Ready)
+- [x] Operational kitchen lifecycle: `CONFIRMED` → `PREPARING` → `READY` → `COMPLETED`
+- [x] Kitchen RBAC permissions (`kitchen.read`, `kitchen.start`, `kitchen.ready`, `kitchen.complete`)
+- [x] Operational timestamps: `confirmedAt`, `preparingAt`, `readyAt`, `completedAt`, and operator user attribution
+- [x] Append-only `OrderAuditLog` capturing status changes, users, timestamps, and notes
+- [x] Automatic atomic inventory consumption triggered upon "Start Preparing" (`OrderItem.quantity × RecipeIngredient.quantity`)
+- [x] Recipe unit converter (`KG` ↔ `GRAM`, `LITRE` ↔ `ML`, `DOZEN` ↔ `PIECE`) with ledger posting to base units
+- [x] Strict insufficient-stock pre-check with atomic abort and shortage detail modal (`Required vs Available`)
+- [x] Missing recipe detection ("No BOM") without guessing or phantom inventory deductions
+- [x] Idempotency & double-consumption prevention (`order.inventoryConsumed` and reference ID check)
+- [x] Auto-refresh countdown loop (15s), manual sync, fullscreen toggle, branch filter, and order type filter
+- [x] KDS feature documentation (`docs/features/kitchen-management.md`)
 
 ## Current Task
 
-Suppliers & Purchase Management fully implemented, verified, tested, and documented.
+Kitchen Display System (KDS) + Order Preparation Workflow fully implemented, verified, tested, and documented.
 
 ## Next
 
-Phase 7: Order Management & Kitchen Display System (POS, Takeaway, Delivery, Live Kitchen Queue, and Automated Recipe BOM Stock Consumption)
+Phase 11: Payments & Billing (Payment Processing, Split Bills, Invoicing, Tender Types, and Cash Drawer Reconciliation)
 
 ## Known Issues
 

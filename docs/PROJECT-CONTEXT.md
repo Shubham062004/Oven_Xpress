@@ -55,6 +55,11 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
   - `Ingredient` → `RecipeIngredient` (`1:N`): Ingredients are consumed across recipes.
   - `Ingredient` → `InventoryItem` (`1:N`): Ingredients are tracked per branch.
   - `Ingredient` → `PurchaseOrderItem` (`1:N`): Ingredients are ordered from vendors.
+  - `Branch` → `RestaurantTable` (`1:N`): Branch dining floor tables.
+  - `Branch` → `Order` (`1:N`): Orders belong strictly to a single branch.
+  - `Order` → `OrderItem` (`1:N`): Items ordered in an order.
+  - `Order` → `OrderAuditLog` (`1:N`): Audit trail of order status transitions.
+  - `Order` → `StockTransaction` (`1:N`): Order preparation triggers stock consumption.
 
 ## Target Users
 
@@ -118,7 +123,7 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 - `User`: Accounts with `email` (@unique), `name`, `passwordHash` (bcrypt salt 12), `roleId`, and `isActive` status.
 - `Session`: Database-backed sessions with cryptographically random `sessionToken` and 7-day expiration.
 - `Role`: Supported roles (`OWNER`, `ADMIN`, `MANAGER`, `STAFF`).
-- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `branch.*`, `employee.*`, `shift.*`, `attendance.*`, `menu.*`, `inventory.*`, `settings.*`).
+- `Permission`: Granular system actions (`dashboard.read`, `users.*`, `branch.*`, `employee.*`, `shift.*`, `attendance.*`, `menu.*`, `inventory.*`, `supplier.*`, `purchase.*`, `order.*`, `kitchen.*`, `table.*`, `settings.*`).
 - `RolePermission`: Many-to-many link between roles and permissions.
 
 ### 2. Session Approach
@@ -151,6 +156,6 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 
 ## Current Phase
 
-**Phase 5: Attendance & Shift Management**
+**Phase 10: Kitchen Display System (KDS) & Order Preparation Workflow**
 
-Implemented Shift model and Attendance model (Prisma + PostgreSQL), daily attendance tracking (PRESENT, ABSENT, HALF_DAY, LEAVE), check-in and check-out with automated lateness and early departure calculation, manual attendance marking and corrections, daily multi-branch summary metrics, shift management with duration and overnight schedule support, branch-scoped authorization guards, and comprehensive documentation.
+Implemented dedicated high-contrast operational KDS (`/kitchen`) with 3-column kanban board (New Orders, In Preparation, Ready for Service), chronological order queueing, operational timestamps (`confirmedAt`, `preparingAt`, `readyAt`, `completedAt`), staff attribution (`preparedBy`, `readyBy`, `completedBy`), append-only `OrderAuditLog`, and automatic atomic inventory consumption upon preparation start (`OrderItem.quantity × RecipeIngredient.quantity`). Includes unit conversion (`KG` ↔ `GRAM`, `LITRE` ↔ `ML`, `DOZEN` ↔ `PIECE`), strict insufficient-stock pre-check with atomic rollback and shortage modal, missing recipe detection ("No BOM"), idempotency safeguards (`inventoryConsumed`), auto-refresh loop (15s), branch isolation, and comprehensive documentation.

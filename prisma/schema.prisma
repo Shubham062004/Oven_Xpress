@@ -572,7 +572,17 @@ model Order {
   cancelledAt        DateTime?
   cancelledBy        String?
   createdBy          String
+  confirmedAt        DateTime?
+  preparingAt        DateTime?
+  readyAt            DateTime?
+  completedAt        DateTime?
+  preparedBy         String?
+  readyBy            String?
+  completedBy        String?
+  inventoryConsumed  Boolean          @default(false)
+  inventoryConsumedAt DateTime?
   items              OrderItem[]
+  auditLogs          OrderAuditLog[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -583,6 +593,9 @@ model Order {
   @@index([createdAt])
   @@index([customerId])
   @@index([tableId])
+  @@index([branchId, status])
+  @@index([status, createdAt])
+  @@index([branchId, createdAt])
 }
 
 model OrderItem {
@@ -602,5 +615,21 @@ model OrderItem {
 
   @@index([orderId])
   @@index([menuItemId])
+}
+
+model OrderAuditLog {
+  id          String      @id @default(cuid())
+  orderId     String
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus  OrderStatus
+  toStatus    OrderStatus
+  performedBy String
+  userId      String?
+  notes       String?
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+
+  @@index([orderId])
+  @@index([createdAt])
 }
 

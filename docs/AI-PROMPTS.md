@@ -333,3 +333,32 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Branch Scoping: OWNER/ADMIN have global view; MANAGER is strictly restricted to assigned branch (employee.branchId)
 - Server-side validation: Never trust client-sent subtotals, unit prices, or branch IDs
 ```
+
+### Kitchen Display System (KDS) & Order Preparation Workflow Pattern
+
+```
+# Module: Kitchen Display System (KDS) & Order Preparation Workflow
+
+## Entity Architecture
+- Order: id, orderNumber (ORD-YYYY-NNNNNN), branchId, orderType (DINE_IN/TAKEAWAY/DELIVERY), status (DRAFT/CONFIRMED/PREPARING/READY/COMPLETED/CANCELLED), confirmedAt, preparingAt, readyAt, completedAt, preparedBy, readyBy, completedBy, inventoryConsumed, inventoryConsumedAt
+- OrderItem: id, orderId, menuItemId, quantity, unitPrice, lineTotal, notes?
+- OrderAuditLog: id, orderId, fromStatus, toStatus, performedBy, userId?, notes?, metadata?, createdAt
+- StockTransaction Link: Immutable ledger record with type=CONSUMPTION, referenceId=orderId, created atomically upon preparation start
+
+## Business Rules & Integrity
+- Dedicated KDS Interface: High-contrast, 3-column kanban board at /kitchen (New Orders, Preparing, Ready)
+- Lifecycle: CONFIRMED → PREPARING → READY → COMPLETED
+- Operational Urgency Sorting: Oldest active order first (createdAt: asc, orderNumber: asc)
+- Late Inventory Deduction: Stock is deducted exclusively when moving an order to PREPARING ("Start Preparing")
+- Atomic BOM Recipe Resolution: OrderItem.quantity × RecipeIngredient.quantity with unit conversion
+- Atomic Stock Pre-check: If any required ingredient has insufficient stock at the branch, abort completely without partial deductions and display structured shortage modal
+- Idempotency & Duplicate Prevention: order.inventoryConsumed flag + referenceId prevent double deductions on retries/refreshes
+- Missing Recipe Handling: Displays "No BOM" warning tag and allows preparation without guessing phantom quantities
+- Auditability: Append-only OrderAuditLog records every status transition, timestamp, and operator
+
+## RBAC & Security
+- Permissions: kitchen.read, kitchen.start, kitchen.ready, kitchen.complete
+- Branch Scoping: STAFF and MANAGER restricted strictly to assigned branch (employee.branchId); OWNER/ADMIN multi-branch
+- Defense-in-depth: Server actions validate branch access and status transitions server-side
+```
+
