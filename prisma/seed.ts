@@ -11,6 +11,8 @@ import {
   InventoryStatus,
   StockTransactionType,
   WastageReason,
+  SupplierStatus,
+  PurchaseOrderStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -87,6 +89,17 @@ async function main() {
     { code: 'inventory.wastage', module: 'inventory', description: 'Log operational wastage and damaged stock' },
     { code: 'inventory.reconcile', module: 'inventory', description: 'Reconcile physical stock counts with system counts' },
     { code: 'inventory.deactivate', module: 'inventory', description: 'Activate or deactivate tracked inventory items' },
+    // Supplier Management
+    { code: 'supplier.read', module: 'supplier', description: 'View supplier directory and details' },
+    { code: 'supplier.create', module: 'supplier', description: 'Create new suppliers' },
+    { code: 'supplier.update', module: 'supplier', description: 'Update supplier details' },
+    { code: 'supplier.deactivate', module: 'supplier', description: 'Activate or deactivate suppliers' },
+    // Purchase Order Management
+    { code: 'purchase.read', module: 'purchase', description: 'View purchase orders and details' },
+    { code: 'purchase.create', module: 'purchase', description: 'Create purchase orders' },
+    { code: 'purchase.update', module: 'purchase', description: 'Update purchase orders' },
+    { code: 'purchase.receive', module: 'purchase', description: 'Receive purchase order stock into inventory' },
+    { code: 'purchase.cancel', module: 'purchase', description: 'Cancel purchase orders' },
   ];
 
   console.log('  → Seeding permissions...');
@@ -153,6 +166,15 @@ async function main() {
         'inventory.wastage',
         'inventory.reconcile',
         'inventory.deactivate',
+        'supplier.read',
+        'supplier.create',
+        'supplier.update',
+        'supplier.deactivate',
+        'purchase.read',
+        'purchase.create',
+        'purchase.update',
+        'purchase.receive',
+        'purchase.cancel',
       ],
     },
     {
@@ -203,6 +225,15 @@ async function main() {
         'inventory.wastage',
         'inventory.reconcile',
         'inventory.deactivate',
+        'supplier.read',
+        'supplier.create',
+        'supplier.update',
+        'supplier.deactivate',
+        'purchase.read',
+        'purchase.create',
+        'purchase.update',
+        'purchase.receive',
+        'purchase.cancel',
       ],
     },
     {
@@ -235,6 +266,14 @@ async function main() {
         'inventory.transfer',
         'inventory.wastage',
         'inventory.reconcile',
+        'supplier.read',
+        'supplier.create',
+        'supplier.update',
+        'purchase.read',
+        'purchase.create',
+        'purchase.update',
+        'purchase.receive',
+        'purchase.cancel',
       ],
     },
     {
@@ -246,6 +285,8 @@ async function main() {
         'menu.category.read',
         'menu.item.read',
         'inventory.read',
+        'supplier.read',
+        'purchase.read',
       ],
     },
   ];
@@ -1176,6 +1217,313 @@ async function main() {
   }
 
   console.log(`    ✓ Inventory items and initial transactions seeded across ${inventoryBranches.length} branches`);
+
+  // 10. Seed Suppliers & Purchase Orders
+  console.log('  → Seeding suppliers and purchase orders...');
+  const suppliersData = [
+    {
+      name: 'Metro Dairy & Cheese',
+      contactPerson: 'Sunil Mehta',
+      phone: '+91 98200 44556',
+      email: 'orders@metrodairy.com',
+      address: 'Plot 45, APMC Market, Turbhe',
+      city: 'Navi Mumbai',
+      state: 'Maharashtra',
+      postalCode: '400705',
+      notes: 'Primary dairy vendor for fresh mozzarella, cheddar, and whole milk. Deliveries Mon-Sat mornings.',
+      status: SupplierStatus.ACTIVE,
+    },
+    {
+      name: 'Golden Harvest Flour Mills',
+      contactPerson: 'Anand Kulkarni',
+      phone: '+91 98190 33221',
+      email: 'sales@goldenharvest.in',
+      address: 'Industrial Area Phase 2, Rabale',
+      city: 'Navi Mumbai',
+      state: 'Maharashtra',
+      postalCode: '400701',
+      notes: 'Supplies high-protein pizza dough and fresh brioche burger buns.',
+      status: SupplierStatus.ACTIVE,
+    },
+    {
+      name: 'San Marzano Agro Supplies',
+      contactPerson: 'Roberto Rossi',
+      phone: '+91 98330 99881',
+      email: 'roberto@sanmarzanoagro.com',
+      address: 'Warehousing Complex, Bhiwandi',
+      city: 'Thane',
+      state: 'Maharashtra',
+      postalCode: '421302',
+      notes: 'Seasoned San Marzano pizza sauces, herbs, and pure vegetable frying oils.',
+      status: SupplierStatus.ACTIVE,
+    },
+    {
+      name: 'Prime Choice Meats & Cold Cuts',
+      contactPerson: 'Zakir Hussain',
+      phone: '+91 98211 77665',
+      email: 'contact@primechoicemeats.com',
+      address: 'Deonar Abattoir Road, Govandi',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      postalCode: '400043',
+      notes: 'Cold storage distributor for beef patties and beef pepperoni.',
+      status: SupplierStatus.ACTIVE,
+    },
+    {
+      name: 'Green Valley Organic Farms',
+      contactPerson: 'Kavita Deshmukh',
+      phone: '+91 98900 11223',
+      email: 'kavita@greenvalleyfarms.in',
+      address: 'Wadgaon Farm Outpost',
+      city: 'Pune',
+      state: 'Maharashtra',
+      postalCode: '412105',
+      notes: 'Fresh lettuce, onions, and seasonal produce. Currently under seasonal restructuring.',
+      status: SupplierStatus.INACTIVE,
+    },
+  ];
+
+  const seededSuppliers = new Map<string, string>();
+  for (const s of suppliersData) {
+    const existing = await prisma.supplier.findFirst({ where: { name: s.name } });
+    const record = existing
+      ? await prisma.supplier.update({ where: { id: existing.id }, data: s })
+      : await prisma.supplier.create({ data: s });
+    seededSuppliers.set(s.name, record.id);
+    console.log(`    ✓ Supplier: ${record.name} (${record.status})`);
+  }
+
+  // Seed sample Purchase Orders
+  const metroSupplierId = seededSuppliers.get('Metro Dairy & Cheese')!;
+  const goldenHarvestId = seededSuppliers.get('Golden Harvest Flour Mills')!;
+  const sanMarzanoId = seededSuppliers.get('San Marzano Agro Supplies')!;
+  const primeMeatsId = seededSuppliers.get('Prime Choice Meats & Cold Cuts')!;
+
+  const bunIng = allIngredientRecords.find((i) => i.name === 'Burger Bun');
+  const pepperoniIng = allIngredientRecords.find((i) => i.name === 'Pepperoni');
+  const pattyIng = allIngredientRecords.find((i) => i.name === 'Beef Patty');
+
+  // PO 1: Fully RECEIVED
+  const existingPO1 = await prisma.purchaseOrder.findUnique({
+    where: { purchaseNumber: 'PO-2026-000001' },
+  });
+
+  if (!existingPO1 && mozzIng) {
+    const po1 = await prisma.purchaseOrder.create({
+      data: {
+        purchaseNumber: 'PO-2026-000001',
+        supplierId: metroSupplierId,
+        branchId: dtBranch.id,
+        status: PurchaseOrderStatus.RECEIVED,
+        orderDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        expectedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        notes: 'Urgent weekend restocking for mozzarella cheese',
+        createdBy: 'Elena Rostova',
+        items: {
+          create: [
+            {
+              ingredientId: mozzIng.id,
+              orderedQuantity: new Prisma.Decimal('25.000'),
+              unit: mozzIng.unit,
+              unitPrice: new Prisma.Decimal('350.00'),
+              receivedQuantity: new Prisma.Decimal('25.000'),
+            },
+          ],
+        },
+      },
+      include: { items: true },
+    });
+
+    // Create receiving log
+    await prisma.purchaseReceiving.create({
+      data: {
+        purchaseOrderId: po1.id,
+        receivingNumber: 'RCV-PO-2026-000001-01',
+        receivedBy: 'Elena Rostova',
+        receivedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        notes: 'Full delivery received in pristine condition at 4°C cold chain',
+        items: {
+          create: [
+            {
+              purchaseOrderItemId: po1.items[0].id,
+              ingredientId: mozzIng.id,
+              quantity: new Prisma.Decimal('25.000'),
+              unit: mozzIng.unit,
+            },
+          ],
+        },
+      },
+    });
+    console.log(`    ✓ Purchase Order: PO-2026-000001 (RECEIVED)`);
+  }
+
+  // PO 2: PARTIALLY_RECEIVED
+  const existingPO2 = await prisma.purchaseOrder.findUnique({
+    where: { purchaseNumber: 'PO-2026-000002' },
+  });
+
+  if (!existingPO2 && doughIng && bunIng) {
+    const po2 = await prisma.purchaseOrder.create({
+      data: {
+        purchaseNumber: 'PO-2026-000002',
+        supplierId: goldenHarvestId,
+        branchId: dtBranch.id,
+        status: PurchaseOrderStatus.PARTIALLY_RECEIVED,
+        orderDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        expectedDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+        notes: 'Mid-week bakery replenishment. Second delivery batch expected tomorrow.',
+        createdBy: 'Elena Rostova',
+        items: {
+          create: [
+            {
+              ingredientId: doughIng.id,
+              orderedQuantity: new Prisma.Decimal('50.000'),
+              unit: doughIng.unit,
+              unitPrice: new Prisma.Decimal('60.00'),
+              receivedQuantity: new Prisma.Decimal('30.000'),
+            },
+            {
+              ingredientId: bunIng.id,
+              orderedQuantity: new Prisma.Decimal('100.000'),
+              unit: bunIng.unit,
+              unitPrice: new Prisma.Decimal('12.00'),
+              receivedQuantity: new Prisma.Decimal('100.000'),
+            },
+          ],
+        },
+      },
+      include: { items: true },
+    });
+
+    const doughItem = po2.items.find((i) => i.ingredientId === doughIng.id)!;
+    const bunItem = po2.items.find((i) => i.ingredientId === bunIng.id)!;
+
+    await prisma.purchaseReceiving.create({
+      data: {
+        purchaseOrderId: po2.id,
+        receivingNumber: 'RCV-PO-2026-000002-01',
+        receivedBy: 'Elena Rostova',
+        receivedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
+        notes: 'First delivery: 30 KG dough and all 100 burger buns received. Remaining 20 KG dough arriving tomorrow morning.',
+        items: {
+          create: [
+            {
+              purchaseOrderItemId: doughItem.id,
+              ingredientId: doughIng.id,
+              quantity: new Prisma.Decimal('30.000'),
+              unit: doughIng.unit,
+            },
+            {
+              purchaseOrderItemId: bunItem.id,
+              ingredientId: bunIng.id,
+              quantity: new Prisma.Decimal('100.000'),
+              unit: bunIng.unit,
+            },
+          ],
+        },
+      },
+    });
+
+    // Create corresponding StockTransactions for this receipt
+    await prisma.stockTransaction.create({
+      data: {
+        branchId: dtBranch.id,
+        ingredientId: doughIng.id,
+        type: StockTransactionType.RECEIPT,
+        quantity: new Prisma.Decimal('30.000'),
+        unit: doughIng.unit,
+        referenceId: 'PO-2026-000002',
+        note: 'Partial PO Receipt PO-2026-000002 (Batch 01)',
+        performedBy: 'Elena Rostova',
+      },
+    });
+
+    await prisma.stockTransaction.create({
+      data: {
+        branchId: dtBranch.id,
+        ingredientId: bunIng.id,
+        type: StockTransactionType.RECEIPT,
+        quantity: new Prisma.Decimal('100.000'),
+        unit: bunIng.unit,
+        referenceId: 'PO-2026-000002',
+        note: 'Full PO Receipt PO-2026-000002 for Burger Buns',
+        performedBy: 'Elena Rostova',
+      },
+    });
+
+    console.log(`    ✓ Purchase Order: PO-2026-000002 (PARTIALLY_RECEIVED)`);
+  }
+
+  // PO 3: ORDERED (Awaiting Delivery)
+  const existingPO3 = await prisma.purchaseOrder.findUnique({
+    where: { purchaseNumber: 'PO-2026-000003' },
+  });
+
+  if (!existingPO3 && sauceIng) {
+    await prisma.purchaseOrder.create({
+      data: {
+        purchaseNumber: 'PO-2026-000003',
+        supplierId: sanMarzanoId,
+        branchId: bwBranch.id,
+        status: PurchaseOrderStatus.ORDERED,
+        orderDate: new Date(),
+        expectedDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        notes: 'San Marzano sauce drums for Bandra West branch',
+        createdBy: 'Marcus Vance',
+        items: {
+          create: [
+            {
+              ingredientId: sauceIng.id,
+              orderedQuantity: new Prisma.Decimal('40.000'),
+              unit: sauceIng.unit,
+              unitPrice: new Prisma.Decimal('120.00'),
+              receivedQuantity: new Prisma.Decimal('0.000'),
+            },
+          ],
+        },
+      },
+    });
+    console.log(`    ✓ Purchase Order: PO-2026-000003 (ORDERED)`);
+  }
+
+  // PO 4: DRAFT
+  const existingPO4 = await prisma.purchaseOrder.findUnique({
+    where: { purchaseNumber: 'PO-2026-000004' },
+  });
+
+  if (!existingPO4 && pepperoniIng && pattyIng) {
+    await prisma.purchaseOrder.create({
+      data: {
+        purchaseNumber: 'PO-2026-000004',
+        supplierId: primeMeatsId,
+        branchId: andBranch.id,
+        status: PurchaseOrderStatus.DRAFT,
+        orderDate: new Date(),
+        expectedDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+        notes: 'Draft estimate for Andheri Hub weekend burger festival',
+        createdBy: 'Marcus Vance',
+        items: {
+          create: [
+            {
+              ingredientId: pepperoniIng.id,
+              orderedQuantity: new Prisma.Decimal('20.000'),
+              unit: pepperoniIng.unit,
+              unitPrice: new Prisma.Decimal('450.00'),
+              receivedQuantity: new Prisma.Decimal('0.000'),
+            },
+            {
+              ingredientId: pattyIng.id,
+              orderedQuantity: new Prisma.Decimal('60.000'),
+              unit: pattyIng.unit,
+              unitPrice: new Prisma.Decimal('110.00'),
+              receivedQuantity: new Prisma.Decimal('0.000'),
+            },
+          ],
+        },
+      },
+    });
+    console.log(`    ✓ Purchase Order: PO-2026-000004 (DRAFT)`);
+  }
 
   console.log('✅ Seed completed successfully!');
   console.log('\n⚠️  SECURITY NOTICE: The seeded credentials are for local development/testing only.');

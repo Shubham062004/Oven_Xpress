@@ -1,6 +1,6 @@
 ## Current Feature
 
-Menu + Recipe/BOM Management
+Suppliers & Purchase Management
 
 ## Status
 
@@ -88,14 +88,33 @@ Completed
 - [x] Responsive dialogs for opening stock, receipt, wastage, adjustment, transfer, reconciliation, and threshold configuration
 - [x] Full database seed across 3 branches with 17 ingredients and initial stock ledger transactions
 - [x] Inventory feature documentation (`docs/features/inventory-management.md`)
+- [x] Supplier, PurchaseOrder, PurchaseOrderItem, PurchaseReceiving, and PurchaseReceivingItem models (Prisma schema with SupplierStatus, PurchaseOrderStatus enums, composite unique constraints, cascade deletion rules on items, and indexes)
+- [x] Supplier and Purchase RBAC permissions (9 permissions: `supplier.read`, `supplier.create`, `supplier.update`, `supplier.deactivate`, `purchase.read`, `purchase.create`, `purchase.update`, `purchase.receive`, `purchase.cancel`)
+- [x] Independent master vendor architecture: Suppliers are not tied to any branch, permitting single vendor deliveries to multiple locations
+- [x] Strict server-side branch authorization for purchase orders (Managers restricted to `employee.branchId`, Owners and Admins operate across all branches)
+- [x] Server-side sequential purchase order number generation (`PO-YYYY-000001`)
+- [x] Server-side financial calculations: `Line Total = orderedQuantity × unitPrice` and `Subtotal = sum(Line Totals)` recalculated server-side
+- [x] Purchase order lifecycle state machine (`DRAFT` → `ORDERED` → `PARTIALLY_RECEIVED` → `RECEIVED` | `CANCELLED`)
+- [x] Cancellation integrity: Blocks cancellation if stock has already been received into inventory
+- [x] Partial delivery support with strict rejection of over-receiving (`receivedQuantity + receivedNow <= orderedQuantity`)
+- [x] Double-entry stock ledger integration: Receiving creates immutable `StockTransaction` of type `RECEIPT` with branch and purchase reference inside an atomic database transaction
+- [x] Supplier directory dashboard (`/suppliers`) with KPI cards, search, status filter, and responsive table
+- [x] Supplier detail page (`/suppliers/[id]`) with contact info, lifetime spend, order count, and recent purchases table
+- [x] Purchase order list page (`/purchases`) with KPI cards, branch/supplier/status filters, search, and responsive cards
+- [x] Purchase order creation page (`/purchases/new`) with searchable selectors, dynamic ingredient line items, and live subtotal calculation
+- [x] Purchase order detail page (`/purchases/[id]`) with ordered/received/remaining breakdown, fulfillment %, delivery schedule, and receiving history log
+- [x] Responsive receiving dialog with ingredient breakdown, autofill remaining, and confirmation alert before updating stock ledger
+- [x] Supplier creation, edit, and status toggle dialogs with Zod validation
+- [x] Database seed with 5 suppliers and 4 purchase orders across multiple lifecycle states and receiving logs
+- [x] Supplier & Purchase Management feature documentation (`docs/features/supplier-purchase-management.md`)
 
 ## Current Task
 
-Inventory & Stock Management fully implemented, verified, tested, and documented.
+Suppliers & Purchase Management fully implemented, verified, tested, and documented.
 
 ## Next
 
-Phase 7: Order Management & Kitchen Display (with automated BOM recipe stock consumption) or Supplier & Purchase Orders
+Phase 7: Order Management & Kitchen Display System (POS, Takeaway, Delivery, Live Kitchen Queue, and Automated Recipe BOM Stock Consumption)
 
 ## Known Issues
 

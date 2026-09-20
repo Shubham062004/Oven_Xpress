@@ -303,3 +303,33 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Flow: Authentication → Permission → Branch Scoping → Input Validation → Transaction → Database
 ```
 
+### Supplier & Purchase Management Pattern
+
+```
+# Module: Supplier & Purchase Management
+
+## Entity Architecture
+- Supplier: id, name, contactPerson?, phone?, email?, address?, city?, state?, postalCode?, notes?, status (ACTIVE/INACTIVE)
+- PurchaseOrder: id, purchaseNumber (PO-YYYY-NNNNNN), branchId, supplierId, orderDate, expectedDate?, status (DRAFT/ORDERED/PARTIALLY_RECEIVED/RECEIVED/CANCELLED), subtotal, taxAmount, totalAmount, notes?, cancellationReason?, createdBy
+- PurchaseOrderItem: id, purchaseOrderId, ingredientId, orderedQuantity, receivedQuantity, unitPrice, lineTotal, unit
+- PurchaseReceiving: id, purchaseOrderId, branchId, receivingNumber (REC-YYYY-NNNNNN), receivedDate, note?, receivedBy
+- PurchaseReceivingItem: id, purchaseReceivingId, purchaseOrderItemId, ingredientId, receivedQuantity, unit
+- StockTransaction Link: Immutable ledger record with type=RECEIPT, referenceId=purchaseNumber, created atomically upon receiving
+
+## Business Rules & Integrity
+- Unique PO Number: Server-generated sequential sequence per year (PO-YYYY-000001)
+- State Machine:
+  * DRAFT → ORDERED / CANCELLED
+  * ORDERED → PARTIALLY_RECEIVED / RECEIVED / CANCELLED
+  * PARTIALLY_RECEIVED → RECEIVED
+  * RECEIVED / CANCELLED: Terminal states
+- Immutable Financial Totals: Recalculated server-side from items (lineTotal = orderedQuantity * unitPrice)
+- Strict Receiving Validation: Cumulative receivedQuantity cannot exceed orderedQuantity
+- Automatic Inventory Sync: Each receiving atomically creates StockTransaction (type: RECEIPT) in the branch inventory ledger
+- Soft Delete & Referential Integrity: Deleting suppliers referenced by purchase orders is blocked; soft-deactivation (status: INACTIVE) is used instead
+
+## RBAC & Security
+- Permissions: supplier.read, supplier.create, supplier.update, supplier.deactivate, purchase.read, purchase.create, purchase.update, purchase.receive, purchase.cancel
+- Branch Scoping: OWNER/ADMIN have global view; MANAGER is strictly restricted to assigned branch (employee.branchId)
+- Server-side validation: Never trust client-sent subtotals, unit prices, or branch IDs
+```

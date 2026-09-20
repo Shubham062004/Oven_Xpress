@@ -9,6 +9,7 @@ import {
   Package,
   Settings,
   Shield,
+  ShoppingBag,
   ShoppingCart,
   Truck,
   UserCheck,
@@ -79,9 +80,16 @@ export const mainNavItems: NavItem[] = [
     requiredPermission: PERMISSIONS.INVENTORY_READ,
   },
   {
+    label: 'Purchases',
+    href: '/purchases',
+    icon: ShoppingBag,
+    requiredPermission: PERMISSIONS.PURCHASE_READ,
+  },
+  {
     label: 'Suppliers',
     href: '/suppliers',
     icon: Truck,
+    requiredPermission: PERMISSIONS.SUPPLIER_READ,
   },
   {
     label: 'Expenses',

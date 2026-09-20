@@ -28,12 +28,24 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 - **Ingredient**: Raw material inventory item used in recipes (e.g. Flour, Cheese, Tomato Sauce). Defined with standardized `IngredientUnit` and soft `MenuStatus`.
 - **MenuItem**: Sellable dish or beverage. Belongs to a `MenuCategory`, defines base price (> 0), preparation time in minutes (>= 0), optional photo URL, and soft `MenuStatus`.
 - **BranchMenuItem**: Branch-specific menu availability and price override join table (`@@unique([branchId, menuItemId])`). Controls whether a dish is available at a particular branch, with an optional localized price override.
-- **RecipeIngredient**: Bill of Materials (BOM) linking a `MenuItem` to an `Ingredient` (`@@unique([menuItemId, ingredientId])`). Specifies exact quantity (> 0) and measurement unit validated against the ingredient's unit family (Mass, Volume, Count).
+- **InventoryItem**: Configures tracking thresholds (`minimumStock`, `reorderLevel`) and operational status for an ingredient at a branch (`@@unique([branchId, ingredientId])`).
+- **StockTransaction**: Append-only double-entry style stock ledger recording all stock inflows (`OPENING`, `RECEIPT`, `TRANSFER_IN`, `ADJUSTMENT_IN`) and outflows (`CONSUMPTION`, `TRANSFER_OUT`, `DAMAGE`, `WASTAGE`, `ADJUSTMENT_OUT`).
+- **Supplier**: Independent master entity representing vendor partners. Unowned by branches, allowing single vendor supply to multiple branches. Supports active/inactive soft status and deletion protection when referenced by purchase orders.
+- **PurchaseOrder**: Formal branch procurement contract with a supplier. Lifecycle: `DRAFT`, `ORDERED`, `PARTIALLY_RECEIVED`, `RECEIVED`, `CANCELLED`. Contains sequential `purchaseNumber` (`PO-YYYY-000001`).
+- **PurchaseOrderItem**: Line items specifying ingredient, ordered quantity, unit, agreed unit price, and cumulative received quantity (`@@unique([purchaseOrderId, ingredientId])`).
+- **PurchaseReceiving**: Immutable delivery batch audit log linking physical stock receipt events directly to `StockTransaction(RECEIPT)` entries.
 - **Entity Relationships**:
   - `Branch` → `Employee` (`1:N`): Employees belong to a branch.
   - `Branch` → `Shift` (`1:N`): Shifts belong to a branch.
   - `Branch` → `Attendance` (`1:N`): Attendance is scoped to a branch.
   - `Branch` → `BranchMenuItem` (`1:N`): Branch availability & price overrides.
+  - `Branch` → `InventoryItem` (`1:N`): Branch stock thresholds per ingredient.
+  - `Branch` → `StockTransaction` (`1:N`): Immutable stock movements.
+  - `Branch` → `PurchaseOrder` (`1:N`): Purchase orders are scoped to a branch.
+  - `Supplier` → `PurchaseOrder` (`1:N`): One supplier can supply many purchase orders across branches.
+  - `PurchaseOrder` → `PurchaseOrderItem` (`1:N`): Ordered line items.
+  - `PurchaseOrder` → `PurchaseReceiving` (`1:N`): Batch goods delivery logs.
+  - `PurchaseReceiving` → `StockTransaction` (`1:N`): Stock receipts post directly to the stock ledger.
   - `Employee` → `Shift` (`N:1 optional`): Employee references `currentShiftId` for their ongoing active schedule.
   - `Employee` → `Attendance` (`1:N`): One attendance record per employee per date.
   - `Shift` → `Attendance` (`1:N optional`): Attendance snapshots `shiftId` at time of work so changing current shift never rewrites past attendance history.
@@ -41,6 +53,8 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
   - `MenuItem` → `BranchMenuItem` (`1:N`): Menu items can have per-branch availability/pricing.
   - `MenuItem` → `RecipeIngredient` (`1:N`): Menu items define their BOM recipe ingredients.
   - `Ingredient` → `RecipeIngredient` (`1:N`): Ingredients are consumed across recipes.
+  - `Ingredient` → `InventoryItem` (`1:N`): Ingredients are tracked per branch.
+  - `Ingredient` → `PurchaseOrderItem` (`1:N`): Ingredients are ordered from vendors.
 
 ## Target Users
 

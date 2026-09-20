@@ -95,6 +95,7 @@ model Branch {
   menuItems         BranchMenuItem[]
   inventoryItems    InventoryItem[]
   stockTransactions StockTransaction[]
+  purchaseOrders    PurchaseOrder[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -238,11 +239,13 @@ model Ingredient {
   description String?
   unit        IngredientUnit
   status      MenuStatus         @default(ACTIVE)
-  recipes           RecipeIngredient[]
-  inventoryItems    InventoryItem[]
-  stockTransactions StockTransaction[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  recipes            RecipeIngredient[]
+  inventoryItems     InventoryItem[]
+  stockTransactions  StockTransaction[]
+  purchaseOrderItems PurchaseOrderItem[]
+  receivingItems     PurchaseReceivingItem[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@index([status])
   @@index([name])
@@ -371,5 +374,115 @@ model StockTransaction {
   @@index([ingredientId, createdAt])
   @@index([type])
   @@index([referenceId])
+}
+
+// ─── Suppliers & Purchase Management ────────────────────────────────────────
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Supplier {
+  id            String          @id @default(cuid())
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  city          String?
+  state         String?
+  postalCode    String?
+  notes         String?
+  status        SupplierStatus  @default(ACTIVE)
+  purchaseOrders PurchaseOrder[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([status])
+  @@index([name])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  purchaseNumber String              @unique
+  supplierId     String
+  supplier       Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  branchId       String
+  branch         Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  status         PurchaseOrderStatus @default(DRAFT)
+  orderDate      DateTime            @default(now())
+  expectedDate   DateTime?
+  notes          String?
+  createdBy      String
+  items          PurchaseOrderItem[]
+  receivingLogs  PurchaseReceiving[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([supplierId])
+  @@index([branchId])
+  @@index([status])
+  @@index([orderDate])
+  @@index([purchaseNumber])
+}
+
+model PurchaseOrderItem {
+  id              String                  @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder           @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  ingredientId    String
+  ingredient      Ingredient              @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  orderedQuantity Decimal                 @db.Decimal(10, 3)
+  unit            IngredientUnit
+  unitPrice       Decimal                 @db.Decimal(10, 2)
+  receivedQuantity Decimal                @default(0) @db.Decimal(10, 3)
+  receivingItems  PurchaseReceivingItem[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@unique([purchaseOrderId, ingredientId])
+  @@index([purchaseOrderId])
+  @@index([ingredientId])
+}
+
+model PurchaseReceiving {
+  id              String                  @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder           @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  receivingNumber String                  @unique
+  receivedBy      String
+  receivedAt      DateTime                @default(now())
+  notes           String?
+  items           PurchaseReceivingItem[]
+  createdAt       DateTime                @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([receivedAt])
+}
+
+model PurchaseReceivingItem {
+  id                  String            @id @default(cuid())
+  receivingId         String
+  receiving           PurchaseReceiving @relation(fields: [receivingId], references: [id], onDelete: Cascade)
+  purchaseOrderItemId String
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Restrict)
+  ingredientId        String
+  ingredient          Ingredient        @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  quantity            Decimal           @db.Decimal(10, 3)
+  unit                IngredientUnit
+  createdAt           DateTime          @default(now())
+
+  @@index([receivingId])
+  @@index([purchaseOrderItemId])
+  @@index([ingredientId])
 }
 
