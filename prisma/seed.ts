@@ -20,6 +20,10 @@ import {
   PaymentStatus,
   RefundStatus,
   ReconciliationStatus,
+  ExpenseStatus,
+  ExpenseCategoryStatus,
+  ExpenseFrequency,
+  ExpenseTemplateStatus,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -134,6 +138,23 @@ async function main() {
     { code: 'payment.refund', module: 'payment', description: 'Process payment reversals and refunds' },
     { code: 'payment.reconcile', module: 'payment', description: 'Perform daily tender reconciliation and record cash variances' },
     { code: 'payment.cancel', module: 'payment', description: 'Cancel pending payment attempts' },
+    // Expense Management
+    { code: 'expense.read', module: 'expense', description: 'View expenses, ledger, and summary metrics' },
+    { code: 'expense.create', module: 'expense', description: 'Record new branch operational expenses' },
+    { code: 'expense.update', module: 'expense', description: 'Update draft or pending branch expenses' },
+    { code: 'expense.approve', module: 'expense', description: 'Approve pending branch expenses' },
+    { code: 'expense.reject', module: 'expense', description: 'Reject pending branch expenses with reason' },
+    { code: 'expense.cancel', module: 'expense', description: 'Cancel draft or pending branch expenses' },
+    // Expense Category Management
+    { code: 'expense.category.read', module: 'expense', description: 'View expense category configuration' },
+    { code: 'expense.category.create', module: 'expense', description: 'Create new expense categories' },
+    { code: 'expense.category.update', module: 'expense', description: 'Update expense categories' },
+    { code: 'expense.category.deactivate', module: 'expense', description: 'Activate or deactivate expense categories' },
+    // Expense Template Management
+    { code: 'expense.template.read', module: 'expense', description: 'View recurring expense templates' },
+    { code: 'expense.template.create', module: 'expense', description: 'Create recurring expense templates' },
+    { code: 'expense.template.update', module: 'expense', description: 'Update recurring expense templates' },
+    { code: 'expense.template.deactivate', module: 'expense', description: 'Activate or deactivate recurring expense templates' },
   ];
 
   console.log('  → Seeding permissions...');
@@ -231,6 +252,20 @@ async function main() {
         'payment.refund',
         'payment.reconcile',
         'payment.cancel',
+        'expense.read',
+        'expense.create',
+        'expense.update',
+        'expense.approve',
+        'expense.reject',
+        'expense.cancel',
+        'expense.category.read',
+        'expense.category.create',
+        'expense.category.update',
+        'expense.category.deactivate',
+        'expense.template.read',
+        'expense.template.create',
+        'expense.template.update',
+        'expense.template.deactivate',
       ],
     },
     {
@@ -312,6 +347,20 @@ async function main() {
         'payment.refund',
         'payment.reconcile',
         'payment.cancel',
+        'expense.read',
+        'expense.create',
+        'expense.update',
+        'expense.approve',
+        'expense.reject',
+        'expense.cancel',
+        'expense.category.read',
+        'expense.category.create',
+        'expense.category.update',
+        'expense.category.deactivate',
+        'expense.template.read',
+        'expense.template.create',
+        'expense.template.update',
+        'expense.template.deactivate',
       ],
     },
     {
@@ -373,6 +422,17 @@ async function main() {
         'payment.update',
         'payment.reconcile',
         'payment.cancel',
+        'expense.read',
+        'expense.create',
+        'expense.update',
+        'expense.approve',
+        'expense.reject',
+        'expense.cancel',
+        'expense.category.read',
+        'expense.template.read',
+        'expense.template.create',
+        'expense.template.update',
+        'expense.template.deactivate',
       ],
     },
     {
@@ -398,6 +458,10 @@ async function main() {
         'kitchen.ready',
         'payment.read',
         'payment.create',
+        'expense.read',
+        'expense.create',
+        'expense.category.read',
+        'expense.template.read',
       ],
     },
   ];
@@ -2116,6 +2180,246 @@ async function main() {
     });
     console.log('    ✓ Daily Reconciliation: Downtown Central (RECONCILED, Balanced)');
   }
+
+  // 17. Seed Expense Management
+  console.log('  → Seeding Expense Categories, Templates, and Sample Expenses...');
+  const initialCategories = [
+    { name: 'RAW_MATERIAL', description: 'Direct kitchen food ingredients, spices, and supplies' },
+    { name: 'PACKAGING', description: 'Takeaway boxes, paper bags, cups, cutlery, and wrapping' },
+    { name: 'UTILITIES', description: 'Electricity, commercial gas cylinders, water supply, internet' },
+    { name: 'RENT', description: 'Branch commercial lease and property occupancy rental fees' },
+    { name: 'SALARY', description: 'Staff wages, stipends, bonuses, and contractual payments' },
+    { name: 'MAINTENANCE', description: 'Regular servicing of kitchen hoods, freezers, and ovens' },
+    { name: 'REPAIRS', description: 'Emergency repairs for plumbing, electricals, and appliances' },
+    { name: 'MARKETING', description: 'Local flyers, online campaigns, social media promotions' },
+    { name: 'DELIVERY', description: 'Delivery fleet fuel, third-party logistics, vehicle repairs' },
+    { name: 'CLEANING', description: 'Commercial sanitizers, degreasers, trash bags, mop service' },
+    { name: 'EQUIPMENT', description: 'Purchase of small kitchen tools, pans, blenders, utensils' },
+    { name: 'LICENSES', description: 'FSSAI food license, fire NOC, municipal health certificates' },
+    { name: 'TRANSPORT', description: 'Market procurement trips, employee local transit fares' },
+    { name: 'MISCELLANEOUS', description: 'Uncategorized petty expenses and contingency cash outflows' },
+  ];
+
+  const expenseCategoryMap = new Map<string, string>();
+  for (const cat of initialCategories) {
+    const record = await prisma.expenseCategory.upsert({
+      where: { name: cat.name },
+      update: { description: cat.description },
+      create: {
+        name: cat.name,
+        description: cat.description,
+        status: ExpenseCategoryStatus.ACTIVE,
+      },
+    });
+    expenseCategoryMap.set(record.name, record.id);
+  }
+  console.log(`    ✓ ${initialCategories.length} Expense Categories seeded/verified`);
+
+  // Recurring Templates
+  const rentCatId = expenseCategoryMap.get('RENT');
+  const packCatId = expenseCategoryMap.get('PACKAGING');
+  const utilCatId = expenseCategoryMap.get('UTILITIES');
+
+  if (rentCatId && packCatId && utilCatId) {
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    nextMonth.setDate(1);
+
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 5);
+
+    const dtTemplates = [
+      {
+        branchId: dtBranch.id,
+        categoryId: rentCatId,
+        description: 'Downtown Central Store Commercial Rent',
+        amount: new Prisma.Decimal('45000.00'),
+        frequency: ExpenseFrequency.MONTHLY,
+        nextDueDate: nextMonth,
+        status: ExpenseTemplateStatus.ACTIVE,
+        createdBy: 'Sarah Jenkins',
+      },
+      {
+        branchId: dtBranch.id,
+        categoryId: packCatId,
+        description: 'Weekly Bulk Pizza Boxes & Brown Bags Delivery',
+        amount: new Prisma.Decimal('8500.00'),
+        frequency: ExpenseFrequency.WEEKLY,
+        nextDueDate: nextWeek,
+        status: ExpenseTemplateStatus.ACTIVE,
+        createdBy: 'Elena Rostova',
+      },
+      {
+        branchId: bwBranch.id,
+        categoryId: utilCatId,
+        description: 'Bandra West Commercial Kitchen Cylinder Refill',
+        amount: new Prisma.Decimal('6200.00'),
+        frequency: ExpenseFrequency.WEEKLY,
+        nextDueDate: nextWeek,
+        status: ExpenseTemplateStatus.ACTIVE,
+        createdBy: 'Marcus Vance',
+      },
+    ];
+
+    for (const t of dtTemplates) {
+      const existing = await prisma.expenseTemplate.findFirst({
+        where: { branchId: t.branchId, description: t.description },
+      });
+      if (!existing) {
+        await prisma.expenseTemplate.create({ data: t });
+      }
+    }
+    console.log('    ✓ 3 Recurring Expense Templates seeded');
+  }
+
+  // Sample Expenses Across Lifecycles
+  const sampleExpenses = [
+    {
+      expenseNumber: 'EXP-2026-000001',
+      branchId: dtBranch.id,
+      categoryId: expenseCategoryMap.get('UTILITIES')!,
+      amount: new Prisma.Decimal('8750.00'),
+      expenseDate: new Date('2026-09-15'),
+      description: 'Monthly Commercial Electricity Bill',
+      vendorName: 'Adani Electricity Mumbai Ltd',
+      paymentMethod: PaymentMethod.BANK_TRANSFER,
+      referenceNumber: 'NEFT-ADANI-8839201',
+      status: ExpenseStatus.APPROVED,
+      receiptUrl: null,
+      notes: 'Peak billing tariff settled directly via corporate net banking.',
+      createdBy: 'Elena Rostova',
+      approvedBy: 'Sarah Jenkins',
+      approvedAt: new Date('2026-09-16T11:30:00Z'),
+      auditLogs: [
+        { action: 'CREATED', fromStatus: null, toStatus: ExpenseStatus.DRAFT, performedBy: 'Elena Rostova', notes: 'Initial draft expense record' },
+        { action: 'SUBMITTED', fromStatus: ExpenseStatus.DRAFT, toStatus: ExpenseStatus.PENDING_APPROVAL, performedBy: 'Elena Rostova', notes: 'Submitted for owner approval' },
+        { action: 'APPROVED', fromStatus: ExpenseStatus.PENDING_APPROVAL, toStatus: ExpenseStatus.APPROVED, performedBy: 'Sarah Jenkins', notes: 'Verified against meter reading slip' },
+      ],
+    },
+    {
+      expenseNumber: 'EXP-2026-000002',
+      branchId: dtBranch.id,
+      categoryId: expenseCategoryMap.get('PACKAGING')!,
+      amount: new Prisma.Decimal('14200.00'),
+      expenseDate: new Date('2026-09-18'),
+      description: '5000 Custom Corrugated Pizza Delivery Boxes (10-inch & 12-inch)',
+      vendorName: 'EcoPack Paper Packaging LLP',
+      paymentMethod: PaymentMethod.CARD,
+      referenceNumber: 'TXN-CARD-98442',
+      status: ExpenseStatus.APPROVED,
+      receiptUrl: null,
+      notes: 'Delivered to Downtown stockroom. Verified batch seal and print clarity.',
+      createdBy: 'David Chen',
+      approvedBy: 'Elena Rostova',
+      approvedAt: new Date('2026-09-18T16:45:00Z'),
+      auditLogs: [
+        { action: 'CREATED', fromStatus: null, toStatus: ExpenseStatus.PENDING_APPROVAL, performedBy: 'David Chen', notes: 'Direct submission from shift purchase' },
+        { action: 'APPROVED', fromStatus: ExpenseStatus.PENDING_APPROVAL, toStatus: ExpenseStatus.APPROVED, performedBy: 'Elena Rostova', notes: 'Delivery slip inspected and confirmed' },
+      ],
+    },
+    {
+      expenseNumber: 'EXP-2026-000003',
+      branchId: dtBranch.id,
+      categoryId: expenseCategoryMap.get('REPAIRS')!,
+      amount: new Prisma.Decimal('3450.00'),
+      expenseDate: new Date('2026-09-19'),
+      description: 'Gas Deck Oven Thermostat Calibration and Gasket Replacement',
+      vendorName: 'Speedy Kitchen Appliance Care',
+      paymentMethod: PaymentMethod.UPI,
+      referenceNumber: 'UPI/628109923812',
+      status: ExpenseStatus.PENDING_APPROVAL,
+      receiptUrl: null,
+      notes: 'Emergency repair on oven #2 heating coil gasket after morning shift.',
+      createdBy: 'Elena Rostova',
+      approvedBy: null,
+      approvedAt: null,
+      auditLogs: [
+        { action: 'CREATED', fromStatus: null, toStatus: ExpenseStatus.PENDING_APPROVAL, performedBy: 'Elena Rostova', notes: 'Logged under emergency maintenance workflow' },
+      ],
+    },
+    {
+      expenseNumber: 'EXP-2026-000004',
+      branchId: bwBranch.id,
+      categoryId: expenseCategoryMap.get('CLEANING')!,
+      amount: new Prisma.Decimal('12500.00'),
+      expenseDate: new Date('2026-09-17'),
+      description: 'Deep Kitchen Degreasing & Hood Duct Cleaning Service',
+      vendorName: 'SparklePro Hygiene Services',
+      paymentMethod: PaymentMethod.BANK_TRANSFER,
+      referenceNumber: null,
+      status: ExpenseStatus.REJECTED,
+      rejectionReason: 'Vendor quote exceeds approved quarterly cleaning budget. Obtain 2 alternative competitive bids before rescheduling duct service.',
+      receiptUrl: null,
+      notes: 'Quotation submitted for duct cleaning.',
+      createdBy: 'Marcus Vance',
+      auditLogs: [
+        { action: 'CREATED', fromStatus: null, toStatus: ExpenseStatus.PENDING_APPROVAL, performedBy: 'Marcus Vance', notes: 'Vendor quotation submitted' },
+        { action: 'REJECTED', fromStatus: ExpenseStatus.PENDING_APPROVAL, toStatus: ExpenseStatus.REJECTED, performedBy: 'Sarah Jenkins', notes: 'Vendor quote exceeds approved quarterly cleaning budget' },
+      ],
+    },
+    {
+      expenseNumber: 'EXP-2026-000005',
+      branchId: bwBranch.id,
+      categoryId: expenseCategoryMap.get('RAW_MATERIAL')!,
+      amount: new Prisma.Decimal('4200.00'),
+      expenseDate: new Date('2026-09-20'),
+      description: 'Emergency Market Procurements: Extra Fresh Mozzarella & Basil',
+      vendorName: 'Vashi Wholesale Dairy Mandi',
+      paymentMethod: PaymentMethod.CASH,
+      referenceNumber: null,
+      status: ExpenseStatus.DRAFT,
+      receiptUrl: null,
+      notes: 'Procured during sudden Saturday dinner rush due to stockout.',
+      createdBy: 'Marcus Vance',
+      auditLogs: [
+        { action: 'CREATED', fromStatus: null, toStatus: ExpenseStatus.DRAFT, performedBy: 'Marcus Vance', notes: 'Saved as draft pending paper cash memo receipt upload' },
+      ],
+    },
+    {
+      expenseNumber: 'EXP-2026-000006',
+      branchId: andBranch.id,
+      categoryId: expenseCategoryMap.get('MAINTENANCE')!,
+      amount: new Prisma.Decimal('2800.00'),
+      expenseDate: new Date('2026-09-14'),
+      description: 'Preventative AC Filter Cleaning & Outdoor Unit Pressure Wash',
+      vendorName: 'CoolAir HVAC Technicians',
+      paymentMethod: PaymentMethod.CASH,
+      referenceNumber: null,
+      status: ExpenseStatus.CANCELLED,
+      cancellationReason: 'Duplicate expense slip entered. Service was already covered under annual maintenance contract (AMC invoice #AMC-4412).',
+      receiptUrl: null,
+      notes: 'Logged twice by accident by different shift supervisors.',
+      createdBy: 'David Chen',
+      cancelledBy: 'Elena Rostova',
+      cancelledAt: new Date('2026-09-15T10:00:00Z'),
+      auditLogs: [
+        { action: 'CREATED', fromStatus: null, toStatus: ExpenseStatus.DRAFT, performedBy: 'David Chen', notes: 'Draft created' },
+        { action: 'CANCELLED', fromStatus: ExpenseStatus.DRAFT, toStatus: ExpenseStatus.CANCELLED, performedBy: 'Elena Rostova', notes: 'Duplicate expense slip entered' },
+      ],
+    },
+  ];
+
+  for (const exp of sampleExpenses) {
+    const existing = await prisma.expense.findUnique({ where: { expenseNumber: exp.expenseNumber } });
+    if (!existing) {
+      const { auditLogs, ...expenseData } = exp;
+      const createdExpense = await prisma.expense.create({
+        data: expenseData,
+      });
+
+      if (auditLogs && auditLogs.length > 0) {
+        for (const log of auditLogs) {
+          await prisma.expenseAuditLog.create({
+            data: {
+              expenseId: createdExpense.id,
+              ...log,
+            },
+          });
+        }
+      }
+    }
+  }
+  console.log(`    ✓ ${sampleExpenses.length} Sample Expenses seeded with full audit trail`);
 
   console.log('✅ Seed completed successfully!');
   console.log('\n⚠️  SECURITY NOTICE: The seeded credentials are for local development/testing only.');

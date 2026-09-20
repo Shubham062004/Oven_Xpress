@@ -4,6 +4,7 @@ import {
   CreditCard,
   Globe,
   HelpCircle,
+  Building2,
 } from 'lucide-react';
 import {
   PaymentMethod,
@@ -58,6 +59,15 @@ export const PAYMENT_METHODS: Record<PaymentMethod, PaymentMethodMeta> = {
     icon: Globe,
     referenceLabel: 'Gateway Transaction Reference',
     referencePlaceholder: 'e.g. pay_9Fk2d8z or online txn ID',
+    isReferenceRequired: false,
+  },
+  [PaymentMethod.BANK_TRANSFER]: {
+    value: PaymentMethod.BANK_TRANSFER,
+    label: 'Bank Transfer',
+    description: 'Direct wire transfer (NEFT / RTGS / IMPS)',
+    icon: Building2,
+    referenceLabel: 'Bank UTR / Transaction Reference',
+    referencePlaceholder: 'e.g. UTR-2026-98124',
     isReferenceRequired: false,
   },
   [PaymentMethod.OTHER]: {

@@ -100,6 +100,8 @@ model Branch {
   orders            Order[]
   payments          Payment[]
   paymentReconciliations PaymentReconciliation[]
+  expenses          Expense[]
+  expenseTemplates  ExpenseTemplate[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -643,6 +645,7 @@ enum PaymentMethod {
   UPI
   CARD
   ONLINE
+  BANK_TRANSFER
   OTHER
 }
 
@@ -760,6 +763,127 @@ model PaymentAuditLog {
   createdAt   DateTime @default(now())
 
   @@index([paymentId])
+  @@index([createdAt])
+}
+
+// ─── Expenses Management ───────────────────────────────────────────────────
+
+enum ExpenseCategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ExpenseStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ExpenseFrequency {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum ExpenseTemplateStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model ExpenseCategory {
+  id          String                @id @default(cuid())
+  name        String                @unique
+  description String?
+  status      ExpenseCategoryStatus @default(ACTIVE)
+  expenses    Expense[]
+  templates   ExpenseTemplate[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([status])
+  @@index([name])
+}
+
+model Expense {
+  id                 String           @id @default(cuid())
+  expenseNumber      String           @unique // e.g. EXP-2026-000001
+  branchId           String
+  branch             Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  categoryId         String
+  category           ExpenseCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  amount             Decimal          @db.Decimal(10, 2)
+  expenseDate        DateTime         @db.Date
+  description        String
+  vendorName         String?
+  paymentMethod      PaymentMethod
+  referenceNumber    String?
+  status             ExpenseStatus    @default(PENDING_APPROVAL)
+  receiptUrl         String?
+  notes              String?
+  rejectionReason    String?
+  cancellationReason String?
+  cancelledBy        String?
+  cancelledAt        DateTime?
+  createdBy          String
+  approvedBy         String?
+  approvedAt         DateTime?
+  templateId         String?
+  template           ExpenseTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  auditLogs          ExpenseAuditLog[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([branchId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([expenseDate])
+  @@index([paymentMethod])
+  @@index([expenseNumber])
+  @@index([branchId, expenseDate])
+  @@index([branchId, status])
+  @@index([createdBy])
+}
+
+model ExpenseTemplate {
+  id            String                @id @default(cuid())
+  branchId      String
+  branch        Branch                @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  categoryId    String
+  category      ExpenseCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  description   String
+  amount        Decimal               @db.Decimal(10, 2)
+  frequency     ExpenseFrequency
+  nextDueDate   DateTime              @db.Date
+  status        ExpenseTemplateStatus @default(ACTIVE)
+  vendorName    String?
+  paymentMethod PaymentMethod?
+  createdBy     String
+  expenses      Expense[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([branchId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([nextDueDate])
+}
+
+model ExpenseAuditLog {
+  id          String   @id @default(cuid())
+  expenseId   String
+  expense     Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  action      String   // 'CREATED', 'SUBMITTED_FOR_APPROVAL', 'APPROVED', 'REJECTED', 'CANCELLED', 'UPDATED'
+  fromStatus  String?
+  toStatus    String?
+  amount      Decimal? @db.Decimal(10, 2)
+  performedBy String
+  notes       String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([expenseId])
   @@index([createdAt])
 }
 

@@ -7,6 +7,7 @@ import {
   FileText,
   LayoutDashboard,
   Package,
+  Receipt,
   Settings,
   Shield,
   ShoppingBag,
@@ -102,7 +103,8 @@ export const mainNavItems: NavItem[] = [
   {
     label: 'Expenses',
     href: '/expenses',
-    icon: CreditCard,
+    icon: Receipt,
+    requiredPermission: PERMISSIONS.EXPENSE_READ,
   },
   {
     label: 'Salaries',
