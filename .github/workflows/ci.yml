@@ -1,0 +1,48 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Lint, Typecheck & Production Build
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: "postgresql://ci_dummy_user:ci_dummy_password@localhost:5432/ci_dummy_db"
+      AUTH_SECRET: "ci-build-verification-secret-string-at-least-32-chars-long"
+      NEXT_PUBLIC_APP_URL: "https://app.ovenxpress.com"
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm dlx prisma generate
+
+      - name: Code Quality & Lint Verification
+        run: pnpm run lint
+
+      - name: TypeScript Static Type Checking
+        run: pnpm exec tsc --noEmit
+
+      - name: Next.js Production Build
+        run: pnpm run build
