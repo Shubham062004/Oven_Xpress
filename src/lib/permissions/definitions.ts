@@ -198,6 +198,10 @@ export const PERMISSIONS = {
   // In-App Notifications & Alerts
   NOTIFICATION_READ: 'notification.read',
   NOTIFICATION_DISMISS: 'notification.dismiss',
+
+  // Audit Logs & System Activity
+  AUDIT_READ: 'audit.read',
+  AUDIT_EXPORT: 'audit.export',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -362,6 +366,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleName, readonly PermissionCode[
     PERMISSIONS.ISSUE_RESOLVE,
     PERMISSIONS.NOTIFICATION_READ,
     PERMISSIONS.NOTIFICATION_DISMISS,
+    PERMISSIONS.AUDIT_READ,
+    PERMISSIONS.AUDIT_EXPORT,
   ],
   ADMIN: [
     PERMISSIONS.DASHBOARD_READ,
@@ -504,6 +510,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleName, readonly PermissionCode[
     PERMISSIONS.ISSUE_RESOLVE,
     PERMISSIONS.NOTIFICATION_READ,
     PERMISSIONS.NOTIFICATION_DISMISS,
+    PERMISSIONS.AUDIT_READ,
+    PERMISSIONS.AUDIT_EXPORT,
   ],
   MANAGER: [
     PERMISSIONS.DASHBOARD_READ,

@@ -30,6 +30,8 @@ import {
   OrderStatus,
   Prisma,
 } from '@prisma/client';
+import { createAuditLog } from '@/lib/audit/audit-service';
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 
 function isRedirectError(error: unknown): boolean {
   return (
@@ -257,6 +259,29 @@ export async function recordPayment(
         },
       });
 
+      // Append to central audit log
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: order.branchId,
+          action: AUDIT_ACTIONS.PAYMENT_CREATE,
+          entityType: AUDIT_ENTITY_TYPES.PAYMENT,
+          entityId: payment.id,
+          description: `Recorded ₹${amount.toFixed(2)} ${method} payment (${paymentNumber}) for order ${order.orderNumber}`,
+          afterData: {
+            paymentNumber,
+            orderNumber: order.orderNumber,
+            amount,
+            method,
+            status,
+          },
+          metadata: {
+            referenceNumber: referenceNumber || null,
+          },
+        },
+        tx
+      );
+
       return payment;
     });
 
@@ -414,6 +439,26 @@ export async function createPaymentRefund(
           notes: `Refund ${refundNumber} issued. Reason: ${reason}`,
         },
       });
+
+      // Append to central audit log
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: payment.branchId,
+          action: AUDIT_ACTIONS.PAYMENT_REFUND,
+          entityType: AUDIT_ENTITY_TYPES.PAYMENT_REFUND,
+          entityId: payment.id,
+          description: `Processed ₹${amount.toFixed(2)} refund (${refundNumber}) for payment ${payment.paymentNumber}. Reason: ${reason}`,
+          beforeData: { status: payment.status },
+          afterData: { status: newStatus, refundedAmount: amount },
+          metadata: {
+            refundNumber,
+            paymentNumber: payment.paymentNumber,
+            reason,
+          },
+        },
+        tx
+      );
 
       return { updatedPayment, newTotalRefunded };
     });
@@ -946,6 +991,25 @@ export async function submitReconciliation(
           branch: { select: { name: true, code: true } },
         },
       });
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId,
+          action: AUDIT_ACTIONS.STATUS_CHANGE,
+          entityType: AUDIT_ENTITY_TYPES.PAYMENT,
+          entityId: reconciliation.id,
+          description: `Recorded daily cash reconciliation for ${date} (Actual: ₹${actualCash.toFixed(2)}, Variance: ₹${variance.toFixed(2)})`,
+          afterData: {
+            date,
+            systemCash,
+            actualCash,
+            variance,
+            status: reconciliation.status,
+          },
+        },
+        tx
+      );
 
       return reconciliation;
     });

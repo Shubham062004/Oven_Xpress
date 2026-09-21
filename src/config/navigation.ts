@@ -19,6 +19,7 @@ import {
   Star,
   MessageSquare,
   Bell,
+  ScrollText,
 } from 'lucide-react';
 
 import { PERMISSIONS } from '@/lib/permissions/definitions';
@@ -150,6 +151,12 @@ export const mainNavItems: NavItem[] = [
     href: '/reports',
     icon: FileSpreadsheet,
     requiredPermission: PERMISSIONS.REPORT_SALES_READ,
+  },
+  {
+    label: 'Audit Logs',
+    href: '/audit-logs',
+    icon: ScrollText,
+    requiredPermission: PERMISSIONS.AUDIT_READ,
   },
 ];
 

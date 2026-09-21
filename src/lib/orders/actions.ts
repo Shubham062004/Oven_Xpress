@@ -31,6 +31,8 @@ import {
   Prisma,
 } from '@prisma/client';
 import { deriveOrderPaymentSummary } from '@/lib/payments/constants';
+import { createAuditLog } from '@/lib/audit/audit-service';
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 
 function isRedirectError(error: unknown): boolean {
   return (
@@ -798,6 +800,25 @@ export async function createOrder(
             });
           }
 
+          await createAuditLog(
+            {
+              actorUserId: user.id,
+              branchId,
+              action: AUDIT_ACTIONS.ORDER_CREATE,
+              entityType: AUDIT_ENTITY_TYPES.ORDER,
+              entityId: newOrder.id,
+              description: `Created ${orderType} order ${orderNumber} for ₹${grandTotal.toFixed(2)}`,
+              afterData: {
+                orderNumber,
+                orderType,
+                status: OrderStatus.CONFIRMED,
+                totalAmount: grandTotal,
+                itemCount: validatedItems.length,
+              },
+            },
+            tx
+          );
+
           return newOrder;
         });
 
@@ -860,7 +881,7 @@ export async function updateOrder(
       };
     }
 
-    await prisma.order.update({
+    const updatedOrder = await prisma.order.update({
       where: { id },
       data: {
         ...(parsed.data.customerName !== undefined && { customerName: parsed.data.customerName || null }),
@@ -870,6 +891,29 @@ export async function updateOrder(
         ...(parsed.data.notes !== undefined && { notes: parsed.data.notes || null }),
       },
     });
+
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId: order.branchId,
+      action: AUDIT_ACTIONS.ORDER_UPDATE,
+      entityType: AUDIT_ENTITY_TYPES.ORDER,
+      entityId: order.id,
+      description: `Updated details for order ${order.orderNumber}`,
+      beforeData: {
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        deliveryAddress: order.deliveryAddress,
+        deliveryNotes: order.deliveryNotes,
+        notes: order.notes,
+      },
+      afterData: {
+        customerName: updatedOrder.customerName,
+        customerPhone: updatedOrder.customerPhone,
+        deliveryAddress: updatedOrder.deliveryAddress,
+        deliveryNotes: updatedOrder.deliveryNotes,
+        notes: updatedOrder.notes,
+      },
+    }).catch((e: unknown) => console.error('Failed to create order update audit log:', e));
 
     revalidatePath('/orders');
     revalidatePath(`/orders/${id}`);
@@ -895,6 +939,7 @@ export async function updateOrderStatus(
       where: { id },
       select: {
         id: true,
+        orderNumber: true,
         status: true,
         branchId: true,
         orderType: true,
@@ -936,6 +981,20 @@ export async function updateOrderStatus(
           data: { status: TableStatus.CLEANING },
         });
       }
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: order.branchId,
+          action: AUDIT_ACTIONS.ORDER_STATUS_CHANGE,
+          entityType: AUDIT_ENTITY_TYPES.ORDER,
+          entityId: order.id,
+          description: `Changed order ${order.orderNumber} status from ${order.status} to ${newStatus}`,
+          beforeData: { status: order.status },
+          afterData: { status: newStatus },
+        },
+        tx
+      );
     });
 
     revalidatePath('/orders');
@@ -1012,6 +1071,21 @@ export async function cancelOrder(
           data: { status: TableStatus.AVAILABLE },
         });
       }
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: order.branchId,
+          action: AUDIT_ACTIONS.CANCEL,
+          entityType: AUDIT_ENTITY_TYPES.ORDER,
+          entityId: order.id,
+          description: `Cancelled order ${order.orderNumber}. Reason: ${parsed.data.reason}`,
+          beforeData: { status: order.status },
+          afterData: { status: OrderStatus.CANCELLED },
+          metadata: { cancellationReason: parsed.data.reason },
+        },
+        tx
+      );
     });
 
     revalidatePath('/orders');

@@ -10,6 +10,8 @@ import {
 } from '@/lib/validations/employee';
 import type { ActionResult } from '@/lib/auth/types';
 import type { EmploymentStatus, SalaryType } from '@prisma/client';
+import { createAuditLog } from '@/lib/audit/audit-service';
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -366,7 +368,7 @@ export async function createEmployee(
   data: Record<string, unknown>
 ): Promise<EmployeeFormState> {
   try {
-    await requirePermission(PERMISSIONS.EMPLOYEE_CREATE);
+    const currentUser = await requirePermission(PERMISSIONS.EMPLOYEE_CREATE);
 
     // Validate input
     const parsed = createEmployeeSchema.safeParse(data);
@@ -496,6 +498,25 @@ export async function createEmployee(
       },
     });
 
+    await createAuditLog({
+      actorUserId: currentUser.id,
+      branchId: employee.branchId,
+      action: AUDIT_ACTIONS.CREATE,
+      entityType: AUDIT_ENTITY_TYPES.EMPLOYEE,
+      entityId: employee.id,
+      description: `Created employee "${employee.firstName} ${employee.lastName}" (${employee.employeeCode}) as ${employee.designation}`,
+      afterData: {
+        employeeCode: employee.employeeCode,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        designation: employee.designation,
+        branchId: employee.branchId,
+        employmentStatus: employee.employmentStatus,
+        salary: Number(employee.salary),
+        salaryType: employee.salaryType,
+      },
+    }).catch((e: unknown) => console.error('Failed to create employee audit log:', e));
+
     revalidatePath('/employees');
     return {
       success: true,
@@ -522,7 +543,7 @@ export async function updateEmployee(
   data: Record<string, unknown>
 ): Promise<EmployeeFormState> {
   try {
-    await requirePermission(PERMISSIONS.EMPLOYEE_UPDATE);
+    const currentUser = await requirePermission(PERMISSIONS.EMPLOYEE_UPDATE);
 
     // Validate input
     const parsed = updateEmployeeSchema.safeParse(data);
@@ -551,77 +572,95 @@ export async function updateEmployee(
 
     const input = parsed.data;
 
-    // Verify branch exists and active check if needed
-    const branch = await prisma.branch.findUnique({
-      where: { id: input.branchId },
-    });
-
-    if (!branch) {
-      return {
-        success: false,
-        error: 'Selected branch does not exist.',
-        fieldErrors: { branchId: ['Invalid branch selected.'] },
-      };
-    }
-
-    if (input.employmentStatus === 'ACTIVE' && branch.status !== 'ACTIVE') {
-      return {
-        success: false,
-        error: 'Active employees cannot be assigned to an inactive branch.',
-        fieldErrors: { branchId: ['Cannot assign an active employee to an inactive branch.'] },
-      };
-    }
-
-    // Check user account linking if changed
-    let linkedUserId: string | null = null;
-    if (input.userId && input.userId.trim().length > 0) {
-      const targetUser = await prisma.user.findUnique({
-        where: { id: input.userId },
-        include: { employee: true },
+    // Rule 3: Branch must exist and if changing branch, verify it
+    if (input.branchId && input.branchId !== existing.branchId) {
+      const newBranch = await prisma.branch.findUnique({
+        where: { id: input.branchId },
       });
 
-      if (!targetUser) {
+      if (!newBranch) {
         return {
           success: false,
-          error: 'The selected user account does not exist.',
-          fieldErrors: { userId: ['Selected user account was not found.'] },
+          error: 'Selected branch does not exist.',
+          fieldErrors: { branchId: ['Invalid branch selected.'] },
         };
       }
 
-      if (targetUser.employee && targetUser.employee.id !== id) {
+      if (
+        (input.employmentStatus ?? existing.employmentStatus) === 'ACTIVE' &&
+        newBranch.status !== 'ACTIVE'
+      ) {
         return {
           success: false,
-          error: 'This user account is already linked to another employee.',
-          fieldErrors: { userId: ['User account is already linked to another staff member.'] },
+          error: 'Active employees cannot be assigned to an inactive branch.',
+          fieldErrors: { branchId: ['Cannot assign an active employee to an inactive branch.'] },
         };
       }
-
-      linkedUserId = targetUser.id;
     }
 
-    // Parse dates
-    const joiningDate = new Date(input.joiningDate);
-    const dateOfBirth = input.dateOfBirth ? new Date(input.dateOfBirth) : null;
+    // Rule 9: User linking validation
+    let resolvedUserId = existing.userId;
+    if (input.userId !== undefined) {
+      if (input.userId === null || input.userId.trim() === '') {
+        resolvedUserId = null;
+      } else if (input.userId !== existing.userId) {
+        const targetUser = await prisma.user.findUnique({
+          where: { id: input.userId },
+          include: { employee: true },
+        });
+
+        if (!targetUser) {
+          return {
+            success: false,
+            error: 'The selected user account does not exist.',
+            fieldErrors: { userId: ['Selected user account was not found.'] },
+          };
+        }
+
+        if (targetUser.employee && targetUser.employee.id !== id) {
+          return {
+            success: false,
+            error: 'This user account is already linked to another employee.',
+            fieldErrors: { userId: ['User account is already linked to another staff member.'] },
+          };
+        }
+
+        resolvedUserId = targetUser.id;
+      }
+    }
+
+    // Parse dates if provided
+    const joiningDate = input.joiningDate ? new Date(input.joiningDate) : undefined;
+    const dateOfBirth =
+      input.dateOfBirth !== undefined
+        ? input.dateOfBirth
+          ? new Date(input.dateOfBirth)
+          : null
+        : undefined;
 
     // Update employee
     const employee = await prisma.employee.update({
       where: { id },
       data: {
-        firstName: input.firstName,
-        lastName: input.lastName,
-        phone: input.phone,
-        email: input.email || null,
-        dateOfBirth,
-        joiningDate,
-        designation: input.designation,
-        branchId: input.branchId,
-        employmentStatus: input.employmentStatus,
-        salary: input.salary,
-        salaryType: input.salaryType,
-        address: input.address || null,
-        emergencyContactName: input.emergencyContactName || null,
-        emergencyContactPhone: input.emergencyContactPhone || null,
-        userId: linkedUserId,
+        ...(input.firstName !== undefined && { firstName: input.firstName }),
+        ...(input.lastName !== undefined && { lastName: input.lastName }),
+        ...(input.phone !== undefined && { phone: input.phone }),
+        ...(input.email !== undefined && { email: input.email || null }),
+        ...(dateOfBirth !== undefined && { dateOfBirth }),
+        ...(joiningDate !== undefined && { joiningDate }),
+        ...(input.designation !== undefined && { designation: input.designation }),
+        ...(input.branchId !== undefined && { branchId: input.branchId }),
+        ...(input.employmentStatus !== undefined && { employmentStatus: input.employmentStatus }),
+        ...(input.salary !== undefined && { salary: input.salary }),
+        ...(input.salaryType !== undefined && { salaryType: input.salaryType }),
+        ...(input.address !== undefined && { address: input.address || null }),
+        ...(input.emergencyContactName !== undefined && {
+          emergencyContactName: input.emergencyContactName || null,
+        }),
+        ...(input.emergencyContactPhone !== undefined && {
+          emergencyContactPhone: input.emergencyContactPhone || null,
+        }),
+        userId: resolvedUserId,
       },
       include: {
         branch: {
@@ -647,6 +686,35 @@ export async function updateEmployee(
         },
       },
     });
+
+    await createAuditLog({
+      actorUserId: currentUser.id,
+      branchId: employee.branchId,
+      action: AUDIT_ACTIONS.UPDATE,
+      entityType: AUDIT_ENTITY_TYPES.EMPLOYEE,
+      entityId: employee.id,
+      description: `Updated employee "${employee.firstName} ${employee.lastName}" (${employee.employeeCode})`,
+      beforeData: {
+        firstName: existing.firstName,
+        lastName: existing.lastName,
+        designation: existing.designation,
+        branchId: existing.branchId,
+        employmentStatus: existing.employmentStatus,
+        salary: Number(existing.salary),
+        salaryType: existing.salaryType,
+        phone: existing.phone,
+      },
+      afterData: {
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        designation: employee.designation,
+        branchId: employee.branchId,
+        employmentStatus: employee.employmentStatus,
+        salary: Number(employee.salary),
+        salaryType: employee.salaryType,
+        phone: employee.phone,
+      },
+    }).catch((e: unknown) => console.error('Failed to create employee update audit log:', e));
 
     revalidatePath('/employees');
     revalidatePath(`/employees/${id}`);
@@ -675,7 +743,7 @@ export async function toggleEmployeeStatus(
   id: string
 ): Promise<ActionResult<EmployeeItem>> {
   try {
-    await requirePermission(PERMISSIONS.EMPLOYEE_DEACTIVATE);
+    const currentUser = await requirePermission(PERMISSIONS.EMPLOYEE_DEACTIVATE);
 
     const existing = await prisma.employee.findUnique({
       where: { id },
@@ -724,6 +792,17 @@ export async function toggleEmployeeStatus(
         },
       },
     });
+
+    await createAuditLog({
+      actorUserId: currentUser.id,
+      branchId: employee.branchId,
+      action: newStatus === 'ACTIVE' ? AUDIT_ACTIONS.ACTIVATE : AUDIT_ACTIONS.DEACTIVATE,
+      entityType: AUDIT_ENTITY_TYPES.EMPLOYEE,
+      entityId: employee.id,
+      description: `${newStatus === 'ACTIVE' ? 'Activated' : 'Deactivated'} employee "${employee.firstName} ${employee.lastName}" (${employee.employeeCode})`,
+      beforeData: { employmentStatus: existing.employmentStatus },
+      afterData: { employmentStatus: employee.employmentStatus },
+    }).catch((e: unknown) => console.error('Failed to create employee toggle audit log:', e));
 
     revalidatePath('/employees');
     revalidatePath(`/employees/${id}`);

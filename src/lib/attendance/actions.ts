@@ -13,6 +13,8 @@ import {
 } from '@/lib/validations/attendance';
 import type { ActionResult, AuthUser } from '@/lib/auth/types';
 import type { AttendanceStatus, ShiftStatus } from '@prisma/client';
+import { createAuditLog } from '@/lib/audit/audit-service';
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -779,6 +781,23 @@ export async function markAttendance(
       },
     });
 
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId: record.branchId,
+      action: AUDIT_ACTIONS.ATTENDANCE_MARK,
+      entityType: AUDIT_ENTITY_TYPES.ATTENDANCE,
+      entityId: record.id,
+      description: `Marked attendance for ${record.employee.firstName} ${record.employee.lastName} on ${input.date} as ${record.status}`,
+      afterData: {
+        employeeName: `${record.employee.firstName} ${record.employee.lastName}`,
+        employeeCode: record.employee.employeeCode,
+        date: input.date,
+        status: record.status,
+        lateMinutes: record.lateMinutes,
+        earlyDepartureMinutes: record.earlyDepartureMinutes,
+      },
+    }).catch((e: unknown) => console.error('Failed to create attendance audit log:', e));
+
     revalidatePath('/attendance');
     return { success: true, data: record };
   } catch (error) {
@@ -799,19 +818,6 @@ export async function updateAttendance(
     const user = await requirePermission(PERMISSIONS.ATTENDANCE_UPDATE);
     const scope = await getAuthorizedBranchScope(user);
 
-    const existing = await prisma.attendance.findUnique({
-      where: { id },
-      include: { employee: true, branch: true },
-    });
-
-    if (!existing) {
-      return { success: false, error: 'Attendance record not found.' };
-    }
-
-    if (!scope.isAllBranches && !scope.branchIds.includes(existing.branchId)) {
-      return { success: false, error: 'Unauthorized to update this attendance record.' };
-    }
-
     const parsed = attendanceUpdateSchema.safeParse(data);
     if (!parsed.success) {
       const fieldErrors: Record<string, string[]> = {};
@@ -827,16 +833,46 @@ export async function updateAttendance(
       };
     }
 
+    const existing = await prisma.attendance.findUnique({
+      where: { id },
+      include: {
+        employee: true,
+        branch: true,
+        shift: true,
+      },
+    });
+
+    if (!existing) {
+      return { success: false, error: 'Attendance record not found.' };
+    }
+
+    // Branch authorization check
+    if (!scope.isAllBranches && !scope.branchIds.includes(existing.branchId)) {
+      return { success: false, error: 'Unauthorized to edit attendance for this branch.' };
+    }
+
     const input = parsed.data;
 
-    // Cross-entity check for shift if modified
-    let shift = null;
+    // Validate shift belongs to branch if changing shift
+    let shift = existing.shift;
     const targetShiftId = input.shiftId !== undefined ? input.shiftId : existing.shiftId;
-    if (targetShiftId) {
-      shift = await prisma.shift.findUnique({ where: { id: targetShiftId } });
-      if (!shift || shift.branchId !== existing.branchId) {
-        return { success: false, error: 'Selected shift does not belong to this branch.' };
+
+    if (input.shiftId && input.shiftId !== existing.shiftId) {
+      const newShift = await prisma.shift.findUnique({
+        where: { id: input.shiftId },
+      });
+
+      if (!newShift) {
+        return { success: false, error: 'Selected shift does not exist.' };
       }
+
+      if (newShift.branchId !== existing.branchId) {
+        return { success: false, error: 'The selected shift does not belong to this branch.' };
+      }
+
+      shift = newShift;
+    } else if (input.shiftId === null) {
+      shift = null;
     }
 
     const dateStr = existing.date.toISOString().split('T')[0];
@@ -904,6 +940,25 @@ export async function updateAttendance(
         },
       },
     });
+
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId: updated.branchId,
+      action: AUDIT_ACTIONS.ATTENDANCE_UPDATE,
+      entityType: AUDIT_ENTITY_TYPES.ATTENDANCE,
+      entityId: updated.id,
+      description: `Updated attendance for ${updated.employee.firstName} ${updated.employee.lastName} on ${dateStr} from ${existing.status} to ${updated.status}`,
+      beforeData: {
+        status: existing.status,
+        lateMinutes: existing.lateMinutes,
+        earlyDepartureMinutes: existing.earlyDepartureMinutes,
+      },
+      afterData: {
+        status: updated.status,
+        lateMinutes: updated.lateMinutes,
+        earlyDepartureMinutes: updated.earlyDepartureMinutes,
+      },
+    }).catch((e: unknown) => console.error('Failed to create attendance update audit log:', e));
 
     revalidatePath('/attendance');
     revalidatePath(`/attendance/${id}`);

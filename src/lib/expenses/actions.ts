@@ -6,6 +6,8 @@ import { Prisma, ExpenseStatus, ExpenseCategoryStatus, ExpenseTemplateStatus } f
 import { requirePermission } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import type { AuthUser } from '@/lib/auth/types';
+import { createAuditLog } from '@/lib/audit/audit-service';
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 import {
   createExpenseSchema,
   updateExpenseSchema,
@@ -614,6 +616,25 @@ export async function createExpense(
         },
       });
 
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId,
+          action: AUDIT_ACTIONS.EXPENSE_CREATE,
+          entityType: AUDIT_ENTITY_TYPES.EXPENSE,
+          entityId: created.id,
+          description: `Created expense ${expenseNumber} for ₹${amount.toFixed(2)} (${category.name})`,
+          afterData: {
+            expenseNumber,
+            amount,
+            status,
+            categoryName: category.name,
+            vendorName: vendorName || null,
+          },
+        },
+        tx
+      );
+
       return created;
     });
 
@@ -800,6 +821,21 @@ export async function approveExpense(
           notes: notes || 'Expense authorized and approved',
         },
       });
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: expense.branchId,
+          action: AUDIT_ACTIONS.EXPENSE_APPROVE,
+          entityType: AUDIT_ENTITY_TYPES.EXPENSE,
+          entityId: expense.id,
+          description: `Approved expense ${expense.expenseNumber} for ₹${expense.amount.toNumber().toFixed(2)}`,
+          beforeData: { status: expense.status },
+          afterData: { status: ExpenseStatus.APPROVED },
+          metadata: { notes: notes || null },
+        },
+        tx
+      );
     });
 
     revalidatePath('/expenses');
@@ -876,6 +912,21 @@ export async function rejectExpense(
           notes: `Rejection reason: ${rejectionReason}`,
         },
       });
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: expense.branchId,
+          action: AUDIT_ACTIONS.EXPENSE_REJECT,
+          entityType: AUDIT_ENTITY_TYPES.EXPENSE,
+          entityId: expense.id,
+          description: `Rejected expense ${expense.expenseNumber} for ₹${expense.amount.toNumber().toFixed(2)}. Reason: ${rejectionReason}`,
+          beforeData: { status: expense.status },
+          afterData: { status: ExpenseStatus.REJECTED },
+          metadata: { rejectionReason },
+        },
+        tx
+      );
     });
 
     revalidatePath('/expenses');
@@ -957,6 +1008,21 @@ export async function cancelExpense(
           notes: `Cancellation reason: ${cancellationReason}`,
         },
       });
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: expense.branchId,
+          action: AUDIT_ACTIONS.EXPENSE_CANCEL,
+          entityType: AUDIT_ENTITY_TYPES.EXPENSE,
+          entityId: expense.id,
+          description: `Cancelled expense ${expense.expenseNumber}. Reason: ${cancellationReason}`,
+          beforeData: { status: expense.status },
+          afterData: { status: ExpenseStatus.CANCELLED },
+          metadata: { cancellationReason },
+        },
+        tx
+      );
     });
 
     revalidatePath('/expenses');

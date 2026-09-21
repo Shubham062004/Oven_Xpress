@@ -7,6 +7,8 @@ import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { createBranchSchema, updateBranchSchema } from '@/lib/validations/branch';
 import type { ActionResult } from '@/lib/auth/types';
 import type { Branch, BranchStatus } from '@prisma/client';
+import { createAuditLog } from '@/lib/audit/audit-service';
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -124,7 +126,7 @@ export async function createBranch(
   data: Record<string, unknown>
 ): Promise<BranchFormState> {
   try {
-    await requirePermission(PERMISSIONS.BRANCH_CREATE);
+    const user = await requirePermission(PERMISSIONS.BRANCH_CREATE);
 
     // Validate input
     const parsed = createBranchSchema.safeParse(data);
@@ -175,6 +177,21 @@ export async function createBranch(
       },
     });
 
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId: branch.id,
+      action: AUDIT_ACTIONS.BRANCH_CREATE,
+      entityType: AUDIT_ENTITY_TYPES.BRANCH,
+      entityId: branch.id,
+      description: `Created branch "${branch.name}" (${branch.code}) in ${branch.city}`,
+      afterData: {
+        name: branch.name,
+        code: branch.code,
+        city: branch.city,
+        status: branch.status,
+      },
+    }).catch((e: unknown) => console.error('Failed to create branch audit log:', e));
+
     revalidatePath('/branches');
     return { success: true, data: branch };
   } catch (error) {
@@ -195,7 +212,7 @@ export async function updateBranch(
   data: Record<string, unknown>
 ): Promise<BranchFormState> {
   try {
-    await requirePermission(PERMISSIONS.BRANCH_UPDATE);
+    const user = await requirePermission(PERMISSIONS.BRANCH_UPDATE);
 
     // Validate input
     const parsed = updateBranchSchema.safeParse(data);
@@ -238,6 +255,29 @@ export async function updateBranch(
       },
     });
 
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId: branch.id,
+      action: AUDIT_ACTIONS.BRANCH_UPDATE,
+      entityType: AUDIT_ENTITY_TYPES.BRANCH,
+      entityId: branch.id,
+      description: `Updated branch "${branch.name}" (${branch.code})`,
+      beforeData: {
+        name: existing.name,
+        city: existing.city,
+        address: existing.address,
+        phone: existing.phone,
+        email: existing.email,
+      },
+      afterData: {
+        name: branch.name,
+        city: branch.city,
+        address: branch.address,
+        phone: branch.phone,
+        email: branch.email,
+      },
+    }).catch((e: unknown) => console.error('Failed to create branch update audit log:', e));
+
     revalidatePath('/branches');
     revalidatePath(`/branches/${id}`);
     return { success: true, data: branch };
@@ -258,7 +298,7 @@ export async function toggleBranchStatus(
   id: string
 ): Promise<ActionResult<Branch>> {
   try {
-    await requirePermission(PERMISSIONS.BRANCH_DEACTIVATE);
+    const user = await requirePermission(PERMISSIONS.BRANCH_DEACTIVATE);
 
     const existing = await prisma.branch.findUnique({ where: { id } });
     if (!existing) {
@@ -271,6 +311,17 @@ export async function toggleBranchStatus(
       where: { id },
       data: { status: newStatus },
     });
+
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId: branch.id,
+      action: newStatus === 'ACTIVE' ? AUDIT_ACTIONS.BRANCH_ACTIVATE : AUDIT_ACTIONS.BRANCH_DEACTIVATE,
+      entityType: AUDIT_ENTITY_TYPES.BRANCH,
+      entityId: branch.id,
+      description: `${newStatus === 'ACTIVE' ? 'Activated' : 'Deactivated'} branch "${branch.name}" (${branch.code})`,
+      beforeData: { status: existing.status },
+      afterData: { status: branch.status },
+    }).catch((e: unknown) => console.error('Failed to create branch toggle audit log:', e));
 
     revalidatePath('/branches');
     revalidatePath(`/branches/${id}`);

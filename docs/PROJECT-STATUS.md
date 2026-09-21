@@ -1,6 +1,6 @@
 ## Current Feature
 
-Step 18 — Reports & Data Export
+Step 19 — Audit Logs & System Activity Tracking
 
 ## Status
 
@@ -58,6 +58,35 @@ Completed
 - [x] Attendance dashboard (`/attendance`) with Daily Attendance & Shift Schedules tabs, date navigator, multi-filters, summary KPI cards, desktop table, and mobile cards
 - [x] Attendance record details page (`/attendance/[id]`) with employee card, schedule vs actual timing, audit trail, and correction dialog
 - [x] Manual attendance marking and correction dialog with real-time lateness preview
+- [x] Centralized Reports Hub at `/reports` with factual categorization and permission-filtered report catalog
+- [x] 14 dedicated operational and financial reports (`sales`, `orders`, `products`, `branches`, `payments`, `expenses`, `inventory`, `purchases`, `wastage`, `attendance`, `compensation`, `customers`, `reviews`, `profit-loss`)
+- [x] RFC-4180 compliant CSV export engine across all reports respecting user branch scope and filters
+- [x] Native print-friendly view styling (`@media print`)
+- [x] Step 18 Feature Documentation (`docs/features/reports.md`)
+- [x] Append-only, tamper-resistant `AuditLog` database model with relations to User and Branch, `Json?` columns, and 8 composite and single-field performance indexes
+- [x] Granular RBAC permissions: `audit.read` and `audit.export` granted strictly to Owner and Admin roles
+- [x] Deep recursive sensitive-data sanitizer (`sanitizeAuditData`) with zero password, hash, token, API key, CVV, or connection string exposure
+- [x] Scalar and enum field diff calculator (`calculateFieldDiff`) comparing before and after mutation states
+- [x] Transactional consistency: atomic audit logging inside `prisma.$transaction` for orders, inventory adjustments/transfers, payments, expenses, purchases, and bonuses
+- [x] Integrated server-side audit generation across Auth, Branches, Employees, Orders, Payments, Inventory, Expenses, Purchases, Attendance, and Salary
+- [x] Strict server-side branch isolation: Branch Managers cannot view, query, or inspect other branches' audit records; unauthorized cross-branch requests rejected
+- [x] Dedicated UI at `/audit-logs`: executive KPI summary cards, multi-dimensional search & filter toolbar (date presets, branch, action, entity), responsive data table, server-side pagination, and CSV export
+- [x] Audit record detail inspector at `/audit-logs/[id]`: event header, actor & network context, structured before/after change diff, formatted JSON payload tabs, and re-authorized entity deep links
+- [x] Step 19 Feature Documentation (`docs/features/audit-logs.md`)
+- [x] Automated test suite (`scripts/verify-audit-logs.ts`) passing all 8 validation suites
+
+## Current Task
+
+Step 19: Audit Logs & System Activity Tracking fully implemented, verified (8/8 automated verification assertions passed), and documented.
+
+## Next
+
+Awaiting user directive for the next operational milestone.
+
+## Known Issues
+
+None
+
 - [x] Shift creation and editing dialog with live duration calculation
 - [x] Shift activation/deactivation confirmation dialog
 - [x] Seed data with 5 shifts and sample attendance records
@@ -209,10 +238,21 @@ Completed
 - [x] RFC-4180 compliant CSV export engine across all 14 reports respecting user branch scope and filters
 - [x] Native print-friendly view styling (`@media print`) concealing interactive navigation and formatting print/PDF layouts
 - [x] Step 18 Feature Documentation (`docs/features/reports.md`)
+- [x] Append-only, tamper-resistant `AuditLog` database model with relations to User and Branch, `Json?` columns, and 8 composite and single-field performance indexes
+- [x] Granular RBAC permissions: `audit.read` and `audit.export` granted strictly to Owner and Admin roles
+- [x] Deep recursive sensitive-data sanitizer (`sanitizeAuditData`) with zero password, hash, token, API key, CVV, or connection string exposure
+- [x] Scalar and enum field diff calculator (`calculateFieldDiff`) comparing before and after mutation states
+- [x] Transactional consistency: atomic audit logging inside `prisma.$transaction` for orders, inventory adjustments/transfers, payments, expenses, purchases, and bonuses
+- [x] Integrated server-side audit generation across Auth, Branches, Employees, Orders, Payments, Inventory, Expenses, Purchases, Attendance, and Salary
+- [x] Strict server-side branch isolation: Branch Managers cannot view, query, or inspect other branches' audit records; unauthorized cross-branch requests rejected
+- [x] Dedicated UI at `/audit-logs`: executive KPI summary cards, multi-dimensional search & filter toolbar (date presets, branch, action, entity), responsive data table, server-side pagination, and CSV export
+- [x] Audit record detail inspector at `/audit-logs/[id]`: event header, actor & network context, structured before/after change diff, formatted JSON payload tabs, and re-authorized entity deep links
+- [x] Step 19 Feature Documentation (`docs/features/audit-logs.md`)
+- [x] Automated test suite (`scripts/verify-audit-logs.ts`) passing all 8 validation suites
 
 ## Current Task
 
-Step 18: Reports & Data Export fully implemented, verified (57/57 automated verification assertions passed), and documented.
+Step 19: Audit Logs & System Activity Tracking fully implemented, verified (8/8 automated verification assertions passed), and documented.
 
 ## Next
 
@@ -221,5 +261,6 @@ Awaiting user directive for the next operational milestone.
 ## Known Issues
 
 None
+
 
 

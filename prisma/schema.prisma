@@ -18,6 +18,7 @@ model User {
   sessions     Session[]
   employee     Employee?
   notifications Notification[]
+  auditLogs     AuditLog[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -111,6 +112,7 @@ model Branch {
   reviews           Review[]
   issues            CustomerIssue[]
   notifications     Notification[]
+  auditLogs         AuditLog[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -1271,3 +1273,31 @@ model Notification {
   @@index([dedupeKey])
   @@index([recipientUserId, isRead, isDismissed])
 }
+
+model AuditLog {
+  id           String    @id @default(cuid())
+  actorUserId  String?
+  actorUser    User?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  branchId     String?
+  branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  action       String
+  entityType   String
+  entityId     String?
+  description  String
+  beforeData   Json?
+  afterData    Json?
+  metadata     Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+
+  @@index([actorUserId])
+  @@index([branchId])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+  @@index([branchId, createdAt])
+  @@index([entityType, entityId])
+}
+

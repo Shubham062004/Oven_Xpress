@@ -16,6 +16,8 @@ import { getCurrentUser } from '@/lib/auth/guards';
 import type { AuthUser } from '@/lib/auth/types';
 import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
+import { createAuditLog } from '@/lib/audit/audit-service';
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 import {
   reviseSalarySchema,
   createBonusSchema,
@@ -1339,6 +1341,37 @@ export async function reviseSalary(
         },
       });
 
+      // 5. Audit log
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: employee.branchId,
+          action: AUDIT_ACTIONS.SALARY_UPDATE,
+          entityType: AUDIT_ENTITY_TYPES.SALARY,
+          entityId: newStructure.id,
+          description: `Revised salary for ${employee.firstName} ${employee.lastName} (${employee.employeeCode}) from ₹${previousSalaryNumber} to ₹${newSalary} (${percentageNumber >= 0 ? '+' : ''}${percentageNumber}%).`,
+          beforeData: {
+            salary: previousSalaryNumber,
+            structureId: currentActiveStructure?.id ?? null,
+          },
+          afterData: {
+            salary: newSalary,
+            salaryType: salaryType || SalaryType.MONTHLY,
+            structureId: newStructure.id,
+            incrementId: increment.id,
+            effectiveDate,
+          },
+          metadata: {
+            employeeId,
+            employeeCode: employee.employeeCode,
+            reason,
+            percentage: percentageNumber,
+            difference: differenceNumber,
+          },
+        },
+        tx
+      );
+
       return increment;
     });
 
@@ -1716,6 +1749,25 @@ export async function createBonus(
       },
     });
 
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId: employee.branchId,
+      action: AUDIT_ACTIONS.BONUS_CREATE,
+      entityType: AUDIT_ENTITY_TYPES.BONUS,
+      entityId: bonus.id,
+      description: `Created bonus of ₹${amount} (${type}) for employee ${employee.firstName} ${employee.lastName}. Reason: ${reason}`,
+      afterData: {
+        amount,
+        type,
+        status: bonus.status,
+      },
+      metadata: {
+        employeeId,
+        employeeCode: employee.employeeCode,
+        reason,
+      },
+    });
+
     revalidatePath('/salary');
     revalidatePath('/salary/bonuses');
     revalidatePath(`/employees/${employeeId}`);
@@ -1791,14 +1843,35 @@ export async function approveBonus(
       return { success: false, error: 'Bonus is already approved' };
     }
 
-    await prisma.bonus.update({
-      where: { id: bonus.id },
-      data: {
-        status: BonusStatus.APPROVED,
-        approvedBy: user.name,
-        approvedAt: new Date(),
-        rejectionReason: null,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.bonus.update({
+        where: { id: bonus.id },
+        data: {
+          status: BonusStatus.APPROVED,
+          approvedBy: user.name,
+          approvedAt: new Date(),
+          rejectionReason: null,
+        },
+      });
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: bonus.branchId,
+          action: AUDIT_ACTIONS.BONUS_APPROVE,
+          entityType: AUDIT_ENTITY_TYPES.BONUS,
+          entityId: bonus.id,
+          description: `Approved bonus of ₹${bonus.amount} for employee.`,
+          beforeData: { status: bonus.status },
+          afterData: { status: BonusStatus.APPROVED },
+          metadata: {
+            bonusId: bonus.id,
+            employeeId: bonus.employeeId,
+            amount: Number(bonus.amount),
+          },
+        },
+        tx
+      );
     });
 
     revalidatePath('/salary');
@@ -1845,12 +1918,34 @@ export async function rejectBonus(
       return { success: false, error: 'Forbidden: Access to branch denied' };
     }
 
-    await prisma.bonus.update({
-      where: { id: bonus.id },
-      data: {
-        status: BonusStatus.REJECTED,
-        rejectionReason: reason,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.bonus.update({
+        where: { id: bonus.id },
+        data: {
+          status: BonusStatus.REJECTED,
+          rejectionReason: reason,
+        },
+      });
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: bonus.branchId,
+          action: AUDIT_ACTIONS.BONUS_REJECT,
+          entityType: AUDIT_ENTITY_TYPES.BONUS,
+          entityId: bonus.id,
+          description: `Rejected bonus of ₹${bonus.amount} for employee. Reason: ${reason}`,
+          beforeData: { status: bonus.status },
+          afterData: { status: BonusStatus.REJECTED, rejectionReason: reason },
+          metadata: {
+            bonusId: bonus.id,
+            employeeId: bonus.employeeId,
+            amount: Number(bonus.amount),
+            reason,
+          },
+        },
+        tx
+      );
     });
 
     revalidatePath('/salary');

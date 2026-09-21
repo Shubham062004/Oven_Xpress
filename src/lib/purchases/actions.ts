@@ -28,6 +28,8 @@ import {
   InventoryStatus,
   Prisma,
 } from '@prisma/client';
+import { createAuditLog } from '@/lib/audit/audit-service';
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 
 function isRedirectError(error: unknown): boolean {
   return (
@@ -571,6 +573,28 @@ export async function createPurchaseOrder(
         },
       });
 
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: parsed.branchId,
+          action: AUDIT_ACTIONS.PURCHASE_CREATE,
+          entityType: AUDIT_ENTITY_TYPES.PURCHASE_ORDER,
+          entityId: created.id,
+          description: `Created purchase order ${created.purchaseNumber} for supplier ${supplier.name} with ${parsed.items.length} item(s).`,
+          afterData: {
+            purchaseNumber: created.purchaseNumber,
+            supplierId: parsed.supplierId,
+            status: parsed.status,
+            itemCount: parsed.items.length,
+          },
+          metadata: {
+            supplierName: supplier.name,
+            branchName: branch.name,
+          },
+        },
+        tx
+      );
+
       return { id: created.id, purchaseNumber: created.purchaseNumber };
     });
 
@@ -770,6 +794,27 @@ export async function receivePurchaseOrderItems(
         data: { status: newStatus },
       });
 
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: po.branchId,
+          action: AUDIT_ACTIONS.PURCHASE_RECEIVE,
+          entityType: AUDIT_ENTITY_TYPES.PURCHASE_ORDER,
+          entityId: po.id,
+          description: `Received stock for purchase order ${po.purchaseNumber} (Receipt: ${receivingNumber}). Status: ${newStatus}.`,
+          afterData: {
+            purchaseNumber: po.purchaseNumber,
+            receivingNumber,
+            status: newStatus,
+          },
+          metadata: {
+            receivingNumber,
+            itemsCount: parsed.items.length,
+          },
+        },
+        tx
+      );
+
       return { receivingNumber, newStatus };
     });
 
@@ -859,6 +904,18 @@ export async function cancelPurchaseOrder(
           : po.notes,
       },
     });
+
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId: po.branchId,
+      action: AUDIT_ACTIONS.PURCHASE_CANCEL,
+      entityType: AUDIT_ENTITY_TYPES.PURCHASE_ORDER,
+      entityId: po.id,
+      description: `Cancelled purchase order ${po.purchaseNumber}. Reason: ${parsed.reason || 'None provided'}`,
+      beforeData: { status: po.status },
+      afterData: { status: PurchaseOrderStatus.CANCELLED },
+      metadata: { reason: parsed.reason || null },
+    }).catch((e: unknown) => console.error('Failed to create purchase cancel audit log:', e));
 
     revalidatePath('/purchases');
     revalidatePath(`/purchases/${po.id}`);

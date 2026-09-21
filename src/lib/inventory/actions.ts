@@ -36,6 +36,8 @@ import {
   type StockTransactionItem,
 } from '@/lib/inventory/types';
 import { InventoryStatus, StockTransactionType, Prisma } from '@prisma/client';
+import { createAuditLog } from '@/lib/audit/audit-service';
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 
 function isRedirectError(error: unknown): boolean {
   return (
@@ -563,6 +565,26 @@ export async function recordOpeningStock(
         },
       });
 
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId,
+          action: AUDIT_ACTIONS.CREATE,
+          entityType: AUDIT_ENTITY_TYPES.INVENTORY_ITEM,
+          entityId: ingredientId,
+          description: `Initialized opening stock of ${quantity} ${ingredient.unit} for ${ingredient.name}`,
+          afterData: {
+            ingredientName: ingredient.name,
+            quantity,
+            unit: ingredient.unit,
+            minimumStock,
+            reorderLevel,
+          },
+          metadata: { transactionId: txRecord.id },
+        },
+        tx
+      );
+
       return { transactionId: txRecord.id };
     });
 
@@ -633,6 +655,25 @@ export async function recordStockReceipt(
         },
       });
 
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId,
+          action: AUDIT_ACTIONS.INVENTORY_RECEIVE,
+          entityType: AUDIT_ENTITY_TYPES.INVENTORY_ITEM,
+          entityId: ingredientId,
+          description: `Received ${quantity} ${ingredient.unit} of ${ingredient.name}`,
+          afterData: {
+            ingredientName: ingredient.name,
+            quantity,
+            unit: ingredient.unit,
+            referenceId: referenceId?.trim() || null,
+          },
+          metadata: { transactionId: txRecord.id },
+        },
+        tx
+      );
+
       return { transactionId: txRecord.id };
     });
 
@@ -696,6 +737,26 @@ export async function recordWastageDamage(
           performedBy: user.name,
         },
       });
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId,
+          action: AUDIT_ACTIONS.INVENTORY_WASTAGE,
+          entityType: AUDIT_ENTITY_TYPES.INVENTORY_ITEM,
+          entityId: ingredientId,
+          description: `Recorded ${quantity} ${ingredient.unit} ${type.toLowerCase()} for ${ingredient.name}. Reason: ${reason}`,
+          afterData: {
+            ingredientName: ingredient.name,
+            type,
+            quantity,
+            unit: ingredient.unit,
+            reason,
+          },
+          metadata: { transactionId: txRecord.id },
+        },
+        tx
+      );
 
       return { transactionId: txRecord.id };
     });
@@ -777,6 +838,26 @@ export async function recordStockAdjustment(
           performedBy: user.name,
         },
       });
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId,
+          action: AUDIT_ACTIONS.INVENTORY_ADJUST,
+          entityType: AUDIT_ENTITY_TYPES.INVENTORY_ITEM,
+          entityId: ingredientId,
+          description: `Stock adjustment (${direction}) of ${quantity} ${ingredient.unit} for ${ingredient.name}. Reason: ${reason}`,
+          afterData: {
+            ingredientName: ingredient.name,
+            direction,
+            quantity,
+            unit: ingredient.unit,
+            reason,
+          },
+          metadata: { transactionId: txRecord.id },
+        },
+        tx
+      );
 
       return { transactionId: txRecord.id };
     });
@@ -889,6 +970,29 @@ export async function recordBranchTransfer(
           performedBy: user.name,
         },
       });
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId: sourceBranchId,
+          action: AUDIT_ACTIONS.INVENTORY_TRANSFER,
+          entityType: AUDIT_ENTITY_TYPES.INVENTORY_ITEM,
+          entityId: ingredientId,
+          description: `Transferred ${quantity} ${ingredient.unit} of ${ingredient.name} from ${sourceBranch.name} to ${destBranch.name}`,
+          afterData: {
+            sourceBranchId,
+            sourceBranchName: sourceBranch.name,
+            destinationBranchId,
+            destinationBranchName: destBranch.name,
+            ingredientName: ingredient.name,
+            quantity,
+            unit: ingredient.unit,
+            referenceId,
+          },
+          metadata: { referenceId },
+        },
+        tx
+      );
     });
 
     revalidatePath('/inventory');
@@ -983,6 +1087,26 @@ export async function recordStockReconciliation(
           },
         });
       }
+
+      await createAuditLog(
+        {
+          actorUserId: user.id,
+          branchId,
+          action: AUDIT_ACTIONS.INVENTORY_RECONCILE,
+          entityType: AUDIT_ENTITY_TYPES.INVENTORY_ITEM,
+          entityId: ingredientId,
+          description: `Reconciled stock for ${ingredient.name}: System=${systemStock} ${ingredient.unit}, Physical=${physicalCount} ${ingredient.unit}, Variance=${variance > 0 ? '+' : ''}${variance} ${ingredient.unit}`,
+          afterData: {
+            ingredientName: ingredient.name,
+            systemStock,
+            physicalCount,
+            variance,
+            unit: ingredient.unit,
+          },
+          metadata: { reason: reason || null },
+        },
+        tx
+      );
 
       return {
         variance,
