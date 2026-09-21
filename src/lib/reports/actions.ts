@@ -2209,13 +2209,13 @@ export async function exportStockMovementsReportCSVAction(params: ReportFilterPa
     }
     const res = await getStockMovementsReportData({ ...params, limit: 5000, page: 1 }, user);
     const csv = generateGenericCSV(res.rows, [
-      { key: 'createdAt', header: 'Date/Time' },
+      { key: 'date', header: 'Date/Time' },
       { key: 'branchName', header: 'Branch' },
       { key: 'ingredientName', header: 'Ingredient' },
       { key: 'type', header: 'Type' },
       { key: 'quantity', header: 'Quantity' },
       { key: 'unit', header: 'Unit' },
-      { key: 'reference', header: 'Reference' },
+      { key: 'referenceId', header: 'Reference' },
       { key: 'notes', header: 'Notes' },
       { key: 'createdBy', header: 'Logged By' },
     ]);

@@ -5,6 +5,7 @@ import { hasAnyPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { getPurchasesReportAction } from '@/lib/reports/actions';
 import { PurchasesReportClient } from '@/components/reports/purchases-report-client';
+import type { DateRangePreset } from '@/lib/reports/types';
 
 export const metadata: Metadata = {
   title: 'Purchase Report | Oven Xpress',
@@ -29,7 +30,7 @@ export default async function PurchasesReportPage({ searchParams }: PurchasesRep
 
   const resolved = await searchParams;
   const page = resolved.page ? parseInt(resolved.page, 10) : 1;
-  const preset = (resolved.preset as any) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
+  const preset = (resolved.preset as DateRangePreset) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
 
   const res = await getPurchasesReportAction({
     branchId: resolved.branchId,

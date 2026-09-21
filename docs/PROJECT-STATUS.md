@@ -1,6 +1,6 @@
 ## Current Feature
 
-Step 17 — Owner Dashboard & Business Overview
+Step 18 — Reports & Data Export
 
 ## Status
 
@@ -199,10 +199,20 @@ Completed
 - [x] Step 16 Operational Alert Integration: Embedded `DashboardAlertWidget` displaying critical and warning operational notifications
 - [x] Streaming RFC-4180 CSV Export: On-demand export of executive KPIs, branch performance benchmarks, and top dishes
 - [x] Step 17 Feature Documentation (`docs/features/dashboard.md`)
+- [x] Centralized Reports Hub at `/reports` with factual categorization and permission-filtered report catalog
+- [x] 14 dedicated operational and financial reports (`sales`, `orders`, `products`, `branches`, `payments`, `expenses`, `inventory`, `purchases`, `wastage`, `attendance`, `compensation`, `customers`, `reviews`, `profit-loss`)
+- [x] Zero duplicate tables: Dynamic aggregations derived directly from primary source-of-truth Prisma models (`Order`, `OrderItem`, `Payment`, `PaymentRefund`, `Expense`, `InventoryItem`, `StockTransaction`, `PurchaseOrder`, `Attendance`, `SalaryRecord`, `Customer`, `Review`)
+- [x] Strict server-side branch scoping & anti-tampering guards via `getAuthorizedBranchScope()`; branch tampering attempts blocked server-side
+- [x] Confidential financial and payroll data protected with granular permissions (`report.*.read` / `report.*.export`)
+- [x] Unified `ReportViewContainer` UX with date presets (`today`, `yesterday`, `week`, `month`, bounded `custom` $\le 366$ days), module-specific filters, and summary KPI cards
+- [x] High-performance database aggregation using parallel queries (`Promise.all`), indexing, and server-side pagination
+- [x] RFC-4180 compliant CSV export engine across all 14 reports respecting user branch scope and filters
+- [x] Native print-friendly view styling (`@media print`) concealing interactive navigation and formatting print/PDF layouts
+- [x] Step 18 Feature Documentation (`docs/features/reports.md`)
 
 ## Current Task
 
-Step 17: Owner Dashboard & Business Overview fully implemented, verified, and documented.
+Step 18: Reports & Data Export fully implemented, verified (57/57 automated verification assertions passed), and documented.
 
 ## Next
 

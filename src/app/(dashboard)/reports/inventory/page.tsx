@@ -5,6 +5,7 @@ import { hasAnyPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { getInventoryReportAction } from '@/lib/reports/actions';
 import { InventoryReportClient } from '@/components/reports/inventory-report-client';
+import type { DateRangePreset } from '@/lib/reports/types';
 
 export const metadata: Metadata = {
   title: 'Inventory & Stock Movements Report | Oven Xpress',
@@ -29,7 +30,7 @@ export default async function InventoryReportPage({ searchParams }: InventoryRep
 
   const resolved = await searchParams;
   const page = resolved.page ? parseInt(resolved.page, 10) : 1;
-  const preset = (resolved.preset as any) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
+  const preset = (resolved.preset as DateRangePreset) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
   const view = (resolved.view === 'movements' ? 'movements' : 'stock') as 'stock' | 'movements';
 
   const res = await getInventoryReportAction({

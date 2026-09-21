@@ -84,11 +84,6 @@ export function PurchasesReportClient({
     handleFilterChange('search', search);
   };
 
-  const selectedBranchName =
-    selectedBranchId === 'all'
-      ? 'All Branches'
-      : branches.find((b) => b.id === selectedBranchId)?.name || 'Current Branch';
-
   const summaryCards: SummaryCardItem[] = [
     {
       title: 'Total Purchase Orders',

@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Star,
-  MessageSquare,
   CheckCircle2,
   Clock,
   EyeOff,

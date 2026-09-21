@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select';
 import { ReportViewContainer, type SummaryCardItem } from './report-view-container';
 import { formatCurrency, formatNumber } from '@/lib/reports/constants';
-import type { ExpensesReportRow, ExpensesReportSummary, PaginationMeta } from '@/lib/reports/types';
+import type { ExpensesReportRow, ExpensesReportSummary, PaginationMeta, DateRangePreset } from '@/lib/reports/types';
 import { exportExpensesReportCSVAction } from '@/lib/reports/actions';
 
 interface ExpensesReportClientProps {
@@ -102,7 +102,7 @@ export function ExpensesReportClient({
   const handleExport = async () => {
     const res = await exportExpensesReportCSVAction({
       branchId: selectedBranchId,
-      preset: selectedPreset as any,
+      preset: selectedPreset as DateRangePreset,
       startDate,
       endDate,
       categoryId: currentCategory,

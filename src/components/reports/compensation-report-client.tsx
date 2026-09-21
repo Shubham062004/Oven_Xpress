@@ -9,7 +9,6 @@ import {
   Gift,
   TrendingUp,
   Search,
-  ShieldAlert,
 } from 'lucide-react';
 import {
   Table,

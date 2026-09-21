@@ -22,7 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ReportViewContainer, type SummaryCardItem } from './report-view-container';
 import { formatCurrency, formatNumber } from '@/lib/reports/constants';
-import type { BranchReportRow, BranchReportSummary } from '@/lib/reports/types';
+import type { BranchReportRow, BranchReportSummary, DateRangePreset } from '@/lib/reports/types';
 import { exportBranchesReportCSVAction } from '@/lib/reports/actions';
 
 interface BranchesReportClientProps {
@@ -68,7 +68,7 @@ export function BranchesReportClient({
 
   const handleExport = async () => {
     const res = await exportBranchesReportCSVAction({
-      preset: selectedPreset as any,
+      preset: selectedPreset as DateRangePreset,
       startDate,
       endDate,
     });

@@ -5,6 +5,7 @@ import { hasAnyPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { getReviewsReportAction } from '@/lib/reports/actions';
 import { ReviewsReportClient } from '@/components/reports/reviews-report-client';
+import type { DateRangePreset } from '@/lib/reports/types';
 
 export const metadata: Metadata = {
   title: 'Customer Feedback & Reviews Report | Oven Xpress',
@@ -30,7 +31,7 @@ export default async function ReviewsReportPage({ searchParams }: ReviewsReportP
 
   const resolved = await searchParams;
   const page = resolved.page ? parseInt(resolved.page, 10) : 1;
-  const preset = (resolved.preset as any) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
+  const preset = (resolved.preset as DateRangePreset) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
 
   const res = await getReviewsReportAction({
     branchId: resolved.branchId,

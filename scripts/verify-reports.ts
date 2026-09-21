@@ -70,7 +70,6 @@ async function runVerification() {
       'report.expense.read',
       'report.attendance.read',
     ],
-    branchId: firstBranch.id,
   };
 
   // 1. Sales Report Verification

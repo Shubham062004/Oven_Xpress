@@ -5,6 +5,7 @@ import { hasAnyPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { getBranchesReportAction } from '@/lib/reports/actions';
 import { BranchesReportClient } from '@/components/reports/branches-report-client';
+import type { DateRangePreset } from '@/lib/reports/types';
 
 export const metadata: Metadata = {
   title: 'Branch Benchmark Report | Oven Xpress',
@@ -30,7 +31,7 @@ export default async function BranchesReportPage({ searchParams }: BranchesRepor
 
   const resolved = await searchParams;
   const page = resolved.page ? parseInt(resolved.page, 10) : 1;
-  const preset = (resolved.preset as any) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
+  const preset = (resolved.preset as DateRangePreset) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
 
   const res = await getBranchesReportAction({
     preset,
@@ -41,7 +42,7 @@ export default async function BranchesReportPage({ searchParams }: BranchesRepor
     limit: 25,
   });
 
-  if (!res.success || !res.data) {
+  if (!res.success) {
     return (
       <div className="p-8 text-center text-muted-foreground">
         <p className="text-base font-semibold text-rose-600">Failed to load branch report</p>
@@ -55,14 +56,10 @@ export default async function BranchesReportPage({ searchParams }: BranchesRepor
       <BranchesReportClient
         rows={res.data.rows}
         summary={res.data.summary}
-        pagination={res.data.pagination}
         branches={res.data.branches}
-        selectedBranchId="all"
-        isBranchRestricted={res.data.isBranchRestricted}
         selectedPreset={preset}
         startDate={resolved.startDate}
         endDate={resolved.endDate}
-        currentSearch={resolved.search || ''}
       />
     </div>
   );

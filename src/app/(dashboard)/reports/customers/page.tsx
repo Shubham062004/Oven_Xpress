@@ -37,7 +37,7 @@ export default async function CustomersReportPage({ searchParams }: CustomersRep
     limit: 25,
   });
 
-  if (!res.success || !res.data) {
+  if (!res.success) {
     return (
       <div className="p-8 text-center text-muted-foreground">
         <p className="text-base font-semibold text-rose-600">Failed to load customers report</p>

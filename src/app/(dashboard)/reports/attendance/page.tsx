@@ -5,6 +5,7 @@ import { hasAnyPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { getAttendanceReportAction } from '@/lib/reports/actions';
 import { AttendanceReportClient } from '@/components/reports/attendance-report-client';
+import type { DateRangePreset } from '@/lib/reports/types';
 
 export const metadata: Metadata = {
   title: 'Attendance & Punctuality Report | Oven Xpress',
@@ -29,7 +30,7 @@ export default async function AttendanceReportPage({ searchParams }: AttendanceR
 
   const resolved = await searchParams;
   const page = resolved.page ? parseInt(resolved.page, 10) : 1;
-  const preset = (resolved.preset as any) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
+  const preset = (resolved.preset as DateRangePreset) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
 
   const res = await getAttendanceReportAction({
     branchId: resolved.branchId,
@@ -43,7 +44,7 @@ export default async function AttendanceReportPage({ searchParams }: AttendanceR
     limit: 25,
   });
 
-  if (!res.success || !res.data) {
+  if (!res.success) {
     return (
       <div className="p-8 text-center text-muted-foreground">
         <p className="text-base font-semibold text-rose-600">Failed to load attendance report</p>
