@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, LogOut, Menu, Search, Settings as SettingsIcon, Shield, User as UserIcon } from 'lucide-react';
+import { LogOut, Menu, Search, Settings as SettingsIcon, Shield, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { useSidebar } from '@/providers/sidebar-provider';
 import type { AuthUser } from '@/lib/auth/types';
 import { logoutAction } from '@/lib/auth/actions';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 
 interface HeaderProps {
   user?: AuthUser | null;
@@ -75,10 +76,8 @@ export function Header({ user }: HeaderProps) {
           <Search className="size-4" />
         </Button>
 
-        {/* Notifications placeholder */}
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell className="size-4" />
-        </Button>
+        {/* Notifications */}
+        {user ? <NotificationBell /> : null}
 
         {/* Theme toggle */}
         <ThemeToggle />

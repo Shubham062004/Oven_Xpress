@@ -18,6 +18,7 @@ import {
   FileSpreadsheet,
   Star,
   MessageSquare,
+  Bell,
 } from 'lucide-react';
 
 import { PERMISSIONS } from '@/lib/permissions/definitions';
@@ -35,6 +36,12 @@ export const mainNavItems: NavItem[] = [
     href: '/',
     icon: LayoutDashboard,
     requiredPermission: PERMISSIONS.DASHBOARD_READ,
+  },
+  {
+    label: 'Notifications',
+    href: '/notifications',
+    icon: Bell,
+    requiredPermission: PERMISSIONS.NOTIFICATION_READ,
   },
   {
     label: 'Branches',

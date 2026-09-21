@@ -38,6 +38,7 @@ import {
   formatNumber,
 } from '@/lib/reports/constants';
 import { getDashboardData } from '@/lib/reports/actions';
+import { DashboardAlertWidget } from '@/components/notifications/dashboard-alert-widget';
 
 interface DashboardClientProps {
   initialData: DashboardData;
@@ -213,6 +214,9 @@ export function DashboardClient({
           loading={isPending}
         />
       </div>
+
+      {/* ─── Alerts & Operational Notifications Widget ───────────────────── */}
+      <DashboardAlertWidget branchId={branchId} />
 
       {/* ─── Operational Charts & Insights Grid ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

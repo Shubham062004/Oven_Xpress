@@ -176,14 +176,24 @@ Completed
 - [x] Feedback & Quality Dashboard (`/feedback`): Overall review volume, 5.00-point average rating, 1★–5★ visual distribution bars, live reviews stream, active issues queue, and cross-branch quality comparison table
 - [x] Customer privacy protection: Server-side masking of phone numbers, email addresses, and street delivery addresses for least-privilege access
 - [x] Feature documentation (`docs/features/customer-feedback.md`)
+- [x] In-App Notifications & Alerts: Prisma Notification model with NotificationType & NotificationSeverity enums, branch & user relations, and compound index deduplication
+- [x] Notification RBAC permissions (`notification.read`, `notification.dismiss`) assigned across all system roles
+- [x] Deterministic Deduplication Engine: Compound dedupeKey (`${recipientUserId}:${type}:${branchId}:${entityType}:${entityId}`) prevents spam on repeat dashboard visits and page reloads
+- [x] Server-Side Recipient Resolution: Permission-aware and branch-scoped targeting (Owners/Admins receive global alerts; Managers/Staff receive alerts strictly for assigned active branch)
+- [x] Automatic Entity State Clearing: When underlying operational records resolve (expense approved/rejected, order paid, or stock replenished), pending notifications are automatically cleared/dismissed
+- [x] Centralized Operational Alert Evaluator (`evaluateAlerts`): Detects low-stock and out-of-stock items via batch calculations, pending expense approvals, pending salary reviews, pending bonus reviews, failed payments, unpaid completed orders, and stock reconciliation variances
+- [x] Header Notification Bell (`NotificationBell`): Live unread counter badge, dropdown popover with recent 5 notifications, relative timestamps, severity badges, and quick mark-read controls
+- [x] Dashboard Alert Widget (`DashboardAlertWidget`): Embedded on primary dashboard (`/`) displaying Critical, Warning, and Unread counts, actionable operational bottlenecks, and quick deep links
+- [x] Notification Center (`/notifications`): Full-featured management hub with tabs (All, Unread, Read, Dismissed), severity filters, category filters, branch filtering, search, pagination, and manual alert scanner
+- [x] Feature documentation (`docs/features/notifications-alerts.md`)
 
 ## Current Task
 
-Customer Management, Reviews & Feedback fully implemented, verified, and documented.
+Step 16: In-App Notifications & Alerts fully implemented, verified, and documented.
 
 ## Next
 
-Phase 15: Loyalty Points, Membership Tiers & Promotional Campaigns
+Awaiting user directive for the next operational milestone.
 
 ## Known Issues
 

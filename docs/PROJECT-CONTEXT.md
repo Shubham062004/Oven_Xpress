@@ -172,11 +172,10 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 
 ## Current Phase
 
-**Phase 14: Customer Management, Reviews & Operational Feedback**
+**Step 16: Notifications & Alerts**
 
-Delivers persistent guest profiles, lifetime order analytics derived from existing records without duplication, review moderation, operational complaint tickets, and real-time quality sentiment dashboards.
-- **Persistent Profiles**: Supports registered and guest customers without mandatory logins. Soft deactivation preserves all historical transactions and records.
-- **Review Moderation**: 1–5 star rating validation, customer/order linkage, and moderation status transitions (`PENDING`, `PUBLISHED`, `HIDDEN`, `RESOLVED`) without staff altering customer words.
-- **Operational Issue Management**: Sequential ticket numbering (`ISS-YYYY-000001`), 9 incident categories, priority levels, strict branch-isolated staff assignment, and mandatory audited resolution notes.
-- **Executive Feedback Dashboard**: Star rating distributions (1★–5★), live review feed, active issues queue, and multi-branch quality comparisons.
-- **Customer Privacy**: Server-side phone, email, and delivery address masking.
+Delivers an in-app operational notification and alert management system across all branches.
+- **In-App Delivery**: Permission-aware, branch-isolated notification center, interactive dashboard alert widget, and persistent header notification bell with live unread counts.
+- **Deterministic Deduplication**: Compound key `${recipientUserId}:${type}:${branchId}:${entityType}:${entityId}` guarantees zero duplicate alerts across repeated page reloads or evaluations.
+- **Automated Lifecycle Resolution**: Pending approval, stock, and unpaid order alerts are automatically resolved/dismissed as soon as the underlying entity state transitions to terminal/paid/replenished.
+- **Zero Heavy External Dependencies**: Pure PostgreSQL + Prisma transactions without Redis, Kafka, or external push/SMS/email daemons.

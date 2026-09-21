@@ -17,6 +17,7 @@ model User {
   isActive     Boolean   @default(true)
   sessions     Session[]
   employee     Employee?
+  notifications Notification[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -109,6 +110,7 @@ model Branch {
   salaryRecords     SalaryRecord[]
   reviews           Review[]
   issues            CustomerIssue[]
+  notifications     Notification[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -1218,4 +1220,54 @@ model CustomerIssueAuditLog {
 
   @@index([issueId])
   @@index([createdAt])
+}
+
+enum NotificationType {
+  LOW_STOCK
+  OUT_OF_STOCK
+  STOCK_VARIANCE
+  HIGH_WASTAGE
+  PENDING_EXPENSE_APPROVAL
+  PENDING_BONUS_APPROVAL
+  PENDING_SALARY_REVIEW
+  FAILED_PAYMENT
+  UNPAID_ORDER
+  ATTENDANCE_ALERT
+  OPERATIONAL_EXCEPTION
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model Notification {
+  id              String               @id @default(cuid())
+  recipientUserId String
+  recipient       User                 @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+  branchId        String?
+  branch          Branch?              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  type            NotificationType
+  severity        NotificationSeverity @default(INFO)
+  title           String
+  message         String
+  entityType      String?
+  entityId        String?
+  actionUrl       String?
+  isRead          Boolean              @default(false)
+  readAt          DateTime?
+  isDismissed     Boolean              @default(false)
+  dismissedAt     DateTime?
+  dedupeKey       String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([recipientUserId])
+  @@index([branchId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([type])
+  @@index([dedupeKey])
+  @@index([recipientUserId, isRead, isDismissed])
 }

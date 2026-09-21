@@ -443,6 +443,31 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Permissions: customer.read, customer.create, customer.update, customer.deactivate, review.read, review.moderate, issue.read, issue.create, issue.update, issue.assign, issue.resolve
 ```
 
+### In-App Notifications & Operational Alerts Pattern
+
+```
+# Module: In-App Notifications & Operational Alerts
+
+## Entity Architecture
+- Notification: Recipient-targeted, permission-aware operational message.
+  Fields: id, recipientUserId, branchId?, type (NotificationType enum), severity (NotificationSeverity enum), title, message, entityType?, entityId?, actionUrl?, isRead, readAt?, isDismissed, dismissedAt?, dedupeKey?, createdAt, updatedAt.
+  Compound index on: [recipientUserId, isRead, isDismissed], [dedupeKey].
+- NotificationType: LOW_STOCK, OUT_OF_STOCK, STOCK_VARIANCE, HIGH_WASTAGE, PENDING_EXPENSE_APPROVAL, PENDING_BONUS_APPROVAL, PENDING_SALARY_REVIEW, FAILED_PAYMENT, UNPAID_ORDER, ATTENDANCE_ALERT, OPERATIONAL_EXCEPTION.
+- NotificationSeverity: INFO, WARNING, CRITICAL.
+
+## Business Rules & Integrity
+- Deterministic Deduplication: Compound key `${recipientUserId}:${type}:${branchId}:${entityType}:${entityId}` prevents duplicate records across repeated evaluations or page visits.
+- Automated Lifecycle Resolution: When source entity state resolves (expense approved/rejected, order paid, stock replenished), pending notifications are automatically cleared/dismissed.
+- Lightweight Infrastructure: Zero external message brokers, push services, SMS/email dependencies, or background cron daemons; operates directly over PostgreSQL and Next.js Server Actions.
+- Real-time Alert Evaluator: Scans inventory thresholds, approval queues, payment failures, and reconciliation records idempotently.
+
+## RBAC & Security
+- Permissions: notification.read, notification.dismiss (assigned to OWNER, ADMIN, MANAGER, STAFF).
+- Scoping: OWNER/ADMIN receive cross-branch operational alerts; MANAGER/STAFF are strictly isolated to their active assigned branch.
+- Sensitive Data Isolation: Salary, bonus, and expense approval alerts are never routed to users lacking the required approval permission.
+```
+
+
 
 
 
