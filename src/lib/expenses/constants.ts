@@ -1,6 +1,5 @@
 import {
   ExpenseStatus,
-  ExpenseCategoryStatus,
   ExpenseFrequency,
   PaymentMethod,
 } from '@prisma/client';

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { InventoryStatus, StockTransactionType, WastageReason, IngredientUnit } from '@prisma/client';
+import { InventoryStatus, StockTransactionType, WastageReason } from '@prisma/client';
 
 // ─── Wastage Reason Labels ──────────────────────────────────────────────────
 

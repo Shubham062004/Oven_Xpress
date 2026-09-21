@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -52,7 +52,12 @@ export function CategoryDialog({
     status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
   });
 
-  useEffect(() => {
+  const [prevCategory, setPrevCategory] = useState<CategoryItem | null | undefined>(category);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (category !== prevCategory || open !== prevOpen) {
+    setPrevCategory(category);
+    setPrevOpen(open);
     if (category) {
       setFormData({
         name: category.name,
@@ -70,7 +75,7 @@ export function CategoryDialog({
     }
     setFieldErrors({});
     setFormError(null);
-  }, [category, open]);
+  }
 
   const updateField = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

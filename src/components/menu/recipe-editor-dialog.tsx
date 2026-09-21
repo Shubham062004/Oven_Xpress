@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { Plus, Trash2, Loader2, AlertCircle, ScrollText } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -70,7 +70,12 @@ export function RecipeEditorDialog({
     (i) => i.status === 'ACTIVE'
   );
 
-  useEffect(() => {
+  const [prevRecipe, setPrevRecipe] = useState(currentRecipe);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (currentRecipe !== prevRecipe || open !== prevOpen) {
+    setPrevRecipe(currentRecipe);
+    setPrevOpen(open);
     if (open) {
       if (currentRecipe.length > 0) {
         setRows(
@@ -86,7 +91,7 @@ export function RecipeEditorDialog({
       }
       setFormError(null);
     }
-  }, [open, currentRecipe]);
+  }
 
   const handleAddRow = () => {
     if (activeIngredients.length === 0) {

@@ -211,7 +211,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
 
         <Card className="p-4 border border-border shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Today's Receipts</span>
+            <span className="text-xs font-medium text-muted-foreground">Today&apos;s Receipts</span>
             <ArrowDownToLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
@@ -224,7 +224,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
 
         <Card className="p-4 border border-border shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Today's Losses</span>
+            <span className="text-xs font-medium text-muted-foreground">Today&apos;s Losses</span>
             <Trash2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           </div>
           <div className="mt-2 text-2xl font-bold text-foreground">

@@ -3,8 +3,6 @@
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Calendar,
-  DollarSign,
   Clock,
   Sparkles,
   Info,

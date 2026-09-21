@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { User, Phone, Mail, MapPin, FileText, Loader2 } from 'lucide-react';
@@ -43,7 +43,12 @@ export function CustomerDialog({
   const [notes, setNotes] = useState(customer?.notes || '');
   const [status, setStatus] = useState<CustomerStatus>(customer?.status || 'ACTIVE');
 
-  useEffect(() => {
+  const [prevCustomer, setPrevCustomer] = useState(customer);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (open !== prevOpen || customer !== prevCustomer) {
+    setPrevOpen(open);
+    setPrevCustomer(customer);
     if (open) {
       setName(customer?.name || '');
       setPhone(customer?.phone || '');
@@ -52,7 +57,7 @@ export function CustomerDialog({
       setNotes(customer?.notes || '');
       setStatus(customer?.status || 'ACTIVE');
     }
-  }, [open, customer]);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

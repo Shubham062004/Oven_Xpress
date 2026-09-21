@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -58,7 +58,12 @@ export function IngredientDialog({
     status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
   });
 
-  useEffect(() => {
+  const [prevIngredient, setPrevIngredient] = useState<IngredientItem | null | undefined>(ingredient);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (ingredient !== prevIngredient || open !== prevOpen) {
+    setPrevIngredient(ingredient);
+    setPrevOpen(open);
     if (ingredient) {
       setFormData({
         name: ingredient.name,
@@ -76,7 +81,7 @@ export function IngredientDialog({
     }
     setFieldErrors({});
     setFormError(null);
-  }, [ingredient, open]);
+  }
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

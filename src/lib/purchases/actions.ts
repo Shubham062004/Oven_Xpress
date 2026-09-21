@@ -699,6 +699,28 @@ export async function receivePurchaseOrderItems(
 
     // Execute atomic receiving transaction
     const result = await prisma.$transaction(async (tx) => {
+      // Re-fetch PO with transaction lock and check status & item quantities to prevent concurrent double-receiving
+      const currentPo = await tx.purchaseOrder.findUnique({
+        where: { id: po.id },
+        include: { items: true },
+      });
+
+      if (!currentPo || currentPo.status === PurchaseOrderStatus.RECEIVED || currentPo.status === PurchaseOrderStatus.CANCELLED) {
+        throw new Error('Purchase order has already been fully received or cancelled.');
+      }
+
+      // Check current item quantities inside transaction to strictly prevent over-receiving from concurrent requests
+      for (const itemInput of parsed.items) {
+        const currentItem = currentPo.items.find((it) => it.id === itemInput.purchaseOrderItemId);
+        if (!currentItem) {
+          throw new Error(`Item ${itemInput.purchaseOrderItemId} not found on purchase order.`);
+        }
+        const remaining = Number(currentItem.orderedQuantity) - Number(currentItem.receivedQuantity);
+        if (itemInput.receivedNow > remaining + 0.0001) {
+          throw new Error(`Over-receiving rejected: Remaining quantity is ${remaining}, attempted to receive ${itemInput.receivedNow}.`);
+        }
+      }
+
       const receivingNumber = await generateReceivingNumber(tx, po.purchaseNumber);
       const receivedAt = parsed.receivedDate ? new Date(parsed.receivedDate) : new Date();
 

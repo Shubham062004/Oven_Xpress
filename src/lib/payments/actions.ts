@@ -385,6 +385,19 @@ export async function createPaymentRefund(
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      // Re-fetch payment inside transaction to guarantee state safety under concurrency
+      const currentPayment = await tx.payment.findUnique({
+        where: { id: payment.id },
+        select: { status: true },
+      });
+      if (
+        !currentPayment ||
+        (currentPayment.status !== PaymentStatus.SUCCESS &&
+          currentPayment.status !== PaymentStatus.PARTIALLY_REFUNDED)
+      ) {
+        throw new Error(`Cannot refund payment with status: ${currentPayment?.status || 'UNKNOWN'}`);
+      }
+
       // Re-fetch existing refunds inside transaction for strict atomicity
       const existingRefunds = await tx.paymentRefund.findMany({
         where: {

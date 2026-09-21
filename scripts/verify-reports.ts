@@ -40,7 +40,7 @@ async function runVerification() {
   }
 
   // 0. Fetch test branches and setup mock users
-  const branches = await prisma.branch.findMany({ take: 5 });
+  const branches = await prisma.branch.findMany();
   const firstBranch = branches[0];
   console.log(`Database connected. Found ${branches.length} branches.`);
   if (branches.length === 0) {

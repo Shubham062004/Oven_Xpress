@@ -9,8 +9,6 @@ import {
   Banknote,
   Plus,
   Search,
-  Building2,
-  Calendar,
   RotateCcw,
   Check,
   X,
@@ -21,7 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { BonusStatus, BonusType } from '@prisma/client';
+import { BonusStatus } from '@prisma/client';
 import type { BonusItem, PaginationMeta } from '@/lib/salary/types';
 import {
   BONUS_STATUS_META,

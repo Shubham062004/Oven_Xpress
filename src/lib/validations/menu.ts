@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IngredientUnit, MenuStatus } from '@prisma/client';
+import { IngredientUnit } from '@prisma/client';
 
 // ─── Unit Compatibility & Conversion System ─────────────────────────────────
 
@@ -22,9 +22,9 @@ export const UNIT_LABELS: Record<IngredientUnit, string> = {
 };
 
 export function getUnitFamily(unit: IngredientUnit | string): 'MASS' | 'VOLUME' | 'COUNT' | null {
-  if (UNIT_FAMILIES.MASS.includes(unit as any)) return 'MASS';
-  if (UNIT_FAMILIES.VOLUME.includes(unit as any)) return 'VOLUME';
-  if (UNIT_FAMILIES.COUNT.includes(unit as any)) return 'COUNT';
+  if ((UNIT_FAMILIES.MASS as readonly string[]).includes(unit)) return 'MASS';
+  if ((UNIT_FAMILIES.VOLUME as readonly string[]).includes(unit)) return 'VOLUME';
+  if ((UNIT_FAMILIES.COUNT as readonly string[]).includes(unit)) return 'COUNT';
   return null;
 }
 

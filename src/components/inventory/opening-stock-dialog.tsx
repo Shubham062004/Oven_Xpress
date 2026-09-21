@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { Loader2, PackagePlus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,13 +55,16 @@ export function OpeningStockDialog({
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       if (defaultBranchId) setBranchId(defaultBranchId);
-      else if (branches.length > 0 && !branchId) setBranchId(branches[0].id);
+      else if (branches.length > 0) setBranchId(branches[0].id);
 
       if (defaultIngredientId) setIngredientId(defaultIngredientId);
-      else if (ingredients.length > 0 && !ingredientId) setIngredientId(ingredients[0].id);
+      else if (ingredients.length > 0) setIngredientId(ingredients[0].id);
 
       setQuantity('');
       setMinimumStock('5');
@@ -69,7 +72,7 @@ export function OpeningStockDialog({
       setNote('');
       setError(null);
     }
-  }, [open, defaultBranchId, defaultIngredientId, branches, ingredients]);
+  }
 
   const selectedIngredient = ingredients.find((i) => i.id === ingredientId);
 

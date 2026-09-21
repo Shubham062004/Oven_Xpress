@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { Loader2, ArrowRightLeft, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -60,7 +60,10 @@ export function StockTransferDialog({
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       const srcId = defaultSourceBranchId || (branches[0]?.id ?? '');
       setSourceBranchId(srcId);
@@ -68,13 +71,13 @@ export function StockTransferDialog({
       setDestinationBranchId(destId);
 
       if (defaultIngredientId) setIngredientId(defaultIngredientId);
-      else if (ingredients.length > 0 && !ingredientId) setIngredientId(ingredients[0].id);
+      else if (ingredients.length > 0) setIngredientId(ingredients[0].id);
 
       setQuantity('');
       setNote('');
       setError(null);
     }
-  }, [open, defaultSourceBranchId, defaultIngredientId, branches, ingredients]);
+  }
 
   const selectedIngredient = ingredients.find((i) => i.id === ingredientId);
   const sourceBranch = branches.find((b) => b.id === sourceBranchId);

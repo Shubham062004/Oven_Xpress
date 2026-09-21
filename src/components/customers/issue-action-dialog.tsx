@@ -47,17 +47,30 @@ export function IssueActionDialog({
   const [assignedTo, setAssignedTo] = useState(issue?.assignedTo || '');
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string; designation: string }>>([]);
 
-  useEffect(() => {
+  const [prevIssue, setPrevIssue] = useState(issue);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (open !== prevOpen || issue !== prevIssue) {
+    setPrevOpen(open);
+    setPrevIssue(issue);
     if (open && issue) {
       setStatus(issue.status);
       setResolutionNote(issue.resolutionNote || '');
       setAssignedTo(issue.assignedTo || '');
+    }
+  }
 
+  useEffect(() => {
+    if (open && issue) {
+      let active = true;
       getAssignableStaff(issue.branchId).then((res) => {
-        if (res.success && res.data) {
+        if (active && res.success && res.data) {
           setStaffList(res.data);
         }
       });
+      return () => {
+        active = false;
+      };
     }
   }, [open, issue]);
 

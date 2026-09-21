@@ -24,7 +24,7 @@ import {
   Ban,
   Filter,
 } from 'lucide-react';
-import { ExpenseStatus, PaymentMethod } from '@prisma/client';
+import { ExpenseStatus } from '@prisma/client';
 
 import type {
   ExpenseListItem,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { Loader2, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -47,14 +47,19 @@ export function InventoryItemDialog({
   const [status, setStatus] = useState<InventoryStatus>(InventoryStatus.ACTIVE);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevItem, setPrevItem] = useState(item);
+
+  if (open !== prevOpen || item !== prevItem) {
+    setPrevOpen(open);
+    setPrevItem(item);
     if (open && item) {
       setMinimumStock(String(item.minimumStock));
       setReorderLevel(String(item.reorderLevel));
       setStatus(item.status);
       setError(null);
     }
-  }, [open, item]);
+  }
 
   if (!item) return null;
 

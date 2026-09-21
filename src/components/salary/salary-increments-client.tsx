@@ -7,14 +7,10 @@ import {
   TrendingUp,
   Banknote,
   Gift,
-  Plus,
   Search,
-  Building2,
-  Calendar,
   RotateCcw,
   ChevronLeft,
   ChevronRight,
-  ArrowRight,
 } from 'lucide-react';
 
 import type { IncrementItem, PaginationMeta } from '@/lib/salary/types';

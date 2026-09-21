@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -57,7 +57,12 @@ export function MenuItemDialog({
     status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE',
   });
 
-  useEffect(() => {
+  const [prevItem, setPrevItem] = useState<MenuItemDetailItem | null | undefined>(item);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (item !== prevItem || open !== prevOpen) {
+    setPrevItem(item);
+    setPrevOpen(open);
     if (item) {
       setFormData({
         name: item.name,
@@ -81,7 +86,7 @@ export function MenuItemDialog({
     }
     setFieldErrors({});
     setFormError(null);
-  }, [item, categories, open]);
+  }
 
   const updateField = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

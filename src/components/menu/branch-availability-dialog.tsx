@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import React, { useState, useTransition } from 'react';
 import { Loader2, Building2, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -45,13 +45,13 @@ export function BranchAvailabilityDialog({
   );
   const [formError, setFormError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open) {
-      setIsAvailable(branchRecord.isAvailable);
-      setCustomPrice(branchRecord.price !== null ? String(branchRecord.price) : '');
-      setFormError(null);
-    }
-  }, [open, branchRecord]);
+  const [prevRecord, setPrevRecord] = useState(branchRecord);
+  if (branchRecord !== prevRecord) {
+    setPrevRecord(branchRecord);
+    setIsAvailable(branchRecord.isAvailable);
+    setCustomPrice(branchRecord.price !== null ? String(branchRecord.price) : '');
+    setFormError(null);
+  }
 
   const handleSave = () => {
     setFormError(null);

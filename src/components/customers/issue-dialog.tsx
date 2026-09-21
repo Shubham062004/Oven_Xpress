@@ -52,7 +52,12 @@ export function IssueDialog({
   const [assignedTo, setAssignedTo] = useState('');
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string; designation: string }>>([]);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevDefaultBranchId, setPrevDefaultBranchId] = useState(defaultBranchId);
+
+  if (open !== prevOpen || defaultBranchId !== prevDefaultBranchId) {
+    setPrevOpen(open);
+    setPrevDefaultBranchId(defaultBranchId);
     if (open) {
       if (defaultBranchId) {
         setSelectedBranchId(defaultBranchId);
@@ -60,7 +65,7 @@ export function IssueDialog({
         setSelectedBranchId(branches[0].id);
       }
     }
-  }, [open, defaultBranchId, branches]);
+  }
 
   // Load assignable staff whenever selected branch changes
   useEffect(() => {
