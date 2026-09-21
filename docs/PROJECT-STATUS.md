@@ -1,6 +1,6 @@
 ## Current Feature
 
-Kitchen Display System (KDS) + Order Preparation Workflow
+Step 17 — Owner Dashboard & Business Overview
 
 ## Status
 
@@ -186,10 +186,23 @@ Completed
 - [x] Dashboard Alert Widget (`DashboardAlertWidget`): Embedded on primary dashboard (`/`) displaying Critical, Warning, and Unread counts, actionable operational bottlenecks, and quick deep links
 - [x] Notification Center (`/notifications`): Full-featured management hub with tabs (All, Unread, Read, Dismissed), severity filters, category filters, branch filtering, search, pagination, and manual alert scanner
 - [x] Feature documentation (`docs/features/notifications-alerts.md`)
+- [x] Executive Owner Dashboard & Business Overview (`/` and `/dashboard` parity): Centralized command center aggregating live metrics across sales, volume, branch performance, tenders, expenses, inventory, attendance, and approvals
+- [x] Zero duplicate tables: Calculations derived strictly from primary source-of-truth models (`Order`, `OrderItem`, `Payment`, `PaymentRefund`, `Expense`, `SalaryRecord`, `InventoryItem`, `StockTransaction`, `Attendance`, `Customer`, `Review`, `CustomerIssue`)
+- [x] Step 14 Operational Revenue & Financial Formulas: Derived Net Sales, Discounts, Refunds, AOV, Approved Expenses, and Operational Result (`Net Sales − Approved Expenses − Approved Salary`)
+- [x] Server-side branch isolation & anti-tampering: Automatic scope resolution via `getAuthorizedBranchScope()`; cross-branch rollups for Owner/Admin; tamper-resistant branch lock for Manager and Staff
+- [x] Role-based financial data masking: Operational KPIs rendered for Staff while financial metrics (sales, expenses, operating result) are concealed server-side
+- [x] Global Filter Engine: Presets (`today`, `yesterday`, `7d`, `30d`, `month`, `custom` bounded to $\le 366$ days) with two-way URL query parameter synchronization
+- [x] Trend Comparisons & Safe Division: Delta percentages compared to previous equivalent periods with zero-division protection (`null` delta on zero baseline)
+- [x] Database-side high performance aggregations: Single `Promise.all` roundtrip, grouped queries (`groupBy`), dynamic hourly (8 AM - 11 PM) and daily grouping; zero N+1 queries
+- [x] Operations & Health Summary Grid: Orders pipeline & channel split, payment method breakdown, top selling products ranking, inventory health (low/out of stock, wastage), attendance facts, pending approvals queue, customer ratings & issues
+- [x] Live Operational Activity Stream: Real-time feed of recent orders, payments, purchases, wastage logs, and reviews with store tags and timestamps
+- [x] Step 16 Operational Alert Integration: Embedded `DashboardAlertWidget` displaying critical and warning operational notifications
+- [x] Streaming RFC-4180 CSV Export: On-demand export of executive KPIs, branch performance benchmarks, and top dishes
+- [x] Step 17 Feature Documentation (`docs/features/dashboard.md`)
 
 ## Current Task
 
-Step 16: In-App Notifications & Alerts fully implemented, verified, and documented.
+Step 17: Owner Dashboard & Business Overview fully implemented, verified, and documented.
 
 ## Next
 
@@ -198,4 +211,5 @@ Awaiting user directive for the next operational milestone.
 ## Known Issues
 
 None
+
 

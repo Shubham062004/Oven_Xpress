@@ -1,15 +1,14 @@
 import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
-import { hasPermission } from '@/lib/permissions/check';
-import { prisma } from '@/lib/db/prisma';
-import { getDashboardData, getReportBranches } from '@/lib/reports/actions';
-import { DashboardClient } from '@/components/reports/dashboard-client';
+import { getExecutiveDashboardData } from '@/lib/reports/dashboard-service';
+import { OwnerDashboardClient } from '@/components/dashboard/owner-dashboard-client';
+import type { DashboardDatePreset } from '@/lib/reports/dashboard-types';
 
 export const metadata: Metadata = {
-  title: 'Dashboard | Oven Xpress',
+  title: 'Executive Dashboard | Oven Xpress',
   description:
-    'Executive overview, real-time sales metrics, operational KPIs, and daily performance.',
+    'Central business dashboard: operational performance, executive KPIs, sales velocity, and inventory health.',
 };
 
 interface DashboardPageProps {
@@ -17,55 +16,35 @@ interface DashboardPageProps {
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const user = await requirePermission(PERMISSIONS.DASHBOARD_READ);
+  await requirePermission(PERMISSIONS.DASHBOARD_READ);
+
   const resolvedParams = await searchParams;
+  const branchId = resolvedParams.branchId || 'all';
+  const preset = (resolvedParams.preset as DashboardDatePreset) || 'today';
+  const from = resolvedParams.from;
+  const to = resolvedParams.to;
 
-  const isRestrictedBranchUser = user.role === 'MANAGER' || user.role === 'STAFF';
-  let userBranchId: string | null = null;
+  const dashRes = await getExecutiveDashboardData({
+    branchId: branchId === 'all' ? undefined : branchId,
+    preset,
+    from,
+    to,
+  });
 
-  if (isRestrictedBranchUser) {
-    const employee = await prisma.employee.findUnique({
-      where: { userId: user.id },
-      select: { branchId: true },
-    });
-    userBranchId = employee?.branchId ?? null;
+  if (!dashRes.success) {
+    return (
+      <div className="p-6 md:p-8 max-w-7xl mx-auto">
+        <div className="p-6 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-center space-y-2">
+          <h2 className="text-lg font-bold">Failed to load business dashboard</h2>
+          <p className="text-sm">{dashRes.error}</p>
+        </div>
+      </div>
+    );
   }
-
-  const branchId = userBranchId || resolvedParams.branchId || 'all';
-  const effectiveBranchId = branchId === 'all' ? undefined : branchId;
-
-  const canViewBranches = hasPermission(user, PERMISSIONS.REPORT_BRANCH_READ);
-
-  const [dashRes, branchesRes] = await Promise.all([
-    getDashboardData({ branchId: effectiveBranchId }),
-    getReportBranches(),
-  ]);
-
-  const defaultData = {
-    todaySales: 0,
-    todayOrders: 0,
-    todayExpenses: 0,
-    operatingResult: 0,
-    paymentBreakdown: [],
-    orderTypeBreakdown: [],
-    branchOverview: [],
-    topSellingItems: [],
-    lowStockCount: 0,
-    pendingExpenseApprovals: 0,
-    pendingSalaryReviews: 0,
-  };
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      <DashboardClient
-        initialData={dashRes.success ? dashRes.data : defaultData}
-        branches={branchesRes.success ? branchesRes.data : []}
-        userName={user.name}
-        userRole={user.role}
-        isBranchRestricted={isRestrictedBranchUser}
-        selectedBranchId={branchId}
-        canViewBranches={canViewBranches}
-      />
+      <OwnerDashboardClient initialData={dashRes.data} />
     </div>
   );
 }

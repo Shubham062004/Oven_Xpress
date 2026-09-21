@@ -528,23 +528,18 @@ async function main() {
     rolesMap.set(role.name, role.id);
 
     // Link permissions to role
-    for (const permCode of roleData.permissions) {
-      const permId = permissionsMap.get(permCode);
-      if (permId) {
-        await prisma.rolePermission.upsert({
-          where: {
-            roleId_permissionId: {
-              roleId: role.id,
-              permissionId: permId,
-            },
-          },
-          update: {},
-          create: {
-            roleId: role.id,
-            permissionId: permId,
-          },
-        });
-      }
+    const rolePerms = roleData.permissions
+      .map((code) => permissionsMap.get(code))
+      .filter((id): id is string => !!id)
+      .map((permissionId) => ({
+        roleId: role.id,
+        permissionId,
+      }));
+    if (rolePerms.length > 0) {
+      await prisma.rolePermission.createMany({
+        data: rolePerms,
+        skipDuplicates: true,
+      });
     }
   }
 
