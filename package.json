@@ -10,6 +10,9 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "seed:prod-scale": "tsx scripts/seed-production-scale.ts",
+    "seed:validate": "tsx scripts/validate-seed.ts",
+    "simulate:day": "tsx scripts/simulate-day.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

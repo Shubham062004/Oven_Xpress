@@ -1,6 +1,6 @@
 ## Current Feature
 
-Step 20 — Settings & System Configuration
+Step 23 — Client UAT, Feedback & Final Bug-Fix Cycle
 
 ## Status
 
@@ -8,6 +8,21 @@ Completed
 
 ## Completed
 
+- [x] Step 23 Client User Acceptance Testing (Client UAT) verification suite (`scripts/verify-client-uat.ts` with 20/20 passed scenarios)
+- [x] Multi-role permission testing (Owner, Admin, Manager, Staff) validating operational and financial access boundaries
+- [x] Realistic 10-stage Dine-In lifecycle, tableless Takeaway channel, and enforced customer Delivery channel
+- [x] Multi-tender split payments (Cash + Card) and partial refund safeguards
+- [x] Inventory ledger calculation verification ($100 + 50 - 30 - 5 = 115\text{ KG}$) and physical count reconciliation with variance tracking
+- [x] Recipe Bill of Materials (BOM) stock consumption with double-click deduplication immunity
+- [x] Purchase order receiving lifecycle bounds (`PARTIALLY_RECEIVED`, `RECEIVED`, over-receiving rejection)
+- [x] Operational expense approval and rejection lifecycles
+- [x] Single-day duplicate attendance punch rejection via database unique constraints
+- [x] 3-tier settings engine override and reset fallback with append-only audit logging
+- [x] Issue register (`docs/UAT-ISSUES.md`) classifying all findings by type, severity, and status (0 open P0/P1 bugs)
+- [x] Client change requests catalog (`docs/CHANGE-REQUESTS.md`) capturing CR-01 (courier API), CR-02 (loyalty SMS), CR-03 (nightly PDF summary)
+- [x] Practical operating manual and user guide (`docs/USER-GUIDE.md`) covering Owner, Manager, and Staff workflows
+- [x] Formal UAT sign-off matrix (`docs/UAT-CHECKLIST.md`) and sign-off document (`docs/UAT-SIGNOFF.md`)
+- [x] Step 22 Production Deployment, UAT & Production Launch (`docs/DEPLOYMENT.md`, `docs/PRODUCTION-CHECKLIST.md`, `.github/workflows/ci.yml`, `.env.example`, `scripts/verify-uat.ts`, `scripts/verify-production-hardening.ts`)
 - [x] Settings & System Configuration database schema (`SystemSetting` and `UserPreference` models, `SettingScope` [GLOBAL, BRANCH], `SettingDataType` [STRING, NUMBER, BOOLEAN, JSON, TIME], and performance indexes)
 - [x] Structured & typed configuration catalog with 42 settings across 8 operational categories (`BUSINESS`, `BRANCH`, `ORDERS`, `INVENTORY`, `NOTIFICATIONS`, `PAYMENTS`, `EXPENSES`, `ATTENDANCE`)
 - [x] Hierarchical 3-tier resolution engine (`Branch Override -> Global Setting -> Application Default`) with seamless reset fallback
