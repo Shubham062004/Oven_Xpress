@@ -1,12 +1,22 @@
 ## Current Feature
 
-Step 19 — Audit Logs & System Activity Tracking
+Step 20 — Settings & System Configuration
 
 ## Status
 
 Completed
 
 ## Completed
+
+- [x] Settings & System Configuration database schema (`SystemSetting` and `UserPreference` models, `SettingScope` [GLOBAL, BRANCH], `SettingDataType` [STRING, NUMBER, BOOLEAN, JSON, TIME], and performance indexes)
+- [x] Structured & typed configuration catalog with 42 settings across 8 operational categories (`BUSINESS`, `BRANCH`, `ORDERS`, `INVENTORY`, `NOTIFICATIONS`, `PAYMENTS`, `EXPENSES`, `ATTENDANCE`)
+- [x] Hierarchical 3-tier resolution engine (`Branch Override -> Global Setting -> Application Default`) with seamless reset fallback
+- [x] Server-side branch isolation & authorization (`settings.read`, `settings.update`), preventing branch managers from modifying unauthorized branches or global configurations
+- [x] Step 19 Audit Logs integration (`SETTING_UPDATE`, `SETTING_RESET`, `USER_PREFERENCE_UPDATE` under entity types `SYSTEM_SETTING` and `USER_PREFERENCE`)
+- [x] Zero infrastructure secrets in database settings (API keys, DB URLs, OAuth secrets remain safely in environment variables)
+- [x] Consumer integrations across Orders (`ORDER_NUMBER_PREFIX`, `ORDER_ENABLE_*`), Payments (`PAYMENT_ALLOW_PARTIAL`, `PAYMENT_RECEIPT_REQUIRED`), and Alerts (`ALERT_*_ENABLED`, thresholds)
+- [x] Responsive 2-column settings interface at `/settings` with category sidebar, branch selector, search filter, reset confirmation dialogs, and personal UI preferences
+- [x] Automated test suite (`scripts/verify-settings.ts` with 26/26 passed tests) and comprehensive documentation (`docs/features/settings.md`)
 
 - [x] Next.js project scaffolding
 - [x] TypeScript configuration (strict mode)

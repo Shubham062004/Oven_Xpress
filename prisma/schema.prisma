@@ -19,6 +19,7 @@ model User {
   employee     Employee?
   notifications Notification[]
   auditLogs     AuditLog[]
+  preference    UserPreference?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -113,6 +114,7 @@ model Branch {
   issues            CustomerIssue[]
   notifications     Notification[]
   auditLogs         AuditLog[]
+  settings          SystemSetting[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -1299,5 +1301,51 @@ model AuditLog {
   @@index([createdAt])
   @@index([branchId, createdAt])
   @@index([entityType, entityId])
+}
+
+enum SettingScope {
+  GLOBAL
+  BRANCH
+}
+
+enum SettingDataType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  TIME
+}
+
+model SystemSetting {
+  id          String          @id @default(cuid())
+  key         String
+  value       String          @db.Text
+  scope       SettingScope    @default(GLOBAL)
+  branchId    String?
+  branch      Branch?         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  description String?
+  dataType    SettingDataType @default(STRING)
+  updatedBy   String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([key])
+  @@index([scope])
+  @@index([branchId])
+  @@index([key, branchId])
+}
+
+model UserPreference {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme             String   @default("system")
+  tableDensity      String   @default("comfortable")
+  defaultDateRange  String   @default("30d")
+  preferredBranchId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
 }
 

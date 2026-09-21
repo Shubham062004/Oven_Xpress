@@ -15,6 +15,7 @@ import {
   resolveNotificationsForEntity,
 } from './notification-service';
 import type { AlertEvaluationResult } from './types';
+import { getSetting } from '@/lib/settings/settings-service';
 
 /**
  * Centralized, idempotent, permission-aware operational alert evaluation engine.
@@ -58,10 +59,12 @@ export async function evaluateAlerts(options?: {
 
       if (currentStock <= 0) {
         // OUT OF STOCK
-        const created = await createNotificationsForEligibleUsers({
-          type: 'OUT_OF_STOCK',
-          severity: 'CRITICAL',
-          title: `Out of Stock: ${item.ingredient.name}`,
+        const outOfStockEnabled = await getSetting<boolean>('ALERT_OUT_OF_STOCK_ENABLED', item.branchId);
+        if (outOfStockEnabled !== false) {
+          const created = await createNotificationsForEligibleUsers({
+            type: 'OUT_OF_STOCK',
+            severity: 'CRITICAL',
+            title: `Out of Stock: ${item.ingredient.name}`,
           message: `Stock for ${item.ingredient.name} at ${item.branch.name} is depleted (Current: ${currentStock} ${item.ingredient.unit}, Reorder level: ${reorderLvl} ${item.ingredient.unit}). Immediate replenishment needed.`,
           branchId: item.branchId,
           entityType: 'InventoryItem',
@@ -72,18 +75,21 @@ export async function evaluateAlerts(options?: {
 
         if (created > 0) {
           generatedCount += created;
-          alerts.push({
-            type: 'OUT_OF_STOCK',
-            title: `Out of Stock: ${item.ingredient.name}`,
-            branchId: item.branchId,
-            severity: 'CRITICAL',
-          });
+            alerts.push({
+              type: 'OUT_OF_STOCK',
+              title: `Out of Stock: ${item.ingredient.name}`,
+              branchId: item.branchId,
+              severity: 'CRITICAL',
+            });
+          }
         }
       } else if (currentStock <= minStock || currentStock <= reorderLvl) {
         // LOW STOCK
-        const created = await createNotificationsForEligibleUsers({
-          type: 'LOW_STOCK',
-          severity: 'WARNING',
+        const lowStockEnabled = await getSetting<boolean>('ALERT_LOW_STOCK_ENABLED', item.branchId);
+        if (lowStockEnabled !== false) {
+          const created = await createNotificationsForEligibleUsers({
+            type: 'LOW_STOCK',
+            severity: 'WARNING',
           title: `Low Stock: ${item.ingredient.name}`,
           message: `Stock for ${item.ingredient.name} at ${item.branch.name} is low (Current: ${currentStock} ${item.ingredient.unit}, Reorder level: ${reorderLvl} ${item.ingredient.unit}). Reorder recommended.`,
           branchId: item.branchId,
@@ -95,12 +101,13 @@ export async function evaluateAlerts(options?: {
 
         if (created > 0) {
           generatedCount += created;
-          alerts.push({
-            type: 'LOW_STOCK',
-            title: `Low Stock: ${item.ingredient.name}`,
-            branchId: item.branchId,
-            severity: 'WARNING',
-          });
+            alerts.push({
+              type: 'LOW_STOCK',
+              title: `Low Stock: ${item.ingredient.name}`,
+              branchId: item.branchId,
+              severity: 'WARNING',
+            });
+          }
         }
       } else {
         // Stock is healthy -> auto-resolve existing low-stock/out-of-stock notifications
@@ -124,26 +131,29 @@ export async function evaluateAlerts(options?: {
 
   for (const exp of pendingExpenses) {
     evaluatedCount++;
-    const created = await createNotificationsForEligibleUsers({
-      type: 'PENDING_EXPENSE_APPROVAL',
-      severity: 'WARNING',
-      title: `Expense Pending Approval: ${exp.expenseNumber}`,
-      message: `Expense of ₹${Number(exp.amount).toFixed(2)} (${exp.category.name}) at ${exp.branch.name} requires verification.`,
-      branchId: exp.branchId,
-      entityType: 'Expense',
-      entityId: exp.id,
-      actionUrl: '/expenses',
-      requiredPermission: PERMISSIONS.EXPENSE_APPROVE,
-    });
-
-    if (created > 0) {
-      generatedCount += created;
-      alerts.push({
+    const expenseAlertEnabled = await getSetting<boolean>('ALERT_PENDING_EXPENSE_ENABLED', exp.branchId);
+    if (expenseAlertEnabled !== false) {
+      const created = await createNotificationsForEligibleUsers({
         type: 'PENDING_EXPENSE_APPROVAL',
-        title: `Expense Pending Approval: ${exp.expenseNumber}`,
-        branchId: exp.branchId,
         severity: 'WARNING',
+        title: `Expense Pending Approval: ${exp.expenseNumber}`,
+        message: `Expense of ₹${Number(exp.amount).toFixed(2)} (${exp.category.name}) at ${exp.branch.name} requires verification.`,
+        branchId: exp.branchId,
+        entityType: 'Expense',
+        entityId: exp.id,
+        actionUrl: '/expenses',
+        requiredPermission: PERMISSIONS.EXPENSE_APPROVE,
       });
+
+      if (created > 0) {
+        generatedCount += created;
+        alerts.push({
+          type: 'PENDING_EXPENSE_APPROVAL',
+          title: `Expense Pending Approval: ${exp.expenseNumber}`,
+          branchId: exp.branchId,
+          severity: 'WARNING',
+        });
+      }
     }
   }
 

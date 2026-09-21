@@ -33,6 +33,7 @@ import {
 import { deriveOrderPaymentSummary } from '@/lib/payments/constants';
 import { createAuditLog } from '@/lib/audit/audit-service';
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
+import { getSetting } from '@/lib/settings/settings-service';
 
 function isRedirectError(error: unknown): boolean {
   return (
@@ -82,10 +83,13 @@ function isBranchAuthorized(
  * Uses PostgreSQL advisory transaction lock to guarantee uniqueness under concurrent requests.
  */
 async function generateOrderNumber(
-  tx: Prisma.TransactionClient
+  tx: Prisma.TransactionClient,
+  branchId?: string
 ): Promise<string> {
   const currentYear = new Date().getFullYear();
-  const prefix = `ORD-${currentYear}-`;
+  const configuredPrefix = await getSetting<string>('ORDER_NUMBER_PREFIX', branchId);
+  const prefixStr = configuredPrefix || 'ORD';
+  const prefix = `${prefixStr}-${currentYear}-`;
 
   // Acquire PostgreSQL transaction-level advisory lock using a hash of the sequence key
   await tx.$executeRawUnsafe(
@@ -619,6 +623,24 @@ export async function createOrder(
       return { success: false, error: 'Selected branch is invalid or inactive' };
     }
 
+    // Branch service availability validation from Settings
+    if (orderType === OrderType.DINE_IN) {
+      const dineInEnabled = await getSetting<boolean>('ORDER_ENABLE_DINE_IN', branchId);
+      if (dineInEnabled === false) {
+        return { success: false, error: 'Dine-in service is currently disabled for this branch.' };
+      }
+    } else if (orderType === OrderType.TAKEAWAY) {
+      const takeawayEnabled = await getSetting<boolean>('ORDER_ENABLE_TAKEAWAY', branchId);
+      if (takeawayEnabled === false) {
+        return { success: false, error: 'Takeaway service is currently disabled for this branch.' };
+      }
+    } else if (orderType === OrderType.DELIVERY) {
+      const deliveryEnabled = await getSetting<boolean>('ORDER_ENABLE_DELIVERY', branchId);
+      if (deliveryEnabled === false) {
+        return { success: false, error: 'Delivery service is currently disabled for this branch.' };
+      }
+    }
+
     // Table validation for DINE_IN
     if (orderType === OrderType.DINE_IN) {
       if (!tableId) {
@@ -744,7 +766,7 @@ export async function createOrder(
     while (retries > 0) {
       try {
         const createdOrder = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-          const orderNumber = await generateOrderNumber(tx);
+          const orderNumber = await generateOrderNumber(tx, branchId);
 
           // Handle customer resolution/linking
           let resolvedCustomerId = customerId || null;

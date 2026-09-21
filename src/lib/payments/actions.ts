@@ -32,6 +32,7 @@ import {
 } from '@prisma/client';
 import { createAuditLog } from '@/lib/audit/audit-service';
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
+import { getSetting } from '@/lib/settings/settings-service';
 
 function isRedirectError(error: unknown): boolean {
   return (
@@ -224,6 +225,22 @@ export async function recordPayment(
         throw new Error(
           `Payment amount (₹${amount.toFixed(2)}) exceeds remaining balance (₹${remainingPayable.toFixed(2)})`
         );
+      }
+
+      // Partial payment configuration check
+      if (status === PaymentStatus.SUCCESS && amount < remainingPayable - 0.001) {
+        const allowPartial = await getSetting<boolean>('PAYMENT_ALLOW_PARTIAL', order.branchId);
+        if (allowPartial === false) {
+          throw new Error('Partial payments are disabled for this branch. Full payment is required.');
+        }
+      }
+
+      // Receipt reference requirement check for non-cash payments
+      if (method !== PaymentMethod.CASH && !referenceNumber) {
+        const receiptRequired = await getSetting<boolean>('PAYMENT_RECEIPT_REQUIRED', order.branchId);
+        if (receiptRequired === true) {
+          throw new Error('Transaction reference number is required for non-cash payments.');
+        }
       }
 
       const paymentNumber = await generatePaymentNumber(tx);
