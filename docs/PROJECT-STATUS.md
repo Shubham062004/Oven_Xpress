@@ -164,14 +164,26 @@ Completed
 - [x] Recharts visual component library integration with CSS variable theming and SSR hydration safety (`useSyncExternalStore`)
 - [x] Streaming RFC-4180 CSV report exports for daily sales, product velocity, branch comparisons, and P&L statements
 - [x] Sales, Revenue & Financial Reporting documentation (`docs/features/sales-financial-reporting.md`)
+- [x] Customer Management, Reviews & Feedback: Customer, Review, CustomerIssue, and CustomerIssueAuditLog Prisma models with enums and branch relations
+- [x] Customer & Feedback RBAC permissions (11 permissions: `customer.read`, `customer.create`, `customer.update`, `customer.deactivate`, `review.read`, `review.moderate`, `issue.read`, `issue.create`, `issue.update`, `issue.assign`, `issue.resolve`)
+- [x] Persistent customer identity supporting both registered and guest patrons without mandatory accounts
+- [x] Non-destructive customer deactivation: Toggling `ACTIVE` / `INACTIVE` preserves all past orders, payments, reviews, and issues
+- [x] Customer Directory (`/customers`): Lifetime spend, order count, last order date, branch & status filtering, search by name/phone/email, and server-side pagination
+- [x] Customer Detail & History (`/customers/[id]`): Profile information, order summary KPIs, historical orders from primary orders, reviews tab, and complaints tab
+- [x] Review Moderation (`/reviews`): 1–5 star rating validation, customer & order association, moderation status transitions (`PENDING`, `PUBLISHED`, `HIDDEN`, `RESOLVED`), and prevention of staff rewriting customer words
+- [x] Customer Operational Issues (`CustomerIssue`): Sequential numbering (`ISS-YYYY-000001`) with transaction advisory locks, categorization across 9 operational areas, and priority levels
+- [x] Audited Issue Lifecycle: `OPEN` → `IN_PROGRESS` → `RESOLVED` → `CLOSED` | `CANCELLED`, strict branch match on employee assignment (`assignedStaff.branchId === issue.branchId`), and mandatory audited resolution note upon resolution
+- [x] Feedback & Quality Dashboard (`/feedback`): Overall review volume, 5.00-point average rating, 1★–5★ visual distribution bars, live reviews stream, active issues queue, and cross-branch quality comparison table
+- [x] Customer privacy protection: Server-side masking of phone numbers, email addresses, and street delivery addresses for least-privilege access
+- [x] Feature documentation (`docs/features/customer-feedback.md`)
 
 ## Current Task
 
-Sales, Revenue & Profit/Loss Reporting fully implemented, verified, tested, and documented.
+Customer Management, Reviews & Feedback fully implemented, verified, and documented.
 
 ## Next
 
-Phase 14: Customer Management & Loyalty (Customer profiles, order history, loyalty points, feedback)
+Phase 15: Loyalty Points, Membership Tiers & Promotional Campaigns
 
 ## Known Issues
 

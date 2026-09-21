@@ -420,5 +420,29 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Export Safeguards: CSV generation enforced via dedicated server-side export permissions
 ```
 
+### Customer Management, Reviews & Operational Feedback Pattern
+
+```
+# Module: Customer Management, Reviews & Operational Feedback
+
+## Entity Architecture
+- Customer: Persistent identity without mandatory accounts (guest orders supported). Fields: name, phone?, email?, address?, notes?, status (ACTIVE | INACTIVE).
+- Review: Dining feedback rating 1–5 stars. Fields: customerId?, orderId?, branchId, menuItemId?, rating, title?, comment?, status (PENDING, PUBLISHED, HIDDEN, RESOLVED), moderatedBy?, moderatedAt?.
+- CustomerIssue: Operational incident ticket. Sequential ID (ISS-YYYY-000001) with transaction advisory lock. Fields: customerId?, orderId?, branchId, type (9 categories), priority (LOW, MEDIUM, HIGH, URGENT), description, status (OPEN, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED), assignedTo (branch-isolated staff), resolutionNote (mandatory upon RESOLVED).
+- CustomerIssueAuditLog: Audited chronological history of status transitions and assignments.
+
+## Business Rules & Integrity
+- Derived Financial Facts: Customer lifetime spend and order count are derived on-the-fly from Order and Payment; never duplicated into history tables.
+- Historical Order Pricing: Uses historic order amounts; never recalculates with current menu prices.
+- Non-Destructive Deactivation: Toggling status to INACTIVE preserves all historical orders, payments, reviews, and issues.
+- Staff Cannot Rewrite Reviews: Staff moderation is limited strictly to status changes (publish, hide, resolve); customer words are never modified.
+- Strict Branch Security: assignedStaff.branchId === issue.branchId. Cross-branch assignment is rejected server-side.
+- Privacy Masking: Least-privilege phone and email masking in directory and feedback listings.
+
+## RBAC & Security
+- Permissions: customer.read, customer.create, customer.update, customer.deactivate, review.read, review.moderate, issue.read, issue.create, issue.update, issue.assign, issue.resolve
+```
+
+
 
 

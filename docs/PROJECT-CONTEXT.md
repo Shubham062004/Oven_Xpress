@@ -172,11 +172,11 @@ A restaurant owner manages several branches of the same restaurant brand. Each b
 
 ## Current Phase
 
-**Phase 13: Sales, Revenue & Profit/Loss Reporting**
+**Phase 14: Customer Management, Reviews & Operational Feedback**
 
-Implemented operational reporting layer for restaurant owners and managers. All data is derived directly on-the-fly from underlying transactional models (`Order`, `OrderItem`, `Payment`, `PaymentRefund`, `Expense`, `SalaryRecord`, `PurchaseOrder`) without duplicate sales tables.
-- **Reporting Core**: Deterministic financial formulas (`Gross Sales = SUM(completed Order.totalAmount)`, `Discounts = SUM(discountAmount)`, `Refunds = SUM(successful refund amount)`, `Net Revenue = Gross − Discounts − Refunds`, `Operating Result = Net Revenue − Approved Expenses − Approved Salary Costs`).
-- **Access Control & Scoping**: 6 new RBAC permissions (`report.sales.read`, `report.sales.export`, `report.finance.read`, `report.finance.export`, `report.branch.read`, `report.product.read`). Cross-branch multi-unit summaries for `OWNER`/`ADMIN`; strict database-level branch scoping for `MANAGER`/`STAFF`.
-- **Views**: Executive Today's Dashboard (`/`), Sales & Revenue Overview (`/sales`), Product & Category Sales (`/sales/products`), and Operational Profit & Loss Statement (`/reports/profit-loss`).
-- **Features**: Visualizations via Recharts (area, bar, donut charts), streaming RFC-4180 CSV exports, historical pricing integrity via `OrderItem.unitPrice`, and independent tracking for inventory purchases.
-
+Delivers persistent guest profiles, lifetime order analytics derived from existing records without duplication, review moderation, operational complaint tickets, and real-time quality sentiment dashboards.
+- **Persistent Profiles**: Supports registered and guest customers without mandatory logins. Soft deactivation preserves all historical transactions and records.
+- **Review Moderation**: 1–5 star rating validation, customer/order linkage, and moderation status transitions (`PENDING`, `PUBLISHED`, `HIDDEN`, `RESOLVED`) without staff altering customer words.
+- **Operational Issue Management**: Sequential ticket numbering (`ISS-YYYY-000001`), 9 incident categories, priority levels, strict branch-isolated staff assignment, and mandatory audited resolution notes.
+- **Executive Feedback Dashboard**: Star rating distributions (1★–5★), live review feed, active issues queue, and multi-branch quality comparisons.
+- **Customer Privacy**: Server-side phone, email, and delivery address masking.

@@ -16,6 +16,8 @@ import {
   UtensilsCrossed,
   TrendingUp,
   FileSpreadsheet,
+  Star,
+  MessageSquare,
 } from 'lucide-react';
 
 import { PERMISSIONS } from '@/lib/permissions/definitions';
@@ -116,6 +118,19 @@ export const mainNavItems: NavItem[] = [
     label: 'Customers',
     href: '/customers',
     icon: Users,
+    requiredPermission: PERMISSIONS.CUSTOMER_READ,
+  },
+  {
+    label: 'Reviews',
+    href: '/reviews',
+    icon: Star,
+    requiredPermission: PERMISSIONS.REVIEW_READ,
+  },
+  {
+    label: 'Feedback',
+    href: '/feedback',
+    icon: MessageSquare,
+    requiredPermission: PERMISSIONS.REVIEW_READ,
   },
   {
     label: 'Sales',
