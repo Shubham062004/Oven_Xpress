@@ -147,9 +147,9 @@ export const mainNavItems: NavItem[] = [
   },
   {
     label: 'Reports',
-    href: '/reports/profit-loss',
+    href: '/reports',
     icon: FileSpreadsheet,
-    requiredPermission: PERMISSIONS.REPORT_FINANCE_READ,
+    requiredPermission: PERMISSIONS.REPORT_SALES_READ,
   },
 ];
 

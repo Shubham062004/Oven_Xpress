@@ -165,8 +165,11 @@ export function formatCurrency(amount: number): string {
 /**
  * Format a number with commas (no currency symbol).
  */
-export function formatNumber(value: number): string {
-  return new Intl.NumberFormat('en-IN').format(value);
+export function formatNumber(value: number, fractionDigits?: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    minimumFractionDigits: fractionDigits !== undefined ? fractionDigits : 0,
+    maximumFractionDigits: fractionDigits !== undefined ? fractionDigits : 2,
+  }).format(value);
 }
 
 /**

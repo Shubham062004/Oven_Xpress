@@ -185,3 +185,362 @@ export interface DashboardData {
   pendingExpenseApprovals: number;
   pendingSalaryReviews: number;
 }
+
+// ─── Step 18: Standardized Reports & Data Export Types ───────────────────────
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  pagination: PaginationMeta;
+}
+
+export interface ReportFilterParams {
+  branchId?: string;
+  preset?: DateRangePreset;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  status?: string;
+  categoryId?: string;
+  supplierId?: string;
+  shiftId?: string;
+  employeeId?: string;
+  orderType?: string;
+  paymentMethod?: string;
+  reason?: string;
+  rating?: number;
+}
+
+// 1. Sales Report
+export interface SalesReportRow {
+  date: string;
+  branchId: string;
+  branchName: string;
+  branchCode: string;
+  orderCount: number;
+  grossSales: number;
+  discounts: number;
+  refunds: number;
+  netSales: number;
+  averageOrderValue: number;
+}
+
+export interface SalesReportSummary {
+  totalOrders: number;
+  grossSales: number;
+  discounts: number;
+  refunds: number;
+  netSales: number;
+  averageOrderValue: number;
+}
+
+// 2. Orders Report
+export interface OrdersReportRow {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  branchId: string;
+  branchName: string;
+  branchCode: string;
+  orderType: string;
+  status: string;
+  customerName: string;
+  customerPhone?: string;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  deliveryCharge: number;
+  totalAmount: number;
+  paymentStatus: string;
+}
+
+export interface OrdersReportSummary {
+  totalOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  totalAmount: number;
+  totalDiscounts: number;
+  totalNet: number;
+  averageOrderTotal: number;
+}
+
+// 3. Product Sales Report
+export interface ProductsReportRow {
+  menuItemId: string;
+  menuItemName: string;
+  categoryName: string;
+  branchName: string;
+  quantitySold: number;
+  grossSales: number;
+  discounts: number;
+  netSales: number;
+}
+
+export interface ProductsReportSummary {
+  totalQuantitySold: number;
+  grossSales: number;
+  discounts: number;
+  netSales: number;
+  uniqueItemsCount: number;
+}
+
+// 4. Branch Report
+export interface BranchReportRow {
+  branchId: string;
+  branchName: string;
+  branchCode: string;
+  orderCount: number;
+  netSales: number;
+  averageOrderValue: number;
+  successfulPayments: number;
+  approvedExpenses: number;
+  operatingResult: number;
+}
+
+export interface BranchReportSummary {
+  branchCount: number;
+  totalOrders: number;
+  totalNetSales: number;
+  totalPayments: number;
+  totalExpenses: number;
+  totalOperatingResult: number;
+}
+
+// 5. Payment Report
+export interface PaymentsReportRow {
+  id: string;
+  paymentNumber: string;
+  orderId: string;
+  orderNumber: string;
+  branchId: string;
+  branchName: string;
+  branchCode: string;
+  createdAt: string;
+  amount: number;
+  method: string;
+  status: string;
+  referenceNumber: string | null;
+  processedBy: string;
+  refundedAmount: number;
+}
+
+export interface PaymentsReportSummary {
+  totalPaymentsCount: number;
+  successfulCount: number;
+  successfulAmount: number;
+  failedCount: number;
+  failedAmount: number;
+  refundedAmount: number;
+}
+
+// 6. Expense Report
+export interface ExpensesReportRow {
+  id: string;
+  expenseNumber: string;
+  date: string;
+  branchId: string;
+  branchName: string;
+  branchCode: string;
+  categoryName: string;
+  amount: number;
+  paymentMethod: string;
+  vendor: string | null;
+  status: string;
+  description: string;
+}
+
+export interface ExpensesReportSummary {
+  totalExpensesCount: number;
+  approvedCount: number;
+  approvedAmount: number;
+  pendingCount: number;
+  pendingAmount: number;
+  rejectedCount: number;
+  rejectedAmount: number;
+}
+
+// 7. Inventory Report
+export interface InventoryReportRow {
+  id: string;
+  branchId: string;
+  branchName: string;
+  ingredientId: string;
+  ingredientName: string;
+  categoryName: string;
+  unit: string;
+  currentStock: number;
+  minStock: number;
+  reorderLevel: number;
+  status: string;
+  lastMovementDate: string | null;
+}
+
+export interface StockMovementReportRow {
+  id: string;
+  date: string;
+  branchName: string;
+  ingredientName: string;
+  unit: string;
+  type: string;
+  quantity: number;
+  referenceId: string | null;
+  notes: string | null;
+  createdBy: string;
+}
+
+export interface InventoryReportSummary {
+  totalIngredients: number;
+  inStockCount: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  totalMovementsCount: number;
+}
+
+// 8. Purchase Report
+export interface PurchasesReportRow {
+  id: string;
+  purchaseNumber: string;
+  supplierName: string;
+  branchName: string;
+  branchCode: string;
+  orderDate: string;
+  expectedDate: string | null;
+  status: string;
+  totalAmount: number;
+  receivedAmount: number;
+  itemCount: number;
+}
+
+export interface PurchasesReportSummary {
+  totalOrders: number;
+  totalOrderedAmount: number;
+  totalReceivedAmount: number;
+  receivedOrders: number;
+  pendingOrders: number;
+}
+
+// 9. Wastage Report
+export interface WastageReportRow {
+  id: string;
+  date: string;
+  branchName: string;
+  ingredientName: string;
+  quantity: number;
+  unit: string;
+  reason: string;
+  notes: string | null;
+  createdBy: string;
+}
+
+export interface WastageReportSummary {
+  totalEvents: number;
+  totalQuantity: number;
+  byReason: Array<{ reason: string; quantity: number; count: number }>;
+  byIngredient: Array<{ ingredientName: string; unit: string; quantity: number }>;
+}
+
+// 10. Attendance Report
+export interface AttendanceReportRow {
+  id: string;
+  date: string;
+  branchName: string;
+  employeeName: string;
+  employeeCode: string;
+  designation: string;
+  shiftName: string;
+  status: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  lateMinutes: number;
+  earlyDepartureMinutes: number;
+}
+
+export interface AttendanceReportSummary {
+  totalRecords: number;
+  presentCount: number;
+  absentCount: number;
+  halfDayCount: number;
+  leaveCount: number;
+  lateArrivalsCount: number;
+  earlyDeparturesCount: number;
+}
+
+// 11. Compensation Report
+export interface CompensationReportRow {
+  id: string;
+  salaryRecordNumber: string;
+  employeeName: string;
+  employeeCode: string;
+  branchName: string;
+  periodMonth: number;
+  periodYear: number;
+  baseSalary: number;
+  bonus: number;
+  incentive: number;
+  adjustment: number;
+  grossAmount: number;
+  netAmount: number;
+  status: string;
+}
+
+export interface CompensationReportSummary {
+  totalRecords: number;
+  totalBaseSalary: number;
+  totalBonus: number;
+  totalIncentive: number;
+  totalGrossAmount: number;
+  totalNetAmount: number;
+}
+
+// 12. Customers Report
+export interface CustomersReportRow {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  status: string;
+  totalOrders: number;
+  completedOrders: number;
+  totalSpend: number;
+  reviewCount: number;
+  averageRating: number;
+  lastOrderDate: string | null;
+}
+
+export interface CustomersReportSummary {
+  totalCustomers: number;
+  activeCustomers: number;
+  customersWithOrders: number;
+  totalSpend: number;
+  averageRating: number;
+}
+
+// 13. Reviews Report
+export interface ReviewsReportRow {
+  id: string;
+  createdAt: string;
+  branchName: string;
+  rating: number;
+  status: string;
+  customerName: string;
+  orderNumber: string | null;
+  comment: string | null;
+  isPublished: boolean;
+}
+
+export interface ReviewsReportSummary {
+  totalReviews: number;
+  averageRating: number;
+  ratingBreakdown: Record<number, number>;
+  publishedCount: number;
+  pendingCount: number;
+  hiddenCount: number;
+}

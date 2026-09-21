@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth/guards';
-import { hasPermission } from '@/lib/permissions/check';
+import { hasPermission, hasAnyPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import type { AuthUser } from '@/lib/auth/types';
 import type {
@@ -19,7 +19,53 @@ import type {
   ProfitLossStatement,
   PurchaseReportRow,
   DashboardData,
+  ReportFilterParams,
+  SalesReportRow,
+  SalesReportSummary,
+  OrdersReportRow,
+  OrdersReportSummary,
+  ProductsReportRow,
+  ProductsReportSummary,
+  BranchReportRow,
+  BranchReportSummary,
+  PaymentsReportRow,
+  PaymentsReportSummary,
+  ExpensesReportRow,
+  ExpensesReportSummary,
+  InventoryReportRow,
+  StockMovementReportRow,
+  InventoryReportSummary,
+  PurchasesReportRow,
+  PurchasesReportSummary,
+  WastageReportRow,
+  WastageReportSummary,
+  AttendanceReportRow,
+  AttendanceReportSummary,
+  CompensationReportRow,
+  CompensationReportSummary,
+  CustomersReportRow,
+  CustomersReportSummary,
+  ReviewsReportRow,
+  ReviewsReportSummary,
+  PaginationMeta,
 } from './types';
+import {
+  getSalesReportData,
+  getOrdersReportData,
+  getProductSalesReportData,
+  getBranchesReportData,
+  getPaymentsReportData,
+  getExpensesReportData,
+  getInventoryReportData,
+  getStockMovementsReportData,
+  getPurchasesReportData,
+  getWastageReportData,
+  getAttendanceReportData,
+  getCompensationReportData,
+  getCustomersReportData,
+  getReviewsReportData,
+  generateGenericCSV,
+} from './report-service';
 import {
   getDateRangeFromPreset,
   parseDateRange,
@@ -969,6 +1015,126 @@ export async function getCategorySales(params?: {
 /**
  * Get Profit & Loss Statement (Operational Management View).
  */
+export async function calculateProfitLossData(
+  params: { branchId?: string; dateRange?: ReportDateRange } | undefined,
+  user: AuthUser
+): Promise<ProfitLossStatement> {
+  const branchRes = await resolveBranchFilter(user, params?.branchId);
+  if (branchRes.error) throw new Error(branchRes.error);
+  const branchId = branchRes.branchId;
+
+  const range = params?.dateRange || getDateRangeFromPreset('month');
+  const { startDateTime, endDateTime } = parseDateRange(range);
+
+  let branchName: string | null = null;
+  if (branchId) {
+    const b = await prisma.branch.findUnique({
+      where: { id: branchId },
+      select: { name: true },
+    });
+    branchName = b?.name || null;
+  }
+
+  // 1. Revenue components
+  const orderWhere: Record<string, unknown> = {
+    status: { in: ['COMPLETED', 'REFUNDED'] },
+    createdAt: { gte: startDateTime, lte: endDateTime },
+  };
+  if (branchId) orderWhere.branchId = branchId;
+
+  const orderAgg = await prisma.order.aggregate({
+    where: orderWhere,
+    _sum: {
+      totalAmount: true,
+      discountAmount: true,
+      taxAmount: true,
+      deliveryCharge: true,
+    },
+  });
+
+  const grossSales = Number(orderAgg._sum.totalAmount || 0);
+  const discounts = Number(orderAgg._sum.discountAmount || 0);
+  const taxCollected = Number(orderAgg._sum.taxAmount || 0);
+  const deliveryCharges = Number(orderAgg._sum.deliveryCharge || 0);
+
+  const refundWhere: Record<string, unknown> = {
+    status: 'SUCCESS',
+    processedAt: { gte: startDateTime, lte: endDateTime },
+  };
+  if (branchId) refundWhere.payment = { branchId };
+
+  const refundAgg = await prisma.paymentRefund.aggregate({
+    where: refundWhere,
+    _sum: { amount: true },
+  });
+  const refunds = Number(refundAgg._sum.amount || 0);
+
+  const netRevenue = Math.max(0, grossSales - discounts - refunds);
+
+  // 2. Costs components
+  const expenseWhere: Record<string, unknown> = {
+    status: 'APPROVED',
+    expenseDate: { gte: startDateTime, lte: endDateTime },
+  };
+  if (branchId) expenseWhere.branchId = branchId;
+
+  const expenseByCategory = await prisma.expense.groupBy({
+    by: ['categoryId'],
+    where: expenseWhere,
+    _sum: { amount: true },
+  });
+
+  const categoryIds = expenseByCategory.map((e) => e.categoryId);
+  const categories = await prisma.expenseCategory.findMany({
+    where: { id: { in: categoryIds } },
+    select: { id: true, name: true },
+  });
+  const catNameMap = new Map(categories.map((c) => [c.id, c.name]));
+
+  let approvedExpenses = 0;
+  const expenseCategories = expenseByCategory.map((e) => {
+    const amt = Number(e._sum.amount || 0);
+    approvedExpenses += amt;
+    return {
+      categoryName: catNameMap.get(e.categoryId) || 'General Expense',
+      amount: Math.round(amt * 100) / 100,
+    };
+  });
+
+  // Salary costs
+  const salaryWhere: Record<string, unknown> = {
+    status: { in: ['APPROVED', 'PAID'] },
+    periodStart: { lte: endDateTime },
+    periodEnd: { gte: startDateTime },
+  };
+  if (branchId) salaryWhere.branchId = branchId;
+
+  const salaryAgg = await prisma.salaryRecord.aggregate({
+    where: salaryWhere,
+    _sum: { grossAmount: true },
+  });
+  const approvedSalary = Number(salaryAgg._sum.grossAmount || 0);
+
+  const totalCosts = approvedExpenses + approvedSalary;
+  const operatingResult = netRevenue - totalCosts;
+
+  return {
+    grossSales: Math.round(grossSales * 100) / 100,
+    discounts: Math.round(discounts * 100) / 100,
+    refunds: Math.round(refunds * 100) / 100,
+    taxCollected: Math.round(taxCollected * 100) / 100,
+    deliveryCharges: Math.round(deliveryCharges * 100) / 100,
+    netRevenue: Math.round(netRevenue * 100) / 100,
+    approvedExpenses: Math.round(approvedExpenses * 100) / 100,
+    expenseCategories,
+    approvedSalary: Math.round(approvedSalary * 100) / 100,
+    totalCosts: Math.round(totalCosts * 100) / 100,
+    operatingResult: Math.round(operatingResult * 100) / 100,
+    dateRange: range,
+    branchName,
+  };
+}
+
 export async function getProfitLossData(params?: {
   branchId?: string;
   dateRange?: ReportDateRange;
@@ -979,124 +1145,8 @@ export async function getProfitLossData(params?: {
     if (!hasPermission(user, PERMISSIONS.REPORT_FINANCE_READ)) {
       return { success: false, error: 'Forbidden: Insufficient permissions' };
     }
-
-    const branchRes = await resolveBranchFilter(user, params?.branchId);
-    if (branchRes.error) return { success: false, error: branchRes.error };
-    const branchId = branchRes.branchId;
-
-    const range = params?.dateRange || getDateRangeFromPreset('month');
-    const { startDateTime, endDateTime } = parseDateRange(range);
-
-    let branchName: string | null = null;
-    if (branchId) {
-      const b = await prisma.branch.findUnique({
-        where: { id: branchId },
-        select: { name: true },
-      });
-      branchName = b?.name || null;
-    }
-
-    // 1. Revenue components
-    const orderWhere: Record<string, unknown> = {
-      status: { in: ['COMPLETED', 'REFUNDED'] },
-      createdAt: { gte: startDateTime, lte: endDateTime },
-    };
-    if (branchId) orderWhere.branchId = branchId;
-
-    const orderAgg = await prisma.order.aggregate({
-      where: orderWhere,
-      _sum: {
-        totalAmount: true,
-        discountAmount: true,
-        taxAmount: true,
-        deliveryCharge: true,
-      },
-    });
-
-    const grossSales = Number(orderAgg._sum.totalAmount || 0);
-    const discounts = Number(orderAgg._sum.discountAmount || 0);
-    const taxCollected = Number(orderAgg._sum.taxAmount || 0);
-    const deliveryCharges = Number(orderAgg._sum.deliveryCharge || 0);
-
-    const refundWhere: Record<string, unknown> = {
-      status: 'SUCCESS',
-      processedAt: { gte: startDateTime, lte: endDateTime },
-    };
-    if (branchId) refundWhere.payment = { branchId };
-
-    const refundAgg = await prisma.paymentRefund.aggregate({
-      where: refundWhere,
-      _sum: { amount: true },
-    });
-    const refunds = Number(refundAgg._sum.amount || 0);
-
-    const netRevenue = Math.max(0, grossSales - discounts - refunds);
-
-    // 2. Costs components
-    const expenseWhere: Record<string, unknown> = {
-      status: 'APPROVED',
-      expenseDate: { gte: startDateTime, lte: endDateTime },
-    };
-    if (branchId) expenseWhere.branchId = branchId;
-
-    const expenseByCategory = await prisma.expense.groupBy({
-      by: ['categoryId'],
-      where: expenseWhere,
-      _sum: { amount: true },
-    });
-
-    const categoryIds = expenseByCategory.map((e) => e.categoryId);
-    const categories = await prisma.expenseCategory.findMany({
-      where: { id: { in: categoryIds } },
-      select: { id: true, name: true },
-    });
-    const catNameMap = new Map(categories.map((c) => [c.id, c.name]));
-
-    let approvedExpenses = 0;
-    const expenseCategories = expenseByCategory.map((e) => {
-      const amt = Number(e._sum.amount || 0);
-      approvedExpenses += amt;
-      return {
-        categoryName: catNameMap.get(e.categoryId) || 'General Expense',
-        amount: Math.round(amt * 100) / 100,
-      };
-    });
-
-    // Salary costs
-    const salaryWhere: Record<string, unknown> = {
-      status: { in: ['APPROVED', 'PAID'] },
-      periodStart: { lte: endDateTime },
-      periodEnd: { gte: startDateTime },
-    };
-    if (branchId) salaryWhere.branchId = branchId;
-
-    const salaryAgg = await prisma.salaryRecord.aggregate({
-      where: salaryWhere,
-      _sum: { grossAmount: true },
-    });
-    const approvedSalary = Number(salaryAgg._sum.grossAmount || 0);
-
-    const totalCosts = approvedExpenses + approvedSalary;
-    const operatingResult = netRevenue - totalCosts;
-
-    return {
-      success: true,
-      data: {
-        grossSales: Math.round(grossSales * 100) / 100,
-        discounts: Math.round(discounts * 100) / 100,
-        refunds: Math.round(refunds * 100) / 100,
-        taxCollected: Math.round(taxCollected * 100) / 100,
-        deliveryCharges: Math.round(deliveryCharges * 100) / 100,
-        netRevenue: Math.round(netRevenue * 100) / 100,
-        approvedExpenses: Math.round(approvedExpenses * 100) / 100,
-        expenseCategories,
-        approvedSalary: Math.round(approvedSalary * 100) / 100,
-        totalCosts: Math.round(totalCosts * 100) / 100,
-        operatingResult: Math.round(operatingResult * 100) / 100,
-        dateRange: range,
-        branchName,
-      },
-    };
+    const data = await calculateProfitLossData(params, user);
+    return { success: true, data };
   } catch (error) {
     console.error('Error in getProfitLossData:', error);
     return { success: false, error: 'Failed to calculate Profit & Loss statement' };
@@ -1516,5 +1566,829 @@ export async function exportBranchSummaryCSV(params?: {
   } catch (error) {
     console.error('Error in exportBranchSummaryCSV:', error);
     return { success: false, error: 'Failed to export branch summary' };
+  }
+}
+
+// ─── Step 18: Standardized Report Actions & Exports ──────────────────────────
+
+export type ExportActionResult =
+  | { success: true; csv: string; filename: string; error?: undefined }
+  | { success: false; error: string; csv?: undefined; filename?: undefined };
+
+async function resolveReportContext(user: AuthUser, requestedBranchId?: string) {
+  const [branchesRes, scope] = await Promise.all([
+    getReportBranches(),
+    getAuthorizedBranchScope(user),
+  ]);
+  const branches = branchesRes.success ? branchesRes.data : [];
+  const isBranchRestricted = !scope.isAllBranches;
+  const selectedBranchId = isBranchRestricted
+    ? (scope.branchIds[0] || 'all')
+    : (requestedBranchId || 'all');
+
+  return { branches, isBranchRestricted, selectedBranchId };
+}
+
+// 1. Sales Report Action
+export async function getSalesReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: SalesReportRow[];
+  summary: SalesReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_SALES_READ, PERMISSIONS.REPORT_FINANCE_READ, PERMISSIONS.ORDER_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context] = await Promise.all([
+      getSalesReportData(params, user),
+      resolveReportContext(user, params.branchId),
+    ]);
+    return { success: true, data: { ...data, ...context } };
+  } catch (error) {
+    console.error('Error in getSalesReportAction:', error);
+    return { success: false, error: 'Failed to generate sales report' };
+  }
+}
+
+// 2. Orders Report Action
+export async function getOrdersReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: OrdersReportRow[];
+  summary: OrdersReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_ORDERS_READ, PERMISSIONS.ORDER_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context] = await Promise.all([
+      getOrdersReportData(params, user),
+      resolveReportContext(user, params.branchId),
+    ]);
+    return { success: true, data: { ...data, ...context } };
+  } catch (error) {
+    console.error('Error in getOrdersReportAction:', error);
+    return { success: false, error: 'Failed to generate orders report' };
+  }
+}
+
+// 3. Products Report Action
+export async function getProductSalesReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: ProductsReportRow[];
+  summary: ProductsReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  categories: Array<{ id: string; name: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_PRODUCT_READ, PERMISSIONS.REPORT_SALES_READ, PERMISSIONS.MENU_ITEM_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context, categories] = await Promise.all([
+      getProductSalesReportData(params, user),
+      resolveReportContext(user, params.branchId),
+      prisma.menuCategory.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+    ]);
+    return { success: true, data: { ...data, ...context, categories } };
+  } catch (error) {
+    console.error('Error in getProductSalesReportAction:', error);
+    return { success: false, error: 'Failed to generate product sales report' };
+  }
+}
+
+// 4. Branch Benchmark Report Action
+export async function getBranchesReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: BranchReportRow[];
+  summary: BranchReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_BRANCH_READ, PERMISSIONS.REPORT_SALES_READ, PERMISSIONS.BRANCH_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context] = await Promise.all([
+      getBranchesReportData(params, user),
+      resolveReportContext(user, params.branchId),
+    ]);
+    const pagination: PaginationMeta = {
+      page: params.page || 1,
+      limit: params.limit || 25,
+      total: data.rows.length,
+      totalPages: 1,
+    };
+    return {
+      success: true,
+      data: {
+        rows: data.rows,
+        summary: data.summary,
+        pagination,
+        branches: context.branches,
+        isBranchRestricted: context.isBranchRestricted,
+      },
+    };
+  } catch (error) {
+    console.error('Error in getBranchesReportAction:', error);
+    return { success: false, error: 'Failed to generate branch report' };
+  }
+}
+
+// 5. Payment Report Action
+export async function getPaymentsReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: PaymentsReportRow[];
+  summary: PaymentsReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_PAYMENT_READ, PERMISSIONS.REPORT_FINANCE_READ, PERMISSIONS.PAYMENT_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context] = await Promise.all([
+      getPaymentsReportData(params, user),
+      resolveReportContext(user, params.branchId),
+    ]);
+    return { success: true, data: { ...data, ...context } };
+  } catch (error) {
+    console.error('Error in getPaymentsReportAction:', error);
+    return { success: false, error: 'Failed to generate payment report' };
+  }
+}
+
+// 6. Expense Report Action
+export async function getExpensesReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: ExpensesReportRow[];
+  summary: ExpensesReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  categories: Array<{ id: string; name: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_EXPENSE_READ, PERMISSIONS.REPORT_FINANCE_READ, PERMISSIONS.EXPENSE_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context, categories] = await Promise.all([
+      getExpensesReportData(params, user),
+      resolveReportContext(user, params.branchId),
+      prisma.expenseCategory.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+    return { success: true, data: { ...data, ...context, categories } };
+  } catch (error) {
+    console.error('Error in getExpensesReportAction:', error);
+    return { success: false, error: 'Failed to generate expense report' };
+  }
+}
+
+// 7. Inventory Report Action
+export async function getInventoryReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  currentStockRows: InventoryReportRow[];
+  movementRows: StockMovementReportRow[];
+  summary: InventoryReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  categories: Array<{ id: string; name: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_INVENTORY_READ, PERMISSIONS.INVENTORY_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [stockData, movementData, context, categories] = await Promise.all([
+      getInventoryReportData(params, user),
+      getStockMovementsReportData(params, user),
+      resolveReportContext(user, params.branchId),
+      prisma.menuCategory.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+    ]);
+    return {
+      success: true,
+      data: {
+        currentStockRows: stockData.rows,
+        movementRows: movementData.rows,
+        summary: stockData.summary,
+        pagination: stockData.pagination,
+        categories,
+        ...context,
+      },
+    };
+  } catch (error) {
+    console.error('Error in getInventoryReportAction:', error);
+    return { success: false, error: 'Failed to generate inventory report' };
+  }
+}
+
+// 8. Purchase Report Action
+export async function getPurchasesReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: PurchasesReportRow[];
+  summary: PurchasesReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  suppliers: Array<{ id: string; name: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_PURCHASE_READ, PERMISSIONS.PURCHASE_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context, suppliers] = await Promise.all([
+      getPurchasesReportData(params, user),
+      resolveReportContext(user, params.branchId),
+      prisma.supplier.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+    return { success: true, data: { ...data, ...context, suppliers } };
+  } catch (error) {
+    console.error('Error in getPurchasesReportAction:', error);
+    return { success: false, error: 'Failed to generate purchase report' };
+  }
+}
+
+// 9. Wastage Report Action
+export async function getWastageReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: WastageReportRow[];
+  summary: WastageReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_WASTAGE_READ, PERMISSIONS.INVENTORY_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context] = await Promise.all([
+      getWastageReportData(params, user),
+      resolveReportContext(user, params.branchId),
+    ]);
+    return { success: true, data: { ...data, ...context } };
+  } catch (error) {
+    console.error('Error in getWastageReportAction:', error);
+    return { success: false, error: 'Failed to generate wastage report' };
+  }
+}
+
+// 10. Attendance Report Action
+export async function getAttendanceReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: AttendanceReportRow[];
+  summary: AttendanceReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  shifts: Array<{ id: string; name: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_ATTENDANCE_READ, PERMISSIONS.ATTENDANCE_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context, shifts] = await Promise.all([
+      getAttendanceReportData(params, user),
+      resolveReportContext(user, params.branchId),
+      prisma.shift.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+    return { success: true, data: { ...data, ...context, shifts } };
+  } catch (error) {
+    console.error('Error in getAttendanceReportAction:', error);
+    return { success: false, error: 'Failed to generate attendance report' };
+  }
+}
+
+// 11. Compensation Report Action
+export async function getCompensationReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: CompensationReportRow[];
+  summary: CompensationReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_COMPENSATION_READ, PERMISSIONS.REPORT_FINANCE_READ, PERMISSIONS.SALARY_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context] = await Promise.all([
+      getCompensationReportData(params, user),
+      resolveReportContext(user, params.branchId),
+    ]);
+    return { success: true, data: { ...data, ...context } };
+  } catch (error) {
+    console.error('Error in getCompensationReportAction:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to generate compensation report' };
+  }
+}
+
+// 12. Customer Report Action
+export async function getCustomersReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: CustomersReportRow[];
+  summary: CustomersReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_CUSTOMER_READ, PERMISSIONS.CUSTOMER_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, branchesRes] = await Promise.all([
+      getCustomersReportData(params, user),
+      getReportBranches(),
+    ]);
+    const branches = branchesRes.success ? branchesRes.data : [];
+    return { success: true, data: { ...data, branches } };
+  } catch (error) {
+    console.error('Error in getCustomersReportAction:', error);
+    return { success: false, error: 'Failed to generate customers report' };
+  }
+}
+
+// 13. Review Report Action
+export async function getReviewsReportAction(
+  params: ReportFilterParams
+): Promise<ActionResult<{
+  rows: ReviewsReportRow[];
+  summary: ReviewsReportSummary;
+  pagination: PaginationMeta;
+  branches: Array<{ id: string; name: string; code: string }>;
+  selectedBranchId: string;
+  isBranchRestricted: boolean;
+}>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_REVIEW_READ, PERMISSIONS.REPORT_CUSTOMER_READ, PERMISSIONS.REVIEW_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const [data, context] = await Promise.all([
+      getReviewsReportData(params, user),
+      resolveReportContext(user, params.branchId),
+    ]);
+    return { success: true, data: { ...data, ...context } };
+  } catch (error) {
+    console.error('Error in getReviewsReportAction:', error);
+    return { success: false, error: 'Failed to generate reviews report' };
+  }
+}
+
+// ─── CSV Export Actions ──────────────────────────────────────────────────────
+
+export async function exportSalesReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_SALES_EXPORT, PERMISSIONS.REPORT_SALES_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getSalesReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'date', header: 'Date' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'orderCount', header: 'Orders' },
+      { key: 'grossSales', header: 'Gross Sales (INR)' },
+      { key: 'discounts', header: 'Discounts (INR)' },
+      { key: 'refunds', header: 'Refunds (INR)' },
+      { key: 'netSales', header: 'Net Sales (INR)' },
+      { key: 'averageOrderValue', header: 'AOV (INR)' },
+    ]);
+    const filename = `sales-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportSalesReportCSVAction:', error);
+    return { success: false, error: 'Failed to export sales report CSV' };
+  }
+}
+
+export async function exportOrdersReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_ORDERS_EXPORT, PERMISSIONS.REPORT_SALES_EXPORT, PERMISSIONS.ORDER_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getOrdersReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'orderNumber', header: 'Order #' },
+      { key: 'createdAt', header: 'Date Time' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'orderType', header: 'Order Type' },
+      { key: 'status', header: 'Status' },
+      { key: 'customerName', header: 'Customer' },
+      { key: 'subtotal', header: 'Subtotal (INR)' },
+      { key: 'discountAmount', header: 'Discount (INR)' },
+      { key: 'taxAmount', header: 'Tax (INR)' },
+      { key: 'deliveryCharge', header: 'Delivery (INR)' },
+      { key: 'totalAmount', header: 'Total (INR)' },
+      { key: 'paymentStatus', header: 'Payment Status' },
+    ]);
+    const filename = `orders-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportOrdersReportCSVAction:', error);
+    return { success: false, error: 'Failed to export orders report CSV' };
+  }
+}
+
+export async function exportProductSalesReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_PRODUCT_EXPORT, PERMISSIONS.REPORT_SALES_EXPORT, PERMISSIONS.REPORT_PRODUCT_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getProductSalesReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'menuItemName', header: 'Menu Item' },
+      { key: 'categoryName', header: 'Category' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'quantitySold', header: 'Quantity Sold' },
+      { key: 'grossSales', header: 'Gross Sales (INR)' },
+      { key: 'discounts', header: 'Discounts (INR)' },
+      { key: 'netSales', header: 'Net Sales (INR)' },
+    ]);
+    const filename = `products-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportProductSalesReportCSVAction:', error);
+    return { success: false, error: 'Failed to export product sales report CSV' };
+  }
+}
+export const exportProductsReportCSVAction = exportProductSalesReportCSVAction;
+
+export async function exportBranchesReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_BRANCH_EXPORT, PERMISSIONS.REPORT_SALES_EXPORT, PERMISSIONS.REPORT_BRANCH_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getBranchesReportData(params, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'branchName', header: 'Branch Name' },
+      { key: 'branchCode', header: 'Branch Code' },
+      { key: 'orderCount', header: 'Orders' },
+      { key: 'netSales', header: 'Net Sales (INR)' },
+      { key: 'averageOrderValue', header: 'AOV (INR)' },
+      { key: 'successfulPayments', header: 'Payments Collected (INR)' },
+      { key: 'approvedExpenses', header: 'Approved Expenses (INR)' },
+      { key: 'operatingResult', header: 'Operating Result (INR)' },
+    ]);
+    const filename = `branches-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportBranchesReportCSVAction:', error);
+    return { success: false, error: 'Failed to export branches report CSV' };
+  }
+}
+
+export async function exportPaymentsReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_PAYMENT_EXPORT, PERMISSIONS.REPORT_SALES_EXPORT, PERMISSIONS.PAYMENT_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getPaymentsReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'paymentNumber', header: 'Payment #' },
+      { key: 'orderNumber', header: 'Order #' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'createdAt', header: 'Date Time' },
+      { key: 'amount', header: 'Amount (INR)' },
+      { key: 'method', header: 'Method' },
+      { key: 'status', header: 'Status' },
+      { key: 'referenceNumber', header: 'Reference #' },
+      { key: 'processedBy', header: 'Processed By' },
+      { key: 'refundedAmount', header: 'Refunded (INR)' },
+    ]);
+    const filename = `payments-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportPaymentsReportCSVAction:', error);
+    return { success: false, error: 'Failed to export payments report CSV' };
+  }
+}
+
+export async function exportExpensesReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_EXPENSE_EXPORT, PERMISSIONS.REPORT_FINANCE_EXPORT, PERMISSIONS.EXPENSE_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getExpensesReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'expenseNumber', header: 'Expense #' },
+      { key: 'date', header: 'Date' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'categoryName', header: 'Category' },
+      { key: 'amount', header: 'Amount (INR)' },
+      { key: 'paymentMethod', header: 'Payment Method' },
+      { key: 'vendor', header: 'Vendor' },
+      { key: 'status', header: 'Status' },
+      { key: 'description', header: 'Description' },
+    ]);
+    const filename = `expenses-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportExpensesReportCSVAction:', error);
+    return { success: false, error: 'Failed to export expenses report CSV' };
+  }
+}
+
+export async function exportInventoryReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_INVENTORY_EXPORT, PERMISSIONS.INVENTORY_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getInventoryReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'branchName', header: 'Branch' },
+      { key: 'ingredientName', header: 'Ingredient' },
+      { key: 'categoryName', header: 'Category' },
+      { key: 'unit', header: 'Unit' },
+      { key: 'currentStock', header: 'Current Stock' },
+      { key: 'minStock', header: 'Min Stock' },
+      { key: 'reorderLevel', header: 'Reorder Level' },
+      { key: 'status', header: 'Health Status' },
+      { key: 'lastMovementDate', header: 'Last Movement' },
+    ]);
+    const filename = `inventory-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportInventoryReportCSVAction:', error);
+    return { success: false, error: 'Failed to export inventory report CSV' };
+  }
+}
+
+export async function exportStockMovementsReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_INVENTORY_EXPORT, PERMISSIONS.INVENTORY_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getStockMovementsReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'createdAt', header: 'Date/Time' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'ingredientName', header: 'Ingredient' },
+      { key: 'type', header: 'Type' },
+      { key: 'quantity', header: 'Quantity' },
+      { key: 'unit', header: 'Unit' },
+      { key: 'reference', header: 'Reference' },
+      { key: 'notes', header: 'Notes' },
+      { key: 'createdBy', header: 'Logged By' },
+    ]);
+    const filename = `stock-movements-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportStockMovementsReportCSVAction:', error);
+    return { success: false, error: 'Failed to export stock movements report CSV' };
+  }
+}
+
+export async function exportPurchasesReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_PURCHASE_EXPORT, PERMISSIONS.PURCHASE_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getPurchasesReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'purchaseNumber', header: 'PO #' },
+      { key: 'supplierName', header: 'Supplier' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'orderDate', header: 'Order Date' },
+      { key: 'expectedDate', header: 'Expected Date' },
+      { key: 'status', header: 'Status' },
+      { key: 'totalAmount', header: 'Ordered Value (INR)' },
+      { key: 'receivedAmount', header: 'Received Value (INR)' },
+      { key: 'itemCount', header: 'Item Lines' },
+    ]);
+    const filename = `purchases-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportPurchasesReportCSVAction:', error);
+    return { success: false, error: 'Failed to export purchases report CSV' };
+  }
+}
+
+export async function exportWastageReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_WASTAGE_EXPORT, PERMISSIONS.INVENTORY_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getWastageReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'date', header: 'Date' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'ingredientName', header: 'Ingredient' },
+      { key: 'quantity', header: 'Quantity' },
+      { key: 'unit', header: 'Unit' },
+      { key: 'reason', header: 'Reason' },
+      { key: 'notes', header: 'Notes' },
+      { key: 'createdBy', header: 'Logged By' },
+    ]);
+    const filename = `wastage-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportWastageReportCSVAction:', error);
+    return { success: false, error: 'Failed to export wastage report CSV' };
+  }
+}
+
+export async function exportAttendanceReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_ATTENDANCE_EXPORT, PERMISSIONS.ATTENDANCE_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getAttendanceReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'date', header: 'Date' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'employeeName', header: 'Employee' },
+      { key: 'employeeCode', header: 'Employee Code' },
+      { key: 'designation', header: 'Designation' },
+      { key: 'shiftName', header: 'Shift' },
+      { key: 'status', header: 'Status' },
+      { key: 'checkInTime', header: 'Check In' },
+      { key: 'checkOutTime', header: 'Check Out' },
+      { key: 'lateMinutes', header: 'Late (Mins)' },
+      { key: 'earlyDepartureMinutes', header: 'Early Departure (Mins)' },
+    ]);
+    const filename = `attendance-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportAttendanceReportCSVAction:', error);
+    return { success: false, error: 'Failed to export attendance report CSV' };
+  }
+}
+
+export async function exportCompensationReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_COMPENSATION_EXPORT, PERMISSIONS.SALARY_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getCompensationReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'salaryRecordNumber', header: 'Salary Record #' },
+      { key: 'employeeName', header: 'Employee' },
+      { key: 'employeeCode', header: 'Employee Code' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'periodMonth', header: 'Month' },
+      { key: 'periodYear', header: 'Year' },
+      { key: 'baseSalary', header: 'Base Salary (INR)' },
+      { key: 'bonus', header: 'Bonus (INR)' },
+      { key: 'incentive', header: 'Incentive (INR)' },
+      { key: 'adjustment', header: 'Adjustment (INR)' },
+      { key: 'grossAmount', header: 'Gross (INR)' },
+      { key: 'netAmount', header: 'Net (INR)' },
+      { key: 'status', header: 'Status' },
+    ]);
+    const filename = `compensation-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportCompensationReportCSVAction:', error);
+    return { success: false, error: 'Failed to export compensation report CSV' };
+  }
+}
+
+export async function exportCustomersReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_CUSTOMER_EXPORT, PERMISSIONS.CUSTOMER_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getCustomersReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'name', header: 'Customer Name' },
+      { key: 'phone', header: 'Phone' },
+      { key: 'email', header: 'Email' },
+      { key: 'status', header: 'Status' },
+      { key: 'totalOrders', header: 'Total Orders' },
+      { key: 'completedOrders', header: 'Completed Orders' },
+      { key: 'totalSpend', header: 'Total Spend (INR)' },
+      { key: 'reviewCount', header: 'Reviews' },
+      { key: 'averageRating', header: 'Avg Rating' },
+      { key: 'lastOrderDate', header: 'Last Order' },
+    ]);
+    const filename = `customers-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportCustomersReportCSVAction:', error);
+    return { success: false, error: 'Failed to export customers report CSV' };
+  }
+}
+
+export async function exportReviewsReportCSVAction(params: ReportFilterParams): Promise<ExportActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasAnyPermission(user, [PERMISSIONS.REPORT_REVIEW_EXPORT, PERMISSIONS.REVIEW_READ])) {
+      return { success: false, error: 'Forbidden: Insufficient permissions' };
+    }
+    const res = await getReviewsReportData({ ...params, limit: 5000, page: 1 }, user);
+    const csv = generateGenericCSV(res.rows, [
+      { key: 'createdAt', header: 'Date' },
+      { key: 'branchName', header: 'Branch' },
+      { key: 'rating', header: 'Rating (1-5)' },
+      { key: 'status', header: 'Status' },
+      { key: 'customerName', header: 'Customer' },
+      { key: 'orderNumber', header: 'Order #' },
+      { key: 'comment', header: 'Feedback Comment' },
+    ]);
+    const filename = `reviews-report-${new Date().toISOString().split('T')[0]}.csv`;
+    return { success: true, csv, filename };
+  } catch (error) {
+    console.error('Error in exportReviewsReportCSVAction:', error);
+    return { success: false, error: 'Failed to export reviews report CSV' };
   }
 }
