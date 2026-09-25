@@ -2,10 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { getCurrentUser } from '@/lib/auth/guards';
+import { getCurrentUser, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
-import type { AuthUser } from '@/lib/auth/types';
 import { Prisma } from '@prisma/client';
 import type {
   CustomerListItem,
@@ -45,24 +44,7 @@ export type ActionResult<T> =
 
 // ─── Scoping & Privacy Helpers ───────────────────────────────────────────────
 
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
 
 function maskPhone(phone: string | null): string | null {
   if (!phone) return null;
@@ -91,9 +73,8 @@ async function generateIssueNumber(tx: Prisma.TransactionClient): Promise<string
   const currentYear = new Date().getFullYear();
   const prefix = `ISS-${currentYear}-`;
 
-  await tx.$executeRawUnsafe(
-    `SELECT pg_advisory_xact_lock(hashtext('customer_issue_seq_${currentYear}'))`
-  );
+  const lockKey = `customer_issue_seq_${currentYear}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
 
   const latestIssue = await tx.customerIssue.findFirst({
     where: {
@@ -138,6 +119,9 @@ export async function getCustomers(
       return { success: false, error: 'Forbidden: Insufficient permissions' };
     }
 
+    const scope = await getAuthorizedBranchScope(user);
+    const branchFilter = !scope.isAllBranches ? { branchId: { in: scope.branchIds } } : undefined;
+
     const validated = customerFilterSchema.parse(params ?? {});
     const { search, status, page, pageSize, sortBy, sortOrder } = validated;
 
@@ -169,6 +153,7 @@ export async function getCustomers(
       take: pageSize,
       include: {
         orders: {
+          where: branchFilter,
           select: {
             id: true,
             status: true,
@@ -256,10 +241,14 @@ export async function getCustomerById(id: string): Promise<ActionResult<Customer
       return { success: false, error: 'Forbidden: Insufficient permissions' };
     }
 
+    const scope = await getAuthorizedBranchScope(user);
+    const branchFilter = !scope.isAllBranches ? { branchId: { in: scope.branchIds } } : undefined;
+
     const customer = await prisma.customer.findUnique({
       where: { id },
       include: {
         orders: {
+          where: branchFilter,
           include: {
             branch: { select: { id: true, name: true, code: true } },
             items: { select: { id: true } },
@@ -267,6 +256,7 @@ export async function getCustomerById(id: string): Promise<ActionResult<Customer
           orderBy: { createdAt: 'desc' },
         },
         reviews: {
+          where: branchFilter,
           include: {
             branch: { select: { id: true, name: true, code: true } },
             order: { select: { id: true, orderNumber: true } },
@@ -275,6 +265,7 @@ export async function getCustomerById(id: string): Promise<ActionResult<Customer
           orderBy: { createdAt: 'desc' },
         },
         issues: {
+          where: branchFilter,
           include: {
             branch: { select: { id: true, name: true, code: true } },
             order: { select: { id: true, orderNumber: true } },
@@ -1404,6 +1395,14 @@ export async function getAssignableStaff(
   try {
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized' };
+    if (!hasPermission(user, PERMISSIONS.ISSUE_ASSIGN)) {
+      return { success: false, error: 'Forbidden: Insufficient permissions to assign issues' };
+    }
+
+    const scope = await getAuthorizedBranchScope(user);
+    if (!isBranchAuthorized(scope, branchId)) {
+      return { success: false, error: 'Forbidden: Unauthorized for this branch' };
+    }
 
     const staff = await prisma.employee.findMany({
       where: { branchId, employmentStatus: 'ACTIVE' },
@@ -1446,6 +1445,16 @@ export async function lookupCustomerByPhone(
   phone: string
 ): Promise<ActionResult<CustomerSummary | null>> {
   try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const canLookup =
+      hasPermission(user, PERMISSIONS.CUSTOMER_READ) ||
+      hasPermission(user, PERMISSIONS.ORDER_CREATE);
+    if (!canLookup) {
+      return { success: false, error: 'Forbidden: Insufficient permissions to lookup customer records' };
+    }
+
     if (!phone || !phone.trim()) {
       return { success: true, data: null };
     }
@@ -1462,8 +1471,14 @@ export async function lookupCustomerByPhone(
       return { success: true, data: null };
     }
 
+    const scope = await getAuthorizedBranchScope(user);
+    const branchFilter = !scope.isAllBranches ? { branchId: { in: scope.branchIds } } : undefined;
+
     const orders = await prisma.order.findMany({
-      where: { customerId: customer.id },
+      where: {
+        customerId: customer.id,
+        ...(branchFilter && branchFilter),
+      },
       select: {
         id: true,
         status: true,

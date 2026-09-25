@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import {
   shiftSchema,
@@ -11,7 +11,7 @@ import {
   attendanceUpdateSchema,
   type AttendanceFilterInput,
 } from '@/lib/validations/attendance';
-import type { ActionResult, AuthUser } from '@/lib/auth/types';
+import type { ActionResult } from '@/lib/auth/types';
 import type { AttendanceStatus, ShiftStatus } from '@prisma/client';
 import { createAuditLog } from '@/lib/audit/audit-service';
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
@@ -92,30 +92,7 @@ export interface ShiftFormState extends ActionResult<ShiftItem> {
 
 // ─── Branch Scoping Authorization Helper ────────────────────────────────────
 
-/**
- * Resolves the authorized branch scope for the authenticated user.
- * OWNER and ADMIN have global access.
- * MANAGER is restricted to their assigned branch.
- */
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  // Manager: look up linked Employee record
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
 
 // ─── Calculation Helpers ───────────────────────────────────────────────────
 
@@ -188,7 +165,7 @@ export async function getShifts(
     const where: Record<string, unknown> = {};
 
     if (branchId && branchId !== 'ALL') {
-      if (!scope.isAllBranches && !scope.branchIds.includes(branchId)) {
+      if (!isBranchAuthorized(scope, branchId)) {
         return { success: false, error: 'Unauthorized branch access.' };
       }
       where.branchId = branchId;
@@ -246,7 +223,7 @@ export async function createShift(
 
     const input = parsed.data;
 
-    if (!scope.isAllBranches && !scope.branchIds.includes(input.branchId)) {
+    if (!isBranchAuthorized(scope, input.branchId)) {
       return { success: false, error: 'Unauthorized to create shifts for this branch.' };
     }
 
@@ -304,7 +281,7 @@ export async function updateShift(
       return { success: false, error: 'Shift not found.' };
     }
 
-    if (!scope.isAllBranches && !scope.branchIds.includes(existing.branchId)) {
+    if (!isBranchAuthorized(scope, existing.branchId)) {
       return { success: false, error: 'Unauthorized to modify this shift.' };
     }
 
@@ -324,6 +301,10 @@ export async function updateShift(
     }
 
     const input = parsed.data;
+
+    if (!isBranchAuthorized(scope, input.branchId)) {
+      return { success: false, error: 'Unauthorized to assign shift to this branch.' };
+    }
 
     const updated = await prisma.shift.update({
       where: { id },
@@ -370,7 +351,7 @@ export async function toggleShiftStatus(
       return { success: false, error: 'Shift not found.' };
     }
 
-    if (!scope.isAllBranches && !scope.branchIds.includes(existing.branchId)) {
+    if (!isBranchAuthorized(scope, existing.branchId)) {
       return { success: false, error: 'Unauthorized to change this shift status.' };
     }
 
@@ -422,7 +403,7 @@ export async function getAttendanceRecords(
 
     // Branch scoping & filter
     if (branchId && branchId !== 'ALL') {
-      if (!scope.isAllBranches && !scope.branchIds.includes(branchId)) {
+      if (!isBranchAuthorized(scope, branchId)) {
         return { success: false, error: 'Unauthorized branch access.' };
       }
       where.branchId = branchId;
@@ -530,7 +511,7 @@ export async function getAttendanceById(
       return { success: false, error: 'Attendance record not found.' };
     }
 
-    if (!scope.isAllBranches && !scope.branchIds.includes(record.branchId)) {
+    if (!isBranchAuthorized(scope, record.branchId)) {
       return { success: false, error: 'Unauthorized to view this attendance record.' };
     }
 
@@ -559,7 +540,7 @@ export async function getAttendanceSummary(
 
     const branchFilter: Record<string, unknown> = {};
     if (branchId && branchId !== 'ALL') {
-      if (!scope.isAllBranches && !scope.branchIds.includes(branchId)) {
+      if (!isBranchAuthorized(scope, branchId)) {
         return { success: false, error: 'Unauthorized branch access.' };
       }
       branchFilter.branchId = branchId;
@@ -653,7 +634,7 @@ export async function markAttendance(
     const input = parsed.data;
 
     // Verify branch scope authorization
-    if (!scope.isAllBranches && !scope.branchIds.includes(input.branchId)) {
+    if (!isBranchAuthorized(scope, input.branchId)) {
       return { success: false, error: 'Unauthorized to record attendance for this branch.' };
     }
 
@@ -847,7 +828,7 @@ export async function updateAttendance(
     }
 
     // Branch authorization check
-    if (!scope.isAllBranches && !scope.branchIds.includes(existing.branchId)) {
+    if (!isBranchAuthorized(scope, existing.branchId)) {
       return { success: false, error: 'Unauthorized to edit attendance for this branch.' };
     }
 
@@ -990,7 +971,7 @@ export async function quickCheckIn(
       return { success: false, error: 'Employee not found.' };
     }
 
-    if (!scope.isAllBranches && !scope.branchIds.includes(employee.branchId)) {
+    if (!isBranchAuthorized(scope, employee.branchId)) {
       return { success: false, error: 'Unauthorized to check in staff for this branch.' };
     }
 
@@ -1089,7 +1070,7 @@ export async function quickCheckOut(
       return { success: false, error: 'Attendance record not found.' };
     }
 
-    if (!scope.isAllBranches && !scope.branchIds.includes(attendance.branchId)) {
+    if (!isBranchAuthorized(scope, attendance.branchId)) {
       return { success: false, error: 'Unauthorized to update this attendance record.' };
     }
 
@@ -1204,7 +1185,7 @@ export async function getAuthorizedEmployees(
 
     const where: Record<string, unknown> = { employmentStatus: 'ACTIVE' };
     if (branchId && branchId !== 'ALL') {
-      if (!scope.isAllBranches && !scope.branchIds.includes(branchId)) {
+      if (!isBranchAuthorized(scope, branchId)) {
         return { success: false, error: 'Unauthorized branch.' };
       }
       where.branchId = branchId;

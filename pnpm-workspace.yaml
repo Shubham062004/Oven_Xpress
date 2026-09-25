@@ -7,3 +7,6 @@ allowBuilds:
   sharp: false
   unrs-resolver: false
   workerd: true
+
+overrides:
+  deepmerge-ts: ^8.0.0

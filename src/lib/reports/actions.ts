@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/db/prisma';
-import { getCurrentUser } from '@/lib/auth/guards';
+import { getCurrentUser, getAuthorizedBranchScope } from '@/lib/auth/guards';
 import { hasPermission, hasAnyPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import type { AuthUser } from '@/lib/auth/types';
@@ -80,29 +80,7 @@ export type ActionResult<T> =
 
 // ─── Scoping & Helpers ───────────────────────────────────────────────────────
 
-/**
- * Resolves authorized branch scope for the authenticated user.
- * OWNER and ADMIN have access across all branches.
- * MANAGER and STAFF are restricted to their assigned branch.
- */
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
 
 /**
  * Validates branch filter against user authorization.

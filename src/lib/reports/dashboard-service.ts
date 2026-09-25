@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/db/prisma';
-import { getCurrentUser } from '@/lib/auth/guards';
+import { getCurrentUser, getAuthorizedBranchScope } from '@/lib/auth/guards';
 import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import type { AuthUser } from '@/lib/auth/types';
@@ -36,24 +36,7 @@ export type DashboardResult<T> =
 
 // ─── Scoping & Authorization Helpers ─────────────────────────────────────────
 
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
 
 // ─── Date Range Resolution ──────────────────────────────────────────────────
 

@@ -8,6 +8,7 @@ Completed
 
 ## Completed
 
+- [x] Azure Blob Storage Migration: Completely migrated storage layer from AWS/S3 to Azure Blob Storage using `@azure/storage-blob`. Centralized storage abstraction in `src/lib/storage/azure-blob.ts`, authenticated private blob streaming with strict multi-branch tenant isolation in `/api/uploads/receipt/[filename]`, robust file validation (magic bytes, MIME whitelist, 5MB limit), path traversal neutralization, zero client secret leakage, automated test suite (`scripts/verify-azure-storage.ts` with 15/15 passed tests), and comprehensive documentation in `docs/AZURE-BLOB-STORAGE.md`.
 - [x] Step 23 Client User Acceptance Testing (Client UAT) verification suite (`scripts/verify-client-uat.ts` with 20/20 passed scenarios)
 - [x] Multi-role permission testing (Owner, Admin, Manager, Staff) validating operational and financial access boundaries
 - [x] Realistic 10-stage Dine-In lifecycle, tableless Takeaway channel, and enforced customer Delivery channel

@@ -2,9 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
-import type { ActionResult, AuthUser } from '@/lib/auth/types';
+import type { ActionResult } from '@/lib/auth/types';
 import {
   createTableSchema,
   updateTableSchema,
@@ -27,31 +27,7 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
-
-function isBranchAuthorized(
-  scope: { isAllBranches: boolean; branchIds: string[] },
-  branchId: string
-): boolean {
-  return scope.isAllBranches || scope.branchIds.includes(branchId);
-}
 
 /**
  * Fetches all tables for a given branch with active order details.

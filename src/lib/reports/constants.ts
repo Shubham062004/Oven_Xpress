@@ -40,6 +40,7 @@
  */
 
 import type { DateRangePreset, ReportDateRange } from './types';
+import { sanitizeCsvCell } from '@/lib/security/input-sanitizer';
 
 // ─── Order statuses that count as "completed" for revenue ───────────────────
 
@@ -205,11 +206,8 @@ export function toCSV<T extends object>(
   return [headers, ...rows].join('\n');
 }
 
-function escapeCSV(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
+export function escapeCSV(value: string): string {
+  return sanitizeCsvCell(value);
 }
 
 /**

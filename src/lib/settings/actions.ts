@@ -1,10 +1,9 @@
 'use server';
 
-import { getCurrentUser } from '@/lib/auth/guards';
+import { getCurrentUser, getAuthorizedBranchScope } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db/prisma';
 import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
-import { getAuthorizedBranchScope } from '@/lib/reports/report-service';
 import { revalidatePath } from 'next/cache';
 import {
   getAllSettings,

@@ -1,0 +1,44 @@
+# Oven Xpress Web Crawling & Scraping Policy
+# https://app.ovenxpress.com
+
+User-agent: *
+Disallow: /api/
+Disallow: /users/
+Disallow: /salary/
+Disallow: /reports/
+Disallow: /orders/
+Disallow: /kitchen/
+Disallow: /settings/
+Disallow: /employees/
+Disallow: /customers/
+Disallow: /purchases/
+Disallow: /expenses/
+Disallow: /inventory/
+Disallow: /payments/
+Disallow: /tables/
+Disallow: /feedback/
+
+# Block AI scrapers from harvesting proprietary restaurant operational data
+User-agent: GPTBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Diffbot
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /

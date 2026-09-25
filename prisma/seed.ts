@@ -544,6 +544,14 @@ async function main() {
   }
 
   // 3. Seed Users with environment variable credentials (or safe dev defaults)
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.SEED_OWNER_PASSWORD || !process.env.SEED_ADMIN_PASSWORD) {
+      throw new Error(
+        'Database seeding in production requires explicit, high-entropy SEED_OWNER_PASSWORD and SEED_ADMIN_PASSWORD environment variables. Default fallback passwords are not permitted in production.'
+      );
+    }
+  }
+
   const usersToSeed = [
     {
       name: 'Sarah Jenkins (Owner)',
@@ -596,6 +604,7 @@ async function main() {
         passwordHash,
         roleId,
         isActive: u.isActive,
+        emailVerified: new Date(),
       },
       create: {
         name: u.name,
@@ -603,6 +612,7 @@ async function main() {
         passwordHash,
         roleId,
         isActive: u.isActive,
+        emailVerified: new Date(),
       },
     });
     console.log(`    ✓ [${u.roleName}] ${u.email} (active: ${u.isActive})`);

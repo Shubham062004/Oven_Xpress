@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { OrderType, OrderStatus } from '@prisma/client';
+import { sanitizeText, sanitizeSearchQuery } from '@/lib/security/input-sanitizer';
 
 export const orderItemInputSchema = z.object({
   menuItemId: z.string().min(1, { message: 'Menu item is required' }),
@@ -16,7 +17,8 @@ export const orderItemInputSchema = z.object({
     .trim()
     .max(200, { message: 'Item notes must be 200 characters or less' })
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((v) => (v ? sanitizeText(v) : v)),
 });
 
 export const createOrderSchema = z
@@ -32,7 +34,8 @@ export const createOrderSchema = z
       .trim()
       .max(100, { message: 'Customer name must be 100 characters or less' })
       .optional()
-      .or(z.literal('')),
+      .or(z.literal(''))
+      .transform((v) => (v ? sanitizeText(v) : v)),
     customerPhone: z
       .string()
       .trim()
@@ -44,13 +47,15 @@ export const createOrderSchema = z
       .trim()
       .max(300, { message: 'Delivery address must be 300 characters or less' })
       .optional()
-      .or(z.literal('')),
+      .or(z.literal(''))
+      .transform((v) => (v ? sanitizeText(v) : v)),
     deliveryNotes: z
       .string()
       .trim()
       .max(300, { message: 'Delivery notes must be 300 characters or less' })
       .optional()
-      .or(z.literal('')),
+      .or(z.literal(''))
+      .transform((v) => (v ? sanitizeText(v) : v)),
     discountAmount: z.coerce
       .number({ message: 'Order discount must be a number' })
       .min(0, { message: 'Discount cannot be negative' })
@@ -64,7 +69,8 @@ export const createOrderSchema = z
       .trim()
       .max(500, { message: 'Order notes must be 500 characters or less' })
       .optional()
-      .or(z.literal('')),
+      .or(z.literal(''))
+      .transform((v) => (v ? sanitizeText(v) : v)),
     items: z
       .array(orderItemInputSchema)
       .min(1, { message: 'Order must have at least one menu item' }),
@@ -124,7 +130,8 @@ export const updateOrderSchema = z.object({
     .trim()
     .max(100, { message: 'Customer name must be 100 characters or less' })
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((v) => (v ? sanitizeText(v) : v)),
   customerPhone: z
     .string()
     .trim()
@@ -136,19 +143,22 @@ export const updateOrderSchema = z.object({
     .trim()
     .max(300, { message: 'Delivery address must be 300 characters or less' })
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((v) => (v ? sanitizeText(v) : v)),
   deliveryNotes: z
     .string()
     .trim()
     .max(300, { message: 'Delivery notes must be 300 characters or less' })
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((v) => (v ? sanitizeText(v) : v)),
   notes: z
     .string()
     .trim()
     .max(500, { message: 'Order notes must be 500 characters or less' })
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((v) => (v ? sanitizeText(v) : v)),
   discountAmount: z.coerce
     .number({ message: 'Discount must be a number' })
     .min(0, { message: 'Discount cannot be negative' })
@@ -171,7 +181,8 @@ export const cancelOrderSchema = z.object({
     .string()
     .trim()
     .min(3, { message: 'Cancellation reason must be at least 3 characters' })
-    .max(500, { message: 'Cancellation reason must be 500 characters or less' }),
+    .max(500, { message: 'Cancellation reason must be 500 characters or less' })
+    .transform(sanitizeText),
 });
 
 export const orderFilterSchema = z.object({
@@ -180,7 +191,11 @@ export const orderFilterSchema = z.object({
   status: z.nativeEnum(OrderStatus).optional().or(z.literal('ALL')),
   startDate: z.string().optional().or(z.literal('')),
   endDate: z.string().optional().or(z.literal('')),
-  search: z.string().optional().or(z.literal('')),
+  search: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .transform((v) => (v ? sanitizeSearchQuery(v) : v)),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });

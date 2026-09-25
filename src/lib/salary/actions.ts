@@ -12,8 +12,7 @@ import {
   EmploymentStatus,
 } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
-import { getCurrentUser } from '@/lib/auth/guards';
-import type { AuthUser } from '@/lib/auth/types';
+import { getCurrentUser, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { createAuditLog } from '@/lib/audit/audit-service';
@@ -63,31 +62,7 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
-
-function isBranchAuthorized(
-  scope: { isAllBranches: boolean; branchIds: string[] },
-  branchId: string
-): boolean {
-  return scope.isAllBranches || scope.branchIds.includes(branchId);
-}
 
 /**
  * Concurrency-safe sequential salary record number generator.
@@ -98,9 +73,8 @@ async function generateSalaryNumber(tx: Prisma.TransactionClient): Promise<strin
   const currentYear = new Date().getFullYear();
   const prefix = `SAL-${currentYear}-`;
 
-  await tx.$executeRawUnsafe(
-    `SELECT pg_advisory_xact_lock(hashtext('salary_number_seq_${currentYear}'))`
-  );
+  const lockKey = `salary_number_seq_${currentYear}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
 
   const latestRecord = await tx.salaryRecord.findFirst({
     where: {

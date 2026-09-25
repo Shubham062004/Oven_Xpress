@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import {
   openingStockSchema,
@@ -24,7 +24,7 @@ import {
   type UpdateInventoryItemInput,
   type InventoryFilterInput,
 } from '@/lib/validations/inventory';
-import type { ActionResult, AuthUser } from '@/lib/auth/types';
+import type { ActionResult } from '@/lib/auth/types';
 import {
   calculateStockHealth,
   getTransactionDirection,
@@ -50,36 +50,7 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-/**
- * Resolves authorized branch scope for the authenticated user.
- * OWNER and ADMIN have access across all branches.
- * MANAGER is restricted to their assigned branch.
- */
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
-
-function isBranchAuthorized(
-  scope: { isAllBranches: boolean; branchIds: string[] },
-  branchId: string
-): boolean {
-  return scope.isAllBranches || scope.branchIds.includes(branchId);
-}
 
 /**
  * Calculates current stock for a single (branchId, ingredientId) using Prisma groupBy aggregation.

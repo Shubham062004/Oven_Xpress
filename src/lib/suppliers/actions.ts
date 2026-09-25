@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import {
   createSupplierSchema,
@@ -39,7 +39,8 @@ export async function getSuppliers(
   filter?: Partial<SupplierFilterInput>
 ): Promise<ActionResult<SupplierListItem[]>> {
   try {
-    await requirePermission(PERMISSIONS.SUPPLIER_READ);
+    const user = await requirePermission(PERMISSIONS.SUPPLIER_READ);
+    const scope = await getAuthorizedBranchScope(user);
 
     const parsedFilter = supplierFilterSchema.safeParse(filter || {});
     const { search, status } = parsedFilter.success
@@ -63,10 +64,13 @@ export async function getSuppliers(
       ];
     }
 
+    const branchPoFilter = !scope.isAllBranches ? { branchId: { in: scope.branchIds } } : undefined;
+
     const suppliers = await prisma.supplier.findMany({
       where,
       include: {
         purchaseOrders: {
+          where: branchPoFilter,
           select: {
             id: true,
             status: true,
@@ -127,14 +131,17 @@ export async function getSuppliers(
  */
 export async function getSupplierStats(): Promise<ActionResult<SupplierStats>> {
   try {
-    await requirePermission(PERMISSIONS.SUPPLIER_READ);
+    const user = await requirePermission(PERMISSIONS.SUPPLIER_READ);
+    const scope = await getAuthorizedBranchScope(user);
+
+    const branchPoFilter = !scope.isAllBranches ? { branchId: { in: scope.branchIds } } : undefined;
 
     const [totalSuppliers, activeSuppliers, inactiveSuppliers, totalOrdersCount] =
       await Promise.all([
         prisma.supplier.count(),
         prisma.supplier.count({ where: { status: SupplierStatus.ACTIVE } }),
         prisma.supplier.count({ where: { status: SupplierStatus.INACTIVE } }),
-        prisma.purchaseOrder.count(),
+        prisma.purchaseOrder.count({ where: branchPoFilter }),
       ]);
 
     return {
@@ -163,12 +170,16 @@ export async function getSupplierById(
   id: string
 ): Promise<ActionResult<SupplierDetail>> {
   try {
-    await requirePermission(PERMISSIONS.SUPPLIER_READ);
+    const user = await requirePermission(PERMISSIONS.SUPPLIER_READ);
+    const scope = await getAuthorizedBranchScope(user);
+
+    const branchPoFilter = !scope.isAllBranches ? { branchId: { in: scope.branchIds } } : undefined;
 
     const supplier = await prisma.supplier.findUnique({
       where: { id },
       include: {
         purchaseOrders: {
+          where: branchPoFilter,
           include: {
             branch: { select: { id: true, name: true, code: true } },
             items: {

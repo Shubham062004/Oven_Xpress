@@ -7,6 +7,7 @@ export interface AuthUser {
   role: RoleName | string;
   permissions: string[];
   isActive: boolean;
+  emailVerified?: Date | null;
 }
 
 export interface SessionData {

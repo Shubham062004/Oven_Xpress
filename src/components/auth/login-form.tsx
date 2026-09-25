@@ -1,8 +1,9 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ const INITIAL_STATE: LoginFormState = {
 export function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const resetSuccess = searchParams.get('reset') === 'success';
 
   const [state, formAction, isPending] = useActionState(loginAction, INITIAL_STATE);
   const [showPassword, setShowPassword] = useState(false);
@@ -30,12 +32,35 @@ export function LoginForm() {
 
   return (
     <div className="space-y-6">
+      {resetSuccess && (
+        <Alert className="border-emerald-500/50 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200">
+          <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+          <AlertTitle>Password Reset Successfully</AlertTitle>
+          <AlertDescription className="text-xs">
+            Your password has been updated and all active sessions were terminated. Please sign in with your new password.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {state?.error && (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
           <AlertTitle>Authentication Failed</AlertTitle>
-          <AlertDescription>{state.error}</AlertDescription>
+          <AlertDescription className="text-xs">{state.error}</AlertDescription>
         </Alert>
+      )}
+
+      {state?.unverified && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
+          <p className="font-semibold">Email Verification Required</p>
+          <p>Your email address must be confirmed before you can access the operational dashboard.</p>
+          <Link
+            href="/verify-email"
+            className="inline-block font-medium text-primary underline hover:text-primary/80"
+          >
+            Go to email verification page &rarr;
+          </Link>
+        </div>
       )}
 
       <form action={formAction} className="space-y-4">
@@ -75,6 +100,12 @@ export function LoginForm() {
             <Label htmlFor="password" className="text-sm font-medium">
               Password
             </Label>
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Forgot password?
+            </Link>
           </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />

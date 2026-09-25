@@ -1,4 +1,4 @@
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/ui/page-header';
@@ -22,6 +22,7 @@ export const metadata = {
 export default async function UsersPage() {
   // Server-side guard: Enforces that user has 'users.read' permission
   const currentUser = await requirePermission(PERMISSIONS.USERS_READ);
+  const scope = await getAuthorizedBranchScope(currentUser);
 
   let users: Array<{
     id: string;
@@ -33,9 +34,23 @@ export default async function UsersPage() {
   }> = [];
 
   try {
+    const where = !scope.isAllBranches
+      ? { employee: { branchId: { in: scope.branchIds } } }
+      : {};
+
     users = await prisma.user.findMany({
-      include: {
-        role: true,
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isActive: true,
+        createdAt: true,
+        role: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'asc',

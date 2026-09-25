@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import {
   createEmployeeSchema,
@@ -12,6 +12,8 @@ import type { ActionResult } from '@/lib/auth/types';
 import type { EmploymentStatus, SalaryType } from '@prisma/client';
 import { createAuditLog } from '@/lib/audit/audit-service';
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
+import { checkAccountCreationRateLimit } from '@/lib/security/abuse-protection';
+import { logTrafficAnomaly } from '@/lib/security/security-logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -88,20 +90,27 @@ export interface UserOption {
 
 /**
  * Fetches employees with optional search, branch, status, and designation filters.
+ * Enforces server-side branch scope isolation.
  */
 export async function getEmployees(
   params?: EmployeeListParams
 ): Promise<ActionResult<EmployeeItem[]>> {
   try {
-    await requirePermission(PERMISSIONS.EMPLOYEE_READ);
+    const user = await requirePermission(PERMISSIONS.EMPLOYEE_READ);
+    const scope = await getAuthorizedBranchScope(user);
 
     const { search, branchId, status, designation } = params ?? {};
 
     const where: Record<string, unknown> = {};
 
-    // Branch filter
+    // Branch filter with authorization check
     if (branchId && branchId !== 'ALL') {
+      if (!isBranchAuthorized(scope, branchId)) {
+        return { success: false, error: 'Unauthorized branch access.' };
+      }
       where.branchId = branchId;
+    } else if (!scope.isAllBranches) {
+      where.branchId = { in: scope.branchIds };
     }
 
     // Status filter
@@ -169,12 +178,14 @@ export async function getEmployees(
 
 /**
  * Fetches a single employee by ID with full branch and user relations.
+ * Verifies caller has branch scope access for the requested employee.
  */
 export async function getEmployeeById(
   id: string
 ): Promise<ActionResult<EmployeeItem>> {
   try {
-    await requirePermission(PERMISSIONS.EMPLOYEE_READ);
+    const user = await requirePermission(PERMISSIONS.EMPLOYEE_READ);
+    const scope = await getAuthorizedBranchScope(user);
 
     const employee = await prisma.employee.findUnique({
       where: { id },
@@ -207,6 +218,10 @@ export async function getEmployeeById(
       return { success: false, error: 'Employee not found.' };
     }
 
+    if (!isBranchAuthorized(scope, employee.branchId)) {
+      return { success: false, error: 'Unauthorized to view employee from this branch.' };
+    }
+
     return {
       success: true,
       data: {
@@ -222,18 +237,24 @@ export async function getEmployeeById(
 }
 
 /**
- * Fetches aggregate employee statistics.
+ * Fetches aggregate employee statistics scoped to user's authorized branches.
  */
 export async function getEmployeeStats(): Promise<ActionResult<EmployeeStats>> {
   try {
-    await requirePermission(PERMISSIONS.EMPLOYEE_READ);
+    const user = await requirePermission(PERMISSIONS.EMPLOYEE_READ);
+    const scope = await getAuthorizedBranchScope(user);
+
+    const branchFilter = !scope.isAllBranches
+      ? { branchId: { in: scope.branchIds } }
+      : {};
 
     const [total, active, inactive, branchGroup] = await Promise.all([
-      prisma.employee.count(),
-      prisma.employee.count({ where: { employmentStatus: 'ACTIVE' } }),
-      prisma.employee.count({ where: { employmentStatus: 'INACTIVE' } }),
+      prisma.employee.count({ where: branchFilter }),
+      prisma.employee.count({ where: { ...branchFilter, employmentStatus: 'ACTIVE' } }),
+      prisma.employee.count({ where: { ...branchFilter, employmentStatus: 'INACTIVE' } }),
       prisma.employee.groupBy({
         by: ['branchId'],
+        where: branchFilter,
         _count: { _all: true },
       }),
     ]);
@@ -260,14 +281,18 @@ export async function getEmployeeStats(): Promise<ActionResult<EmployeeStats>> {
 }
 
 /**
- * Fetches active branches for dropdown selection in employee forms.
+ * Fetches active branches for dropdown selection in employee forms (scoped to authorized branches).
  */
 export async function getActiveBranchesForSelect(): Promise<ActionResult<BranchOption[]>> {
   try {
-    await requirePermission(PERMISSIONS.EMPLOYEE_READ);
+    const user = await requirePermission(PERMISSIONS.EMPLOYEE_READ);
+    const scope = await getAuthorizedBranchScope(user);
 
     const branches = await prisma.branch.findMany({
-      where: { status: 'ACTIVE' },
+      where: {
+        status: 'ACTIVE',
+        ...(!scope.isAllBranches ? { id: { in: scope.branchIds } } : {}),
+      },
       select: {
         id: true,
         name: true,
@@ -370,6 +395,24 @@ export async function createEmployee(
   try {
     const currentUser = await requirePermission(PERMISSIONS.EMPLOYEE_CREATE);
 
+    // Abuse Protection: Max 10 account creations per 10 minutes per administrator
+    const rateLimitCheck = checkAccountCreationRateLimit(currentUser.id);
+    if (!rateLimitCheck.allowed) {
+      logTrafficAnomaly({
+        type: 'ACCOUNT_CREATION_THROTTLED',
+        path: '/employees/actions',
+        method: 'POST',
+        userId: currentUser.id,
+        reason: rateLimitCheck.reason || 'Account creation burst limit exceeded',
+        details: { retryAfterSeconds: rateLimitCheck.retryAfterSeconds },
+      });
+
+      return {
+        success: false,
+        error: `Account creation rate limit reached. Please wait ${rateLimitCheck.retryAfterSeconds} second(s) before creating another staff account.`,
+      };
+    }
+
     // Validate input
     const parsed = createEmployeeSchema.safeParse(data);
     if (!parsed.success) {
@@ -387,6 +430,16 @@ export async function createEmployee(
     }
 
     const input = parsed.data;
+
+    // Branch authorization check
+    const scope = await getAuthorizedBranchScope(currentUser);
+    if (!isBranchAuthorized(scope, input.branchId)) {
+      return {
+        success: false,
+        error: 'Unauthorized: You do not have access to create employees for this branch.',
+        fieldErrors: { branchId: ['Unauthorized branch selection.'] },
+      };
+    }
 
     // Rule 1: Employee code must be unique
     const existingCode = await prisma.employee.findUnique({
@@ -570,10 +623,27 @@ export async function updateEmployee(
       return { success: false, error: 'Employee not found.' };
     }
 
+    // Branch authorization check on existing record
+    const scope = await getAuthorizedBranchScope(currentUser);
+    if (!isBranchAuthorized(scope, existing.branchId)) {
+      return {
+        success: false,
+        error: 'Unauthorized: You do not have permission to modify employees in this branch.',
+      };
+    }
+
     const input = parsed.data;
 
     // Rule 3: Branch must exist and if changing branch, verify it
     if (input.branchId && input.branchId !== existing.branchId) {
+      if (!isBranchAuthorized(scope, input.branchId)) {
+        return {
+          success: false,
+          error: 'Unauthorized: You do not have permission to transfer an employee to that branch.',
+          fieldErrors: { branchId: ['Unauthorized destination branch.'] },
+        };
+      }
+
       const newBranch = await prisma.branch.findUnique({
         where: { id: input.branchId },
       });
@@ -752,6 +822,14 @@ export async function toggleEmployeeStatus(
 
     if (!existing) {
       return { success: false, error: 'Employee not found.' };
+    }
+
+    const scope = await getAuthorizedBranchScope(currentUser);
+    if (!isBranchAuthorized(scope, existing.branchId)) {
+      return {
+        success: false,
+        error: 'Unauthorized: You do not have permission to change employee status in this branch.',
+      };
     }
 
     const newStatus: EmploymentStatus =

@@ -101,6 +101,7 @@ export async function getSession(): Promise<SessionData | null> {
       role: sessionRecord.user.role.name,
       permissions,
       isActive: sessionRecord.user.isActive,
+      emailVerified: sessionRecord.user.emailVerified,
     };
 
     return {
@@ -127,16 +128,46 @@ export async function getSession(): Promise<SessionData | null> {
  */
 export async function destroySession(): Promise<void> {
   try {
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    let sessionToken: string | undefined;
+    try {
+      const cookieStore = await cookies();
+      sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+      if (sessionToken) {
+        cookieStore.delete(SESSION_COOKIE_NAME);
+      }
+    } catch {
+      // Cookies are unavailable when invoked outside request context (e.g. CLI, scripts, tasks)
+    }
 
     if (sessionToken) {
       await prisma.session.deleteMany({
         where: { sessionToken },
       });
-      cookieStore.delete(SESSION_COOKIE_NAME);
     }
   } catch (error) {
     console.error('Failed to destroy session:', error);
   }
 }
+
+/**
+ * Destroys all active sessions for a specific user.
+ * Used during password reset, account deactivation, or security incidents to
+ * guarantee immediate termination of all active client sessions across devices.
+ */
+export async function destroyAllUserSessions(userId: string): Promise<void> {
+  try {
+    await prisma.session.deleteMany({
+      where: { userId },
+    });
+
+    try {
+      const cookieStore = await cookies();
+      cookieStore.delete(SESSION_COOKIE_NAME);
+    } catch {
+      // Cookies are unavailable outside request context
+    }
+  } catch (error) {
+    console.error(`Failed to destroy all sessions for user ${userId}:`, error);
+  }
+}
+

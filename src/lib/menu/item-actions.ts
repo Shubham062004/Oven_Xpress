@@ -2,14 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import {
   createMenuItemSchema,
   updateMenuItemSchema,
   updateBranchMenuItemSchema,
 } from '@/lib/validations/menu';
-import type { ActionResult, AuthUser } from '@/lib/auth/types';
+import type { ActionResult } from '@/lib/auth/types';
 import type {
   MenuItemListItem,
   MenuItemDetailItem,
@@ -31,29 +31,7 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-/**
- * Resolves authorized branch scope for the authenticated user.
- * OWNER and ADMIN have universal access across all branches.
- * MANAGER is strictly restricted to their assigned branch.
- */
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
 
 /**
  * Fetches all menu items with category, branch availability count, and recipe indicator.

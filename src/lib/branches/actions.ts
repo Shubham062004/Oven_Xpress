@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { createBranchSchema, updateBranchSchema } from '@/lib/validations/branch';
 import type { ActionResult } from '@/lib/auth/types';
@@ -31,16 +31,22 @@ export interface BranchStats {
 
 /**
  * Fetches all branches with optional search and status filter.
+ * Scoped to authorized branches for branch-restricted users.
  */
 export async function getBranches(
   params?: BranchListParams
 ): Promise<ActionResult<Branch[]>> {
   try {
-    await requirePermission(PERMISSIONS.BRANCH_READ);
+    const user = await requirePermission(PERMISSIONS.BRANCH_READ);
+    const scope = await getAuthorizedBranchScope(user);
 
     const { search, status } = params ?? {};
 
     const where: Record<string, unknown> = {};
+
+    if (!scope.isAllBranches) {
+      where.id = { in: scope.branchIds };
+    }
 
     // Status filter
     if (status && status !== 'ALL') {
@@ -72,13 +78,18 @@ export async function getBranches(
 }
 
 /**
- * Fetches a single branch by ID.
+ * Fetches a single branch by ID with ownership/authorization validation.
  */
 export async function getBranchById(
   id: string
 ): Promise<ActionResult<Branch>> {
   try {
-    await requirePermission(PERMISSIONS.BRANCH_READ);
+    const user = await requirePermission(PERMISSIONS.BRANCH_READ);
+    const scope = await getAuthorizedBranchScope(user);
+
+    if (!isBranchAuthorized(scope, id)) {
+      return { success: false, error: 'Forbidden: Access to this branch is denied.' };
+    }
 
     const branch = await prisma.branch.findUnique({
       where: { id },
@@ -97,16 +108,19 @@ export async function getBranchById(
 }
 
 /**
- * Fetches aggregate branch statistics.
+ * Fetches aggregate branch statistics scoped to authorized branches.
  */
 export async function getBranchStats(): Promise<ActionResult<BranchStats>> {
   try {
-    await requirePermission(PERMISSIONS.BRANCH_READ);
+    const user = await requirePermission(PERMISSIONS.BRANCH_READ);
+    const scope = await getAuthorizedBranchScope(user);
+
+    const branchWhere = !scope.isAllBranches ? { id: { in: scope.branchIds } } : {};
 
     const [total, active, inactive] = await Promise.all([
-      prisma.branch.count(),
-      prisma.branch.count({ where: { status: 'ACTIVE' } }),
-      prisma.branch.count({ where: { status: 'INACTIVE' } }),
+      prisma.branch.count({ where: branchWhere }),
+      prisma.branch.count({ where: { ...branchWhere, status: 'ACTIVE' } }),
+      prisma.branch.count({ where: { ...branchWhere, status: 'INACTIVE' } }),
     ]);
 
     return { success: true, data: { total, active, inactive } };
@@ -121,12 +135,21 @@ export async function getBranchStats(): Promise<ActionResult<BranchStats>> {
 
 /**
  * Creates a new branch after verifying permission, validation, and code uniqueness.
+ * Strictly restricted to global owners and admins.
  */
 export async function createBranch(
   data: Record<string, unknown>
 ): Promise<BranchFormState> {
   try {
     const user = await requirePermission(PERMISSIONS.BRANCH_CREATE);
+    const scope = await getAuthorizedBranchScope(user);
+
+    if (!scope.isAllBranches) {
+      return {
+        success: false,
+        error: 'Forbidden: Only global administrators can create new branches.',
+      };
+    }
 
     // Validate input
     const parsed = createBranchSchema.safeParse(data);
@@ -213,6 +236,14 @@ export async function updateBranch(
 ): Promise<BranchFormState> {
   try {
     const user = await requirePermission(PERMISSIONS.BRANCH_UPDATE);
+    const scope = await getAuthorizedBranchScope(user);
+
+    if (!isBranchAuthorized(scope, id)) {
+      return {
+        success: false,
+        error: 'Forbidden: You do not have permission to modify this branch.',
+      };
+    }
 
     // Validate input
     const parsed = updateBranchSchema.safeParse(data);
@@ -299,6 +330,14 @@ export async function toggleBranchStatus(
 ): Promise<ActionResult<Branch>> {
   try {
     const user = await requirePermission(PERMISSIONS.BRANCH_DEACTIVATE);
+    const scope = await getAuthorizedBranchScope(user);
+
+    if (!isBranchAuthorized(scope, id)) {
+      return {
+        success: false,
+        error: 'Forbidden: You do not have permission to modify this branch status.',
+      };
+    }
 
     const existing = await prisma.branch.findUnique({ where: { id } });
     if (!existing) {

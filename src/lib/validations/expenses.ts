@@ -6,6 +6,7 @@ import {
   ExpenseFrequency,
   ExpenseTemplateStatus,
 } from '@prisma/client';
+import { sanitizeText, sanitizeSearchQuery } from '@/lib/security/input-sanitizer';
 
 export const createExpenseSchema = z.object({
   branchId: z.string().min(1, { message: 'Branch is required' }),
@@ -21,7 +22,8 @@ export const createExpenseSchema = z.object({
     .string()
     .trim()
     .min(3, { message: 'Description must be at least 3 characters' })
-    .max(500, { message: 'Description cannot exceed 500 characters' }),
+    .max(500, { message: 'Description cannot exceed 500 characters' })
+    .transform(sanitizeText),
   vendorName: z
     .string()
     .trim()
@@ -29,7 +31,7 @@ export const createExpenseSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal(''))
-    .transform((v) => (v ? v.trim() : null)),
+    .transform((v) => (v ? sanitizeText(v) : null)),
   paymentMethod: z.nativeEnum(PaymentMethod, {
     message: 'Valid payment method is required',
   }),
@@ -40,7 +42,7 @@ export const createExpenseSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal(''))
-    .transform((v) => (v ? v.trim() : null)),
+    .transform((v) => (v ? sanitizeText(v) : null)),
   receiptUrl: z
     .string()
     .trim()
@@ -48,7 +50,7 @@ export const createExpenseSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal(''))
-    .transform((v) => (v ? v.trim() : null)),
+    .transform((v) => (v ? sanitizeText(v) : null)),
   notes: z
     .string()
     .trim()
@@ -56,7 +58,7 @@ export const createExpenseSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal(''))
-    .transform((v) => (v ? v.trim() : null)),
+    .transform((v) => (v ? sanitizeText(v) : null)),
   status: z
     .nativeEnum(ExpenseStatus)
     .optional()
@@ -221,7 +223,10 @@ export const expenseFilterSchema = z.object({
   paymentMethod: z.nativeEnum(PaymentMethod).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  search: z.string().optional(),
+  search: z
+    .string()
+    .optional()
+    .transform((v) => (v ? sanitizeSearchQuery(v) : v)),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 });

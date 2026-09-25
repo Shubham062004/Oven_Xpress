@@ -2,9 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
-import type { ActionResult, AuthUser } from '@/lib/auth/types';
+import type { ActionResult } from '@/lib/auth/types';
 import {
   createPaymentSchema,
   createRefundSchema,
@@ -45,36 +45,7 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-/**
- * Resolves authorized branch scope for the authenticated user.
- * OWNER and ADMIN have access across all branches.
- * MANAGER and STAFF are restricted to their assigned branch.
- */
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
-
-function isBranchAuthorized(
-  scope: { isAllBranches: boolean; branchIds: string[] },
-  branchId: string
-): boolean {
-  return scope.isAllBranches || scope.branchIds.includes(branchId);
-}
 
 /**
  * Concurrency-safe sequential payment number generator.
@@ -87,9 +58,8 @@ async function generatePaymentNumber(
   const currentYear = new Date().getFullYear();
   const prefix = `PAY-${currentYear}-`;
 
-  await tx.$executeRawUnsafe(
-    `SELECT pg_advisory_xact_lock(hashtext('payment_number_seq_${currentYear}'))`
-  );
+  const lockKey = `payment_number_seq_${currentYear}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
 
   const latestPayment = await tx.payment.findFirst({
     where: {
@@ -127,9 +97,8 @@ async function generateRefundNumber(
   const currentYear = new Date().getFullYear();
   const prefix = `REF-${currentYear}-`;
 
-  await tx.$executeRawUnsafe(
-    `SELECT pg_advisory_xact_lock(hashtext('refund_number_seq_${currentYear}'))`
-  );
+  const lockKey = `refund_number_seq_${currentYear}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
 
   const latestRefund = await tx.paymentRefund.findFirst({
     where: {

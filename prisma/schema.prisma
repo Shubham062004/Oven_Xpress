@@ -8,20 +8,23 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  passwordHash String
-  roleId       String
-  role         Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  isActive     Boolean   @default(true)
-  sessions     Session[]
-  employee     Employee?
-  notifications Notification[]
-  auditLogs     AuditLog[]
-  preference    UserPreference?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                      String                   @id @default(cuid())
+  name                    String
+  email                   String                   @unique
+  passwordHash            String
+  roleId                  String
+  role                    Role                     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  isActive                Boolean                  @default(true)
+  emailVerified           DateTime?
+  sessions                Session[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  employee                Employee?
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  preference              UserPreference?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 
   @@index([roleId])
   @@index([email])
@@ -36,6 +39,30 @@ model Session {
   createdAt    DateTime @default(now())
 
   @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Role {

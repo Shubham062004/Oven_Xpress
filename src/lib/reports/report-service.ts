@@ -19,6 +19,7 @@ import { prisma } from '@/lib/db/prisma';
 import type { AuthUser } from '@/lib/auth/types';
 import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
+import { getAuthorizedBranchScope } from '@/lib/auth/guards';
 import {
   parseDateRange,
   getDateRangeFromPreset,
@@ -27,6 +28,7 @@ import {
   toCSV,
   REVENUE_ORDER_STATUSES,
 } from './constants';
+import { sanitizeSearchQuery, parseBoundedInt } from '@/lib/security/input-sanitizer';
 import type {
   ReportDateRange,
   ReportFilterParams,
@@ -75,24 +77,7 @@ import {
 
 // ─── Scope & Branch Authorization ───────────────────────────────────────────
 
-export async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
-
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
+export { getAuthorizedBranchScope };
 
 export async function resolveBranchFilter(
   user: AuthUser,
@@ -120,11 +105,26 @@ export async function resolveBranchFilter(
   return { branchId: userBranchId };
 }
 
+export function sanitizeReportFilterParams(params: ReportFilterParams): ReportFilterParams {
+  if (!params) return {};
+  if (params.search) {
+    params.search = sanitizeSearchQuery(params.search);
+  }
+  if (params.page !== undefined) {
+    params.page = parseBoundedInt(params.page, 1, 1, 10000);
+  }
+  if (params.limit !== undefined) {
+    params.limit = parseBoundedInt(params.limit, 20, 1, 100);
+  }
+  return params;
+}
+
 export function resolveReportDates(params: ReportFilterParams): {
   range: ReportDateRange;
   startDateTime: Date;
   endDateTime: Date;
 } {
+  sanitizeReportFilterParams(params);
   let range: ReportDateRange;
   if (params.startDate && params.endDate) {
     range = { startDate: params.startDate, endDate: params.endDate };
@@ -977,6 +977,7 @@ export async function getInventoryReportData(
   summary: InventoryReportSummary;
   pagination: PaginationMeta;
 }> {
+  sanitizeReportFilterParams(params);
   const branchRes = await resolveBranchFilter(user, params.branchId);
   const effectiveBranchId = branchRes.branchId;
 
@@ -1563,6 +1564,7 @@ export async function getCompensationReportData(
 
   const branchRes = await resolveBranchFilter(user, params.branchId);
   const effectiveBranchId = branchRes.branchId;
+  sanitizeReportFilterParams(params);
 
   const where: Record<string, unknown> = {};
   if (effectiveBranchId) {
@@ -1679,6 +1681,7 @@ export async function getCustomersReportData(
   summary: CustomersReportSummary;
   pagination: PaginationMeta;
 }> {
+  sanitizeReportFilterParams(params);
   const canViewPII = hasPermission(user, PERMISSIONS.CUSTOMER_READ);
   const where: Record<string, unknown> = {};
 

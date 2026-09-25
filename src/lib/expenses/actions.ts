@@ -3,9 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { Prisma, ExpenseStatus, ExpenseCategoryStatus, ExpenseTemplateStatus } from '@prisma/client';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
-import type { AuthUser } from '@/lib/auth/types';
 import { createAuditLog } from '@/lib/audit/audit-service';
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 import {
@@ -43,36 +42,7 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-/**
- * Resolves authorized branch scope for the authenticated user.
- * OWNER and ADMIN have access across all branches.
- * MANAGER and STAFF are restricted to their assigned branch.
- */
-async function getAuthorizedBranchScope(
-  user: AuthUser
-): Promise<{ isAllBranches: boolean; branchIds: string[] }> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
-    return { isAllBranches: true, branchIds: [] };
-  }
 
-  const employee = await prisma.employee.findUnique({
-    where: { userId: user.id },
-    select: { branchId: true },
-  });
-
-  if (employee?.branchId) {
-    return { isAllBranches: false, branchIds: [employee.branchId] };
-  }
-
-  return { isAllBranches: false, branchIds: [] };
-}
-
-function isBranchAuthorized(
-  scope: { isAllBranches: boolean; branchIds: string[] },
-  branchId: string
-): boolean {
-  return scope.isAllBranches || scope.branchIds.includes(branchId);
-}
 
 /**
  * Concurrency-safe sequential expense number generator.
@@ -85,9 +55,8 @@ async function generateExpenseNumber(
   const currentYear = new Date().getFullYear();
   const prefix = `EXP-${currentYear}-`;
 
-  await tx.$executeRawUnsafe(
-    `SELECT pg_advisory_xact_lock(hashtext('expense_number_seq_${currentYear}'))`
-  );
+  const lockKey = `expense_number_seq_${currentYear}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
 
   const latestExpense = await tx.expense.findFirst({
     where: {
@@ -136,7 +105,7 @@ export async function getExpenses(
     const user = await requirePermission(PERMISSIONS.EXPENSE_READ);
 
     const parsedFilter = expenseFilterSchema.safeParse(filterInput);
-    const filter = parsedFilter.success ? parsedFilter.data : { page: 1, pageSize: 20 };
+    const filter: ExpenseFilterInput = parsedFilter.success ? parsedFilter.data : expenseFilterSchema.parse({});
 
     const branchScope = await getAuthorizedBranchScope(user);
 
