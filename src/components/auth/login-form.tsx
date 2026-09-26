@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -17,8 +17,11 @@ const INITIAL_STATE: LoginFormState = {
 
 export function LoginForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('returnTo') || '/';
   const resetSuccess = searchParams.get('reset') === 'success';
+  const isSessionExpired =
+    searchParams.get('reason') === 'session-expired' || searchParams.get('reason') === 'expired';
+  const isAccountInactive = searchParams.get('error') === 'account-inactive';
 
   const [state, formAction, isPending] = useActionState(loginAction, INITIAL_STATE);
   const [showPassword, setShowPassword] = useState(false);
@@ -32,6 +35,26 @@ export function LoginForm() {
 
   return (
     <div className="space-y-6">
+      {isSessionExpired && (
+        <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <Clock className="size-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle>Session Expired</AlertTitle>
+          <AlertDescription className="text-xs">
+            Your session expired after 10 minutes for security. Please log in again to continue.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isAccountInactive && (
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertTitle>Account Inactive</AlertTitle>
+          <AlertDescription className="text-xs">
+            Your account is currently inactive. Please contact your restaurant administrator.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {resetSuccess && (
         <Alert className="border-emerald-500/50 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200">
           <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />

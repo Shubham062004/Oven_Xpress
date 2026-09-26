@@ -40,7 +40,12 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json(
-        { error: 'Unauthorized. Authentication session required.' },
+        {
+          success: false,
+          code: 'AUTH_SESSION_EXPIRED',
+          error: 'Your session has expired. Please log in again.',
+          message: 'Your session has expired. Please log in again.',
+        },
         { status: 401 }
       );
     }

@@ -1,6 +1,6 @@
 ## Current Feature
 
-Step 23 — Client UAT, Feedback & Final Bug-Fix Cycle
+Strict 10-Minute Session Expiration & Expired Session Handling
 
 ## Status
 
@@ -8,6 +8,8 @@ Completed
 
 ## Completed
 
+- [x] Strict 10-Minute Session Expiration & Expired Session Handling: Enforced an absolute 10-minute (600s) server-side session lifetime in `SESSION_TTL_SECONDS`. Server-authoritative session evaluation in `validateSession()` purges expired database records, removes the HTTP-only `ox_session` cookie, and records `AUTH_SESSION_EXPIRED` in the append-only AuditLog. Centralized server guard `requireAuthentication()` automatically redirects expired sessions to `/login?reason=session-expired&returnTo=...` with open-redirect immunity. Built client-side `SessionTimeoutWatcher` with non-dismissible amber security modal, visibility/focus tab return checks, bfcache (`pageshow`) verification, cross-tab synchronization via `BroadcastChannel` and storage events, and global fetch 401 interception. Added anti-stale caching headers (`Cache-Control: no-store, must-revalidate`) and `dynamic = 'force-dynamic'` on dashboard layouts to guarantee cached authenticated pages cannot be served after expiration. Tested and verified across 36 automated assertions (`scripts/verify-session-expiration.ts`), 0 ESLint errors, and 0 production build errors. Documented in `docs/features/session-management.md`.
+- [x] Complete User Account, Profile & Logout Experience: Implemented full self-service user account management adhering strictly to existing authentication architecture. Added `/profile` and `/profile/password` routes, enhanced authenticated header user menu with avatar/role/branch context, implemented atomic server-side session invalidation and logout with `AUTH_LOGOUT` audit logging, separated User and Employee concerns, strict server-side validation on self-editable fields (`firstName`, `lastName`, `phone`, `avatarUrl`) with multi-tenant anti-tampering guards, bcrypt-secured password change with automatic revocation of concurrent sessions, active sessions management ("Sign out other sessions"), user preferences integration (`UserPreference`), and Azure Blob Storage avatar uploads with magic byte validation. Verified with 40/40 automated tests (`scripts/verify-user-account.ts`) and fully documented in `docs/features/user-account.md`.
 - [x] Azure Blob Storage Migration: Completely migrated storage layer from AWS/S3 to Azure Blob Storage using `@azure/storage-blob`. Centralized storage abstraction in `src/lib/storage/azure-blob.ts`, authenticated private blob streaming with strict multi-branch tenant isolation in `/api/uploads/receipt/[filename]`, robust file validation (magic bytes, MIME whitelist, 5MB limit), path traversal neutralization, zero client secret leakage, automated test suite (`scripts/verify-azure-storage.ts` with 15/15 passed tests), and comprehensive documentation in `docs/AZURE-BLOB-STORAGE.md`.
 - [x] Step 23 Client User Acceptance Testing (Client UAT) verification suite (`scripts/verify-client-uat.ts` with 20/20 passed scenarios)
 - [x] Multi-role permission testing (Owner, Admin, Manager, Staff) validating operational and financial access boundaries

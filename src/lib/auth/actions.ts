@@ -244,7 +244,10 @@ export async function loginAction(
     resetLoginRateLimit(cleanEmail, clientCtx.ipAddress ?? undefined);
 
     // 6. Create persistent session and set HTTP-only cookie
-    await createSession(user.id);
+    await createSession(user.id, {
+      ipAddress: clientCtx.ipAddress ?? undefined,
+      userAgent: clientCtx.userAgent ?? undefined,
+    });
 
     // 7. Record successful login audit
     const employee = await prisma.employee.findUnique({

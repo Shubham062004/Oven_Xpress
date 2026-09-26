@@ -22,6 +22,8 @@ import {
   AlertTriangle,
   Sliders,
   Sparkles,
+  Lock,
+  User as UserIcon,
 } from 'lucide-react';
 import {
   SETTING_CATEGORIES,
@@ -339,6 +341,30 @@ export function SettingsClient({
               </div>
               <Sparkles className="size-3.5 opacity-70" />
             </button>
+          </div>
+
+          <div className="pt-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3 py-2">
+              User Account
+            </div>
+            <Link
+              href="/profile"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left text-foreground hover:bg-accent hover:text-accent-foreground"
+            >
+              <div className="flex items-center gap-2.5">
+                <UserIcon className="size-4" />
+                <span>My Profile & Account</span>
+              </div>
+            </Link>
+            <Link
+              href="/profile/password"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left text-foreground hover:bg-accent hover:text-accent-foreground"
+            >
+              <div className="flex items-center gap-2.5">
+                <Lock className="size-4" />
+                <span>Change Password</span>
+              </div>
+            </Link>
           </div>
         </div>
 

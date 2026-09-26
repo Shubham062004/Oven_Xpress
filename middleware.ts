@@ -1,14 +1,26 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { isSafeRedirectUrl, sanitizeRedirectUrl } from '@/lib/security/url-validation';
-import { detectSuspiciousTraffic, detectBotOrScraper } from '@/lib/security/traffic-detector';
+import {
+  isSafeRedirectUrl,
+  sanitizeRedirectUrl,
+} from '@/lib/security/url-validation';
+import {
+  detectSuspiciousTraffic,
+  detectBotOrScraper,
+} from '@/lib/security/traffic-detector';
 import { checkRateLimit } from '@/lib/security/rate-limit';
 import { logTrafficAnomaly } from '@/lib/security/security-logger';
 
 const SESSION_COOKIE_NAME = 'ox_session';
 
 // Paths that unauthenticated users can access
-const PUBLIC_PATHS = ['/login', '/unauthorized', '/forgot-password', '/reset-password', '/verify-email'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/unauthorized',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+];
 
 // Methods that should never be processed by application routes
 const DISALLOWED_METHODS = new Set(['TRACE', 'TRACK']);
@@ -24,7 +36,9 @@ export function middleware(request: NextRequest) {
 
     // 1. Enforce HTTPS in production
     // Checks reverse proxy forwarding header ('x-forwarded-proto') or direct URL protocol
-    const proto = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.replace(':', '');
+    const proto =
+      request.headers.get('x-forwarded-proto') ||
+      request.nextUrl.protocol.replace(':', '');
     const isProduction = process.env.NODE_ENV === 'production';
 
     if (isProduction && proto === 'http') {
@@ -38,7 +52,8 @@ export function middleware(request: NextRequest) {
         clientIp,
         userAgent,
         statusCode: 308,
-        reason: 'Unencrypted HTTP request received in production environment; redirecting to HTTPS',
+        reason:
+          'Unencrypted HTTP request received in production environment; redirecting to HTTPS',
       });
 
       return NextResponse.redirect(secureUrl, 308);
@@ -71,9 +86,12 @@ export function middleware(request: NextRequest) {
         reason: probeCheck.reason || 'Suspicious request pattern detected',
       });
 
-      return new NextResponse(probeCheck.statusCode === 400 ? 'Bad Request' : 'Not Found', {
-        status: probeCheck.statusCode || 404,
-      });
+      return new NextResponse(
+        probeCheck.statusCode === 400 ? 'Bad Request' : 'Not Found',
+        {
+          status: probeCheck.statusCode || 404,
+        }
+      );
     }
 
     // 4. Anti-Bot & Scraper Protection (Blocks scrapers on protected data and API endpoints)
@@ -86,12 +104,17 @@ export function middleware(request: NextRequest) {
         clientIp,
         userAgent,
         statusCode: 403,
-        reason: botCheck.reason || 'Automated scraping tool detected on protected endpoint',
+        reason:
+          botCheck.reason ||
+          'Automated scraping tool detected on protected endpoint',
       });
 
-      return new NextResponse('Access Denied: Automated scraping tools and bots are strictly forbidden.', {
-        status: 403,
-      });
+      return new NextResponse(
+        'Access Denied: Automated scraping tools and bots are strictly forbidden.',
+        {
+          status: 403,
+        }
+      );
     }
 
     // 5. Multi-tiered API rate limiting and traffic anomaly detection
@@ -144,10 +167,15 @@ export function middleware(request: NextRequest) {
           });
 
           return NextResponse.json(
-            { error: 'Too many report requests. Please wait before exporting more data.' },
+            {
+              error:
+                'Too many report requests. Please wait before exporting more data.',
+            },
             {
               status: 429,
-              headers: { 'Retry-After': String(reportRateLimit.retryAfterSeconds) },
+              headers: {
+                'Retry-After': String(reportRateLimit.retryAfterSeconds),
+              },
             }
           );
         }
@@ -181,12 +209,19 @@ export function middleware(request: NextRequest) {
     }
 
     const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-    const isPublicPath = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+    const isPublicPath = PUBLIC_PATHS.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    );
 
     // 6. If user is unauthenticated and attempting to access a protected API route
     if (!sessionCookie && isApiPath) {
       return NextResponse.json(
-        { error: 'Unauthorized. Authentication session required.' },
+        {
+          success: false,
+          code: 'AUTH_SESSION_EXPIRED',
+          error: 'Your session has expired. Please log in again.',
+          message: 'Your session has expired. Please log in again.',
+        },
         { status: 401 }
       );
     }
@@ -195,23 +230,51 @@ export function middleware(request: NextRequest) {
     if (!sessionCookie && !isPublicPath && !isApiPath) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = '/login';
+      loginUrl.searchParams.set('reason', 'session-expired');
       if (pathname !== '/' && isSafeRedirectUrl(pathname)) {
         loginUrl.searchParams.set('callbackUrl', pathname);
+        loginUrl.searchParams.set('returnTo', pathname);
       } else {
         loginUrl.searchParams.delete('callbackUrl');
+        loginUrl.searchParams.delete('returnTo');
       }
       return NextResponse.redirect(loginUrl);
     }
 
-    // 8. If user is already authenticated and visits login page, redirect to home or safe callbackUrl
-    if (sessionCookie && pathname === '/login') {
-      const rawCallback = request.nextUrl.searchParams.get('callbackUrl');
-      const safeDestination = sanitizeRedirectUrl(rawCallback, '/');
-      const destinationUrl = new URL(safeDestination, request.nextUrl.origin);
-      return NextResponse.redirect(destinationUrl);
+    // 8. Prevent redirect loops: if visiting login page with reason or reset, clear stale cookie and render login
+    if (pathname === '/login') {
+      const reason = request.nextUrl.searchParams.get('reason');
+      const isReset = request.nextUrl.searchParams.has('reset');
+
+      if (reason || isReset) {
+        const loginResponse = NextResponse.next();
+        if (sessionCookie) {
+          loginResponse.cookies.delete(SESSION_COOKIE_NAME);
+        }
+        return loginResponse;
+      }
+
+      if (sessionCookie) {
+        const rawCallback =
+          request.nextUrl.searchParams.get('callbackUrl') ||
+          request.nextUrl.searchParams.get('returnTo');
+        const safeDestination = sanitizeRedirectUrl(rawCallback, '/');
+        const destinationUrl = new URL(safeDestination, request.nextUrl.origin);
+        return NextResponse.redirect(destinationUrl);
+      }
     }
 
     const response = NextResponse.next();
+
+    // Prevent stale/bfcache serving of authenticated pages
+    if (!isPublicPath && !isApiPath) {
+      response.headers.set(
+        'Cache-Control',
+        'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
+      );
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+    }
 
     // Defense-in-depth security headers
     response.headers.set('X-Content-Type-Options', 'nosniff');

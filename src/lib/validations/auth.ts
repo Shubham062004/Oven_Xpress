@@ -96,3 +96,45 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, { message: 'Current password is required' }),
+    newPassword: strongPasswordSchema,
+    confirmPassword: z.string().min(1, { message: 'Please confirm your new password' }),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'New password and confirmation do not match',
+    path: ['confirmPassword'],
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: 'New password must be different from current password',
+    path: ['newPassword'],
+  });
+
+export const updateProfileSchema = z.object({
+  firstName: z
+    .string()
+    .trim()
+    .min(1, { message: 'First name is required' })
+    .max(50, { message: 'First name cannot exceed 50 characters' }),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, { message: 'Last name is required' })
+    .max(50, { message: 'Last name cannot exceed 50 characters' }),
+  phone: z
+    .string()
+    .trim()
+    .max(20, { message: 'Phone number cannot exceed 20 characters' })
+    .optional()
+    .nullable(),
+  avatarUrl: z
+    .string()
+    .trim()
+    .optional()
+    .nullable(),
+});
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

@@ -1,35 +1,77 @@
 import { redirect } from 'next/navigation';
 
-import { getSession } from '@/lib/auth/session';
-import type { AuthUser } from '@/lib/auth/types';
+import { validateSession } from '@/lib/auth/session';
+import type { AuthUser, ActionResult } from '@/lib/auth/types';
 import { prisma } from '@/lib/db/prisma';
 import { hasPermission, hasRole } from '@/lib/permissions/check';
 import type { PermissionCode, RoleName } from '@/lib/permissions/definitions';
+import { isSafeRedirectUrl } from '@/lib/security/url-validation';
 
 /**
  * Returns the currently authenticated user without triggering a redirect.
  * Returns null if no active or valid session exists.
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const session = await getSession();
-  return session?.user ?? null;
+  const result = await validateSession();
+  return result.user;
 }
 
 /**
  * Server guard: Enforces that the user must be authenticated.
  * Redirects to /login if unauthenticated.
+ * If the session has expired, redirects with ?reason=session-expired and safe returnTo.
  */
 export async function requireAuthentication(callbackUrl?: string): Promise<AuthUser> {
-  const user = await getCurrentUser();
+  const result = await validateSession();
 
-  if (!user) {
-    const loginPath = callbackUrl
-      ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
-      : '/login';
+  if (!result.user) {
+    const isExpired = result.status === 'EXPIRED';
+    const params = new URLSearchParams();
+
+    if (isExpired) {
+      params.set('reason', 'session-expired');
+    } else if (result.status === 'USER_INACTIVE') {
+      params.set('error', 'account-inactive');
+    }
+
+    if (callbackUrl && isSafeRedirectUrl(callbackUrl)) {
+      params.set('callbackUrl', callbackUrl);
+      params.set('returnTo', callbackUrl);
+    }
+
+    const qs = params.toString();
+    const loginPath = qs ? `/login?${qs}` : '/login';
     redirect(loginPath);
   }
 
-  return user;
+  return result.user;
+}
+
+/**
+ * Centralized guard for API routes and server actions returning an ActionResult.
+ * Returns { ok: true, user } or { ok: false, errorResult: ActionResult }.
+ */
+export async function requireAuthOrActionError(): Promise<
+  | { ok: true; user: AuthUser }
+  | { ok: false; errorResult: ActionResult }
+> {
+  const result = await validateSession();
+  if (result.status === 'VALID' && result.user) {
+    return { ok: true, user: result.user };
+  }
+
+  const code = result.code || (result.status === 'EXPIRED' ? 'AUTH_SESSION_EXPIRED' : 'AUTH_UNAUTHORIZED');
+  const message = result.error || 'Your session has expired. Please log in again.';
+
+  return {
+    ok: false,
+    errorResult: {
+      success: false,
+      code,
+      error: message,
+      message,
+    },
+  };
 }
 
 /**

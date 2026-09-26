@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { User as UserIcon } from 'lucide-react';
 
 import { cn } from 'cn';
 import {
@@ -76,6 +77,21 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
 
         <div className="px-3 pb-3">
           <Separator className="mb-3" />
+          {user ? (
+            <Link
+              href="/profile"
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors mb-1',
+                pathname.startsWith('/profile')
+                  ? 'bg-accent text-primary'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              <UserIcon className="size-4 shrink-0" />
+              <span>My Profile</span>
+            </Link>
+          ) : null}
           {visibleBottomNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
