@@ -12,7 +12,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { mainNavItems, bottomNavItems } from '@/config/navigation';
+import { mainNavItems, bottomNavItems, getRoleNavItems } from '@/config/navigation';
 import { useSidebar } from '@/providers/sidebar-provider';
 import type { AuthUser } from '@/lib/auth/types';
 import { hasPermission } from '@/lib/permissions/check';
@@ -24,13 +24,17 @@ interface MobileSidebarProps {
 export function MobileSidebar({ user }: MobileSidebarProps) {
   const { isMobileOpen, setMobileOpen } = useSidebar();
   const pathname = usePathname();
+  const userRole = (user?.role || 'staff').toLowerCase();
 
-  const visibleMainNavItems = mainNavItems.filter((item) => {
+  const roleMainNav = getRoleNavItems(userRole, mainNavItems);
+  const roleBottomNav = getRoleNavItems(userRole, bottomNavItems);
+
+  const visibleMainNavItems = roleMainNav.filter((item) => {
     if (!item.requiredPermission) return true;
     return hasPermission(user, item.requiredPermission);
   });
 
-  const visibleBottomNavItems = bottomNavItems.filter((item) => {
+  const visibleBottomNavItems = roleBottomNav.filter((item) => {
     if (!item.requiredPermission) return true;
     return hasPermission(user, item.requiredPermission);
   });
@@ -39,12 +43,23 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
     <Sheet open={isMobileOpen} onOpenChange={setMobileOpen}>
       <SheetContent side="left" className="w-72 p-0">
         <SheetHeader className="flex h-14 flex-row items-center gap-2 border-b px-4">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <span className="text-sm font-bold">OX</span>
-          </div>
-          <SheetTitle className="text-sm font-semibold">
-            Oven Xpress
-          </SheetTitle>
+          <Link
+            href={`/${userRole}`}
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2"
+          >
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <span className="text-sm font-bold">OX</span>
+            </div>
+            <div className="flex flex-col text-left">
+              <SheetTitle className="text-sm font-semibold">
+                Oven Xpress
+              </SheetTitle>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                {user?.role || 'Portal'}
+              </span>
+            </div>
+          </Link>
         </SheetHeader>
 
         <nav
@@ -52,7 +67,9 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
           aria-label="Mobile navigation"
         >
           {visibleMainNavItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== `/${userRole}` && pathname.startsWith(`${item.href}/`));
             return (
               <Link
                 key={item.href}

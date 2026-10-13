@@ -28,6 +28,7 @@ import {
   safeDivide,
 } from './constants';
 import { calculateBatchStock } from '@/lib/inventory/actions';
+import { getCache, setCache, CACHE_KEYS } from '@/lib/cache/cache-service';
 import { StockTransactionType } from '@prisma/client';
 
 export type DashboardResult<T> =
@@ -245,6 +246,19 @@ export async function getExecutiveDashboardData(
     // Date range resolution
     const activePreset = params?.preset || 'today';
     const { current, previous } = resolveDashboardDates(activePreset, params?.from, params?.to);
+
+    // Check dashboard cache (45s TTL)
+    const cacheKey = CACHE_KEYS.dashboardOwner(
+      effectiveBranchId || (params?.branchId || 'all'),
+      current.startDate,
+      current.endDate,
+      user.role
+    );
+
+    const cachedData = await getCache<ExecutiveDashboardData>(cacheKey);
+    if (cachedData) {
+      return { success: true, data: cachedData };
+    }
 
     // Permission checks for role-based gating
     const canViewFinancials = hasPermission(user, PERMISSIONS.REPORT_SALES_READ);
@@ -906,7 +920,6 @@ export async function getExecutiveDashboardData(
     const recentIssues: RecentInventoryIssue[] = [];
 
     if (canViewInventory) {
-      const stockMap = await calculateBatchStock(queryBranchIds);
       const inventoryItems = await prisma.inventoryItem.findMany({
         where: {
           branchId: { in: queryBranchIds },
@@ -917,6 +930,11 @@ export async function getExecutiveDashboardData(
           branch: { select: { name: true } },
         },
       });
+
+      const ingredientIds = inventoryItems.map((item) => item.ingredientId);
+      const stockMap = ingredientIds.length > 0
+        ? await calculateBatchStock(queryBranchIds, ingredientIds)
+        : new Map<string, number>();
 
       for (const item of inventoryItems) {
         const key = `${item.branchId}:${item.ingredientId}`;
@@ -1142,36 +1160,41 @@ export async function getExecutiveDashboardData(
     );
     const recentActivity = activityList.slice(0, 8);
 
+    const resultData: ExecutiveDashboardData = {
+      dateRange: {
+        startDate: current.startDate,
+        endDate: current.endDate,
+      },
+      preset: activePreset,
+      selectedBranchId: params?.branchId || (effectiveBranchId ? effectiveBranchId : 'all'),
+      effectiveBranchId,
+      isAllBranches: scope.isAllBranches && (!params?.branchId || params.branchId === 'all'),
+      isBranchRestricted: !scope.isAllBranches,
+      canViewFinancials,
+      canViewBranches,
+      userRole: user.role,
+      userName: user.name,
+      accessibleBranches,
+      kpis,
+      salesTrend,
+      salesTrendGrouping: trendGrouping,
+      branchPerformance,
+      orderOverview,
+      paymentOverview,
+      topProducts,
+      inventoryHealth,
+      attendanceOverview,
+      pendingApprovals,
+      customerFeedback,
+      recentActivity,
+    };
+
+    // Store in cache for 45 seconds
+    await setCache(cacheKey, resultData, 45);
+
     return {
       success: true,
-      data: {
-        dateRange: {
-          startDate: current.startDate,
-          endDate: current.endDate,
-        },
-        preset: activePreset,
-        selectedBranchId: params?.branchId || (effectiveBranchId ? effectiveBranchId : 'all'),
-        effectiveBranchId,
-        isAllBranches: scope.isAllBranches && (!params?.branchId || params.branchId === 'all'),
-        isBranchRestricted: !scope.isAllBranches,
-        canViewFinancials,
-        canViewBranches,
-        userRole: user.role,
-        userName: user.name,
-        accessibleBranches,
-        kpis,
-        salesTrend,
-        salesTrendGrouping: trendGrouping,
-        branchPerformance,
-        orderOverview,
-        paymentOverview,
-        topProducts,
-        inventoryHealth,
-        attendanceOverview,
-        pendingApprovals,
-        customerFeedback,
-        recentActivity,
-      },
+      data: resultData,
     };
   } catch (error) {
     console.error('Error in getExecutiveDashboardData:', error);

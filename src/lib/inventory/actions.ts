@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import { getCache, setCache, CACHE_KEYS, invalidateStockCaches } from '@/lib/cache/cache-service';
 import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import {
@@ -93,21 +94,39 @@ export async function calculateCurrentStock(
   return Math.round(currentStock * 1000) / 1000;
 }
 
+async function revalidateInventory(): Promise<void> {
+  await invalidateStockCaches();
+  revalidatePath('/inventory');
+}
+
 /**
  * Batch stock calculation across multiple branches and ingredients.
  * Uses a single database query avoiding N+1 performance penalties.
+ * Results are cached for 60 seconds with automatic invalidation on stock mutations.
  */
 export async function calculateBatchStock(
   branchIds: string | string[],
   ingredientIds?: string[]
 ): Promise<Map<string, number>> {
-  const branches = Array.isArray(branchIds) ? branchIds : [branchIds];
+  const branches = (Array.isArray(branchIds) ? branchIds : [branchIds]).filter(Boolean);
+  const ingredients = (ingredientIds || []).filter(Boolean);
+
+  const branchesKey = branches.slice().sort().join(',') || 'all';
+  const ingredientsKey = ingredients.slice().sort().join(',') || 'all';
+  const cacheKey = CACHE_KEYS.batchStock(branchesKey, ingredientsKey);
+
+  // Check cache first
+  const cachedEntries = await getCache<Array<[string, number]>>(cacheKey);
+  if (cachedEntries && Array.isArray(cachedEntries)) {
+    return new Map<string, number>(cachedEntries);
+  }
+
   const where: Prisma.StockTransactionWhereInput = {};
   if (branches.length > 0) {
     where.branchId = { in: branches };
   }
-  if (ingredientIds && ingredientIds.length > 0) {
-    where.ingredientId = { in: ingredientIds };
+  if (ingredients.length > 0) {
+    where.ingredientId = { in: ingredients };
   }
 
   const groups = await prisma.stockTransaction.groupBy({
@@ -132,6 +151,9 @@ export async function calculateBatchStock(
   for (const [key, val] of stockMap.entries()) {
     stockMap.set(key, Math.round(val * 1000) / 1000);
   }
+
+  // Cache entries for 60 seconds
+  await setCache(cacheKey, Array.from(stockMap.entries()), 60);
 
   return stockMap;
 }
@@ -559,7 +581,7 @@ export async function recordOpeningStock(
       return { transactionId: txRecord.id };
     });
 
-    revalidatePath('/inventory');
+    await revalidateInventory();
     return { success: true, data: result };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -648,7 +670,7 @@ export async function recordStockReceipt(
       return { transactionId: txRecord.id };
     });
 
-    revalidatePath('/inventory');
+    await revalidateInventory();
     return { success: true, data: result };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -732,7 +754,7 @@ export async function recordWastageDamage(
       return { transactionId: txRecord.id };
     });
 
-    revalidatePath('/inventory');
+    await revalidateInventory();
     return { success: true, data: result };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -833,7 +855,7 @@ export async function recordStockAdjustment(
       return { transactionId: txRecord.id };
     });
 
-    revalidatePath('/inventory');
+    await revalidateInventory();
     return { success: true, data: result };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -966,7 +988,7 @@ export async function recordBranchTransfer(
       );
     });
 
-    revalidatePath('/inventory');
+    await revalidateInventory();
     return { success: true, data: { referenceId } };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -1085,7 +1107,7 @@ export async function recordStockReconciliation(
       };
     });
 
-    revalidatePath('/inventory');
+    await revalidateInventory();
     return { success: true, data: result };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -1132,7 +1154,7 @@ export async function updateInventoryItem(
       },
     });
 
-    revalidatePath('/inventory');
+    await revalidateInventory();
     return { success: true, data: { id: updated.id } };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -1173,7 +1195,7 @@ export async function toggleInventoryItemStatus(
       data: { status: status as InventoryStatus },
     });
 
-    revalidatePath('/inventory');
+    await revalidateInventory();
     return { success: true, data: { id: updated.id, status: updated.status } };
   } catch (error) {
     if (isRedirectError(error)) throw error;

@@ -467,7 +467,25 @@ All actions return ActionResult<T>. Re-throw Next.js redirect errors.
 - Sensitive Data Isolation: Salary, bonus, and expense approval alerts are never routed to users lacking the required approval permission.
 ```
 
+### Role-Based Routing, Dashboards & API Namespaces Pattern
 
+```
+# Feature: Role-Based Routing, Dashboards & Scoped APIs
 
+## Architecture
+- Page Namespaces: /owner, /admin, /manager, /staff
+- Landing Dashboards: Distinct, tailored dashboard per role
+  - /owner: Multi-branch executive KPIs, revenue, P&L, branch performance, system health
+  - /admin: Administrative control, system users, audit logs, configuration
+  - /manager: Single-branch operational metrics, live shift orders, branch attendance, stock alerts, KDS queue
+  - /staff: Shift terminal, quick actions (New POS Order, KDS, Shift Clock, Menu, Petty Cash), live shift orders
+- API Namespaces: /api/owner/*, /api/admin/*, /api/manager/*, /api/staff/*
+- Route Rewriting: Middleware intercepts /:role/:subpath and transparently rewrites to internal route /:subpath while preserving browser URL
+- Role Isolation: Cross-role intrusions redirected to user's dedicated dashboard; unauthorized subpaths blocked
 
+## Security Rules
+1. Server-authoritative role resolution from database session; never trust client headers or storage
+2. Multi-tier validation: Edge middleware gate -> Route Handler role check -> Domain service permission + branch scope
+3. Zero permission or schema modifications; reuse existing RBAC models and centralized guards
+```
 

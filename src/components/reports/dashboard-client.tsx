@@ -27,12 +27,18 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
+import dynamic from 'next/dynamic';
 import { BranchFilter } from '@/components/reports/branch-filter';
 import { ReportCard } from '@/components/reports/report-card';
-import {
-  DistributionDonutChart,
-} from '@/components/reports/report-chart';
 import type { DashboardData } from '@/lib/reports/types';
+
+const DistributionDonutChart = dynamic(
+  () => import('@/components/reports/report-chart').then((mod) => mod.DistributionDonutChart),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 w-full bg-muted/20 rounded-xl animate-pulse" />,
+  }
+);
 import {
   formatCurrency,
   formatNumber,

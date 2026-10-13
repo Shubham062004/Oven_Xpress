@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requirePermission } from '@/lib/auth/guards';
+import { requirePermission, getCurrentUser } from '@/lib/auth/guards';
+import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import type { ActionResult } from '@/lib/auth/types';
 import {
@@ -82,7 +83,10 @@ export async function getUnreadNotificationCountAction(): Promise<
   ActionResult<{ count: number }>
 > {
   try {
-    const user = await requirePermission(PERMISSIONS.NOTIFICATION_READ);
+    const user = await getCurrentUser();
+    if (!user || !hasPermission(user, PERMISSIONS.NOTIFICATION_READ)) {
+      return { success: true, data: { count: 0 } };
+    }
     const count = await getUnreadNotificationCount(user.id);
     return { success: true, data: { count } };
   } catch (error) {
@@ -102,7 +106,16 @@ export async function getRecentNotificationsAction(
   limit = 5
 ): Promise<ActionResult<{ notifications: NotificationItem[]; unreadCount: number }>> {
   try {
-    const user = await requirePermission(PERMISSIONS.NOTIFICATION_READ);
+    const user = await getCurrentUser();
+    if (!user || !hasPermission(user, PERMISSIONS.NOTIFICATION_READ)) {
+      return {
+        success: true,
+        data: {
+          notifications: [],
+          unreadCount: 0,
+        },
+      };
+    }
     const [listRes, count] = await Promise.all([
       getNotifications(user.id, {
         limit,

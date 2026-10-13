@@ -26,6 +26,12 @@ import type { NotificationItem } from '@/lib/notifications/types';
 
 interface DashboardAlertWidgetProps {
   branchId?: string;
+  initialNotifications?: NotificationItem[];
+  initialStats?: {
+    critical: number;
+    warning: number;
+    unread: number;
+  };
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -64,15 +70,27 @@ function getTypeIcon(type: string) {
   }
 }
 
-export function DashboardAlertWidget({ branchId }: DashboardAlertWidgetProps) {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [stats, setStats] = useState({
-    critical: 0,
-    warning: 0,
-    unread: 0,
-  });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+export function DashboardAlertWidget({
+  branchId,
+  initialNotifications,
+  initialStats,
+}: DashboardAlertWidgetProps) {
+  const [notifications, setNotifications] = useState<NotificationItem[]>(
+    initialNotifications ?? []
+  );
+  const [stats, setStats] = useState(
+    initialStats ?? {
+      critical: 0,
+      warning: 0,
+      unread: 0,
+    }
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(!initialNotifications);
   const [isPending, startTransition] = useTransition();
+
+  // Avoid duplicate initial fetch if server or parent component preloaded the alerts
+  const isFirstMountRef = React.useRef(true);
+  const initialBranchRef = React.useRef(branchId);
 
   const loadAlerts = async (bId?: string) => {
     try {
@@ -100,6 +118,17 @@ export function DashboardAlertWidget({ branchId }: DashboardAlertWidgetProps) {
   };
 
   useEffect(() => {
+    // If we were initialized with initialNotifications and branch haven't changed, skip mount fetch
+    if (
+      isFirstMountRef.current &&
+      initialNotifications &&
+      initialBranchRef.current === branchId
+    ) {
+      isFirstMountRef.current = false;
+      return;
+    }
+    isFirstMountRef.current = false;
+
     let isMounted = true;
     const fetch = async () => {
       try {
@@ -129,7 +158,7 @@ export function DashboardAlertWidget({ branchId }: DashboardAlertWidgetProps) {
     return () => {
       isMounted = false;
     };
-  }, [branchId]);
+  }, [branchId, initialNotifications]);
 
   const handleRefreshAlerts = () => {
     startTransition(async () => {

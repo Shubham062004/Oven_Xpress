@@ -1,5 +1,6 @@
-import { requireAuthentication } from '@/lib/auth/guards';
+import { redirect } from 'next/navigation';
 import { validateSession } from '@/lib/auth/session';
+import { isSafeRedirectUrl } from '@/lib/security/url-validation';
 import { SidebarProvider } from '@/providers/sidebar-provider';
 import { AuthProvider } from '@/providers/auth-provider';
 import { AppShell } from '@/components/layout/app-shell';
@@ -15,9 +16,22 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Server-side guard: All dashboard routes require an active authenticated session
-  const user = await requireAuthentication();
+  // Single session validation — avoids the double DB round trip that
+  // calling requireAuthentication() + validateSession() separately caused.
   const sessionResult = await validateSession();
+
+  if (!sessionResult.user) {
+    const params = new URLSearchParams();
+    if (sessionResult.status === 'EXPIRED') {
+      params.set('reason', 'session-expired');
+    } else if (sessionResult.status === 'USER_INACTIVE') {
+      params.set('error', 'account-inactive');
+    }
+    const qs = params.toString();
+    redirect(qs ? `/login?${qs}` : '/login');
+  }
+
+  const user = sessionResult.user;
 
   return (
     <AuthProvider user={user} expiresAt={sessionResult.expiresAt?.getTime()}>

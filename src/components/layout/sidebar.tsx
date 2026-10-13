@@ -12,7 +12,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
-import { mainNavItems, bottomNavItems } from '@/config/navigation';
+import { mainNavItems, bottomNavItems, getRoleNavItems } from '@/config/navigation';
 import { useSidebar } from '@/providers/sidebar-provider';
 import type { AuthUser } from '@/lib/auth/types';
 import { hasPermission } from '@/lib/permissions/check';
@@ -24,14 +24,18 @@ interface SidebarProps {
 export function Sidebar({ user }: SidebarProps) {
   const { isCollapsed, toggleCollapsed } = useSidebar();
   const pathname = usePathname();
+  const userRole = (user?.role || 'staff').toLowerCase();
+
+  const roleMainNav = getRoleNavItems(userRole, mainNavItems);
+  const roleBottomNav = getRoleNavItems(userRole, bottomNavItems);
 
   // Filter navigation items based on user's assigned permissions
-  const visibleMainNavItems = mainNavItems.filter((item) => {
+  const visibleMainNavItems = roleMainNav.filter((item) => {
     if (!item.requiredPermission) return true;
     return hasPermission(user, item.requiredPermission);
   });
 
-  const visibleBottomNavItems = bottomNavItems.filter((item) => {
+  const visibleBottomNavItems = roleBottomNav.filter((item) => {
     if (!item.requiredPermission) return true;
     return hasPermission(user, item.requiredPermission);
   });
@@ -45,9 +49,10 @@ export function Sidebar({ user }: SidebarProps) {
       )}
     >
       {/* Brand */}
-      <div
+      <Link
+        href={`/${userRole}`}
         className={cn(
-          'flex h-14 items-center border-b border-sidebar-border px-4',
+          'flex h-14 items-center border-b border-sidebar-border px-4 transition-colors hover:bg-sidebar-accent/50',
           isCollapsed ? 'justify-center' : 'gap-2'
         )}
       >
@@ -55,11 +60,16 @@ export function Sidebar({ user }: SidebarProps) {
           <span className="text-sm font-bold">OX</span>
         </div>
         {!isCollapsed && (
-          <span className="text-sm font-semibold text-sidebar-foreground">
-            Oven Xpress
-          </span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-semibold text-sidebar-foreground truncate">
+              Oven Xpress
+            </span>
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              {user?.role || 'Portal'}
+            </span>
+          </div>
         )}
-      </div>
+      </Link>
 
       {/* Main Navigation */}
       <nav
@@ -67,7 +77,9 @@ export function Sidebar({ user }: SidebarProps) {
         aria-label="Main navigation"
       >
         {visibleMainNavItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href ||
+            (item.href !== `/${userRole}` && pathname.startsWith(`${item.href}/`));
           const linkContent = (
             <Link
               key={item.href}

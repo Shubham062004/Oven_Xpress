@@ -274,17 +274,37 @@ export async function loginAction(
       description: `User ${user.name} (${user.email}) signed in successfully`,
       metadata: { roleId: user.roleId },
     }).catch((e) => console.error('Failed to create login audit log:', e));
+
+    // Query role name for default landing dashboard
+    const userRoleRecord = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { role: { select: { name: true } } },
+    });
+    const roleSlug = (userRoleRecord?.role?.name || 'STAFF').toLowerCase();
+    const defaultRolePath = `/${roleSlug}`;
+
+    // 8. Safe redirect on success to role-specific dashboard
+    const targetUrl = callbackUrl && callbackUrl !== '/' && callbackUrl !== '/dashboard'
+      ? sanitizeRedirectUrl(callbackUrl, defaultRolePath)
+      : defaultRolePath;
+
+    redirect(targetUrl);
   } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'digest' in error &&
+      typeof (error as { digest?: unknown }).digest === 'string' &&
+      (error as { digest: string }).digest.startsWith('NEXT_REDIRECT')
+    ) {
+      throw error;
+    }
     console.error('Authentication error:', error);
     return {
       success: false,
       error: 'An unexpected authentication error occurred. Please try again later.',
     };
   }
-
-  // 8. Safe redirect on success
-  const targetUrl = sanitizeRedirectUrl(callbackUrl, '/');
-  redirect(targetUrl);
 }
 
 /**

@@ -44,6 +44,7 @@ function getInitials(name?: string): string {
 
 export function Header({ user }: HeaderProps) {
   const { setMobileOpen } = useSidebar();
+  const rolePrefix = `/${(user?.role || 'staff').toLowerCase()}`;
 
   const getRoleVariant = (role?: string) => {
     switch (role) {
@@ -137,7 +138,6 @@ export function Header({ user }: HeaderProps) {
                           width={40}
                           height={40}
                           className="size-full object-cover"
-                          unoptimized
                         />
                       ) : (
                         getInitials(user.name)
@@ -166,22 +166,22 @@ export function Header({ user }: HeaderProps) {
 
               <DropdownMenuSeparator className="my-1.5" />
 
-              <DropdownMenuItem render={<Link href="/profile" className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
+              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
                 <UserIcon className="size-4 text-muted-foreground" />
                 <span className="text-sm">Profile</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem render={<Link href="/profile?tab=account" className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
+              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile?tab=account`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
                 <SettingsIcon className="size-4 text-muted-foreground" />
                 <span className="text-sm">Account Settings</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem render={<Link href="/profile/password" className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
+              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile/password`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
                 <Lock className="size-4 text-muted-foreground" />
                 <span className="text-sm">Change Password</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem render={<Link href="/profile?tab=preferences" className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
+              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile?tab=preferences`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
                 <Sliders className="size-4 text-muted-foreground" />
                 <span className="text-sm">Preferences</span>
               </DropdownMenuItem>

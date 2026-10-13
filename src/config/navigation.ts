@@ -168,3 +168,108 @@ export const bottomNavItems: NavItem[] = [
     requiredPermission: PERMISSIONS.SETTINGS_READ,
   },
 ];
+
+/**
+ * Authoritative mapping of permitted subpaths for each role workspace.
+ * Prevents unauthorized links from being displayed and enforces strict workspace boundaries.
+ */
+export const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
+  owner: [
+    '',
+    'dashboard',
+    'branches',
+    'employees',
+    'users',
+    'attendance',
+    'menu',
+    'orders',
+    'payments',
+    'kitchen',
+    'inventory',
+    'purchases',
+    'suppliers',
+    'expenses',
+    'salary',
+    'salaries',
+    'customers',
+    'reviews',
+    'feedback',
+    'sales',
+    'reports',
+    'audit-logs',
+    'settings',
+    'notifications',
+    'profile',
+  ],
+  admin: [
+    '',
+    'dashboard',
+    'users',
+    'branches',
+    'employees',
+    'attendance',
+    'audit-logs',
+    'settings',
+    'notifications',
+    'profile',
+  ],
+  manager: [
+    '',
+    'dashboard',
+    'orders',
+    'kitchen',
+    'inventory',
+    'purchases',
+    'suppliers',
+    'employees',
+    'attendance',
+    'menu',
+    'payments',
+    'expenses',
+    'customers',
+    'feedback',
+    'reviews',
+    'reports',
+    'sales',
+    'notifications',
+    'profile',
+  ],
+  staff: [
+    '',
+    'dashboard',
+    'orders',
+    'kitchen',
+    'attendance',
+    'menu',
+    'inventory',
+    'customers',
+    'payments',
+    'expenses',
+    'notifications',
+    'profile',
+  ],
+};
+
+/**
+ * Returns navigation items strictly filtered and URL-prefixed for the user's role workspace.
+ * e.g. Owner gets /owner/branches, Staff gets /staff/orders.
+ */
+export function getRoleNavItems(role: string, items: NavItem[]): NavItem[] {
+  const normalizedRole = (role || 'staff').toLowerCase();
+  const allowed =
+    ROLE_ALLOWED_SUBPATHS[normalizedRole] || ROLE_ALLOWED_SUBPATHS.staff;
+
+  return items
+    .filter((item) => {
+      const subpath = item.href === '/' ? '' : item.href.replace(/^\//, '');
+      const rootSegment = subpath.split('/')[0];
+      return allowed.includes(rootSegment);
+    })
+    .map((item) => ({
+      ...item,
+      href:
+        item.href === '/'
+          ? `/${normalizedRole}`
+          : `/${normalizedRole}${item.href}`,
+    }));
+}

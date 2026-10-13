@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next';
 
+const isProduction = process.env.NODE_ENV === 'production' && Boolean(process.env.VERCEL);
+
 const securityHeaders = [
   {
     key: 'X-Content-Type-Options',
@@ -21,10 +23,14 @@ const securityHeaders = [
     key: 'X-DNS-Prefetch-Control',
     value: 'on',
   },
-  {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=63072000; includeSubDomains; preload',
-  },
+  ...(isProduction
+    ? [
+        {
+          key: 'Strict-Transport-Security',
+          value: 'max-age=63072000; includeSubDomains; preload',
+        },
+      ]
+    : []),
   {
     key: 'Content-Security-Policy',
     value: [
@@ -37,12 +43,25 @@ const securityHeaders = [
       "frame-ancestors 'none'",
       "form-action 'self'",
       "base-uri 'self'",
-      'upgrade-insecure-requests',
+      ...(isProduction ? ['upgrade-insecure-requests'] : []),
     ].join('; '),
   },
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.blob.core.windows.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
+  },
   async headers() {
     return [
       {

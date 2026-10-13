@@ -25,6 +25,87 @@ const PUBLIC_PATHS = [
 // Methods that should never be processed by application routes
 const DISALLOWED_METHODS = new Set(['TRACE', 'TRACK']);
 
+const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
+  owner: [
+    'branches',
+    'employees',
+    'users',
+    'attendance',
+    'menu',
+    'orders',
+    'payments',
+    'kitchen',
+    'inventory',
+    'purchases',
+    'suppliers',
+    'expenses',
+    'salary',
+    'salaries',
+    'customers',
+    'reviews',
+    'feedback',
+    'sales',
+    'reports',
+    'audit-logs',
+    'settings',
+    'notifications',
+    'profile',
+  ],
+  admin: [
+    'branches',
+    'employees',
+    'users',
+    'attendance',
+    'menu',
+    'orders',
+    'payments',
+    'kitchen',
+    'inventory',
+    'purchases',
+    'suppliers',
+    'expenses',
+    'salary',
+    'salaries',
+    'customers',
+    'reviews',
+    'feedback',
+    'sales',
+    'reports',
+    'audit-logs',
+    'settings',
+    'notifications',
+    'profile',
+  ],
+  manager: [
+    'orders',
+    'payments',
+    'kitchen',
+    'menu',
+    'inventory',
+    'purchases',
+    'suppliers',
+    'expenses',
+    'attendance',
+    'employees',
+    'customers',
+    'reviews',
+    'feedback',
+    'sales',
+    'reports',
+    'notifications',
+    'profile',
+  ],
+  staff: [
+    'orders',
+    'kitchen',
+    'attendance',
+    'menu',
+    'expenses',
+    'profile',
+    'notifications',
+  ],
+};
+
 export function middleware(request: NextRequest) {
   try {
     const { pathname, search } = request.nextUrl;
@@ -34,15 +115,19 @@ export function middleware(request: NextRequest) {
       'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
-    // 1. Enforce HTTPS in production
+    // 1. Enforce HTTPS in production (except on local development / loopback addresses)
     // Checks reverse proxy forwarding header ('x-forwarded-proto') or direct URL protocol
     const proto =
       request.headers.get('x-forwarded-proto') ||
       request.nextUrl.protocol.replace(':', '');
+    const host = request.headers.get('host') || request.nextUrl.host || '';
+    const isLocalhost =
+      host.includes('localhost') ||
+      host.includes('127.0.0.1') ||
+      host.includes('[::1]');
     const isProduction = process.env.NODE_ENV === 'production';
 
-    if (isProduction && proto === 'http') {
-      const host = request.headers.get('host') || request.nextUrl.host;
+    if (isProduction && proto === 'http' && !isLocalhost) {
       const secureUrl = new URL(`${pathname}${search}`, `https://${host}`);
 
       logTrafficAnomaly({
@@ -255,12 +340,133 @@ export function middleware(request: NextRequest) {
       }
 
       if (sessionCookie) {
+        const rawRole = request.cookies.get('ox_user_role')?.value?.toLowerCase();
+        const roleHome = rawRole ? `/${rawRole}` : '/owner';
         const rawCallback =
           request.nextUrl.searchParams.get('callbackUrl') ||
           request.nextUrl.searchParams.get('returnTo');
-        const safeDestination = sanitizeRedirectUrl(rawCallback, '/');
+        const safeDestination = rawCallback
+          ? sanitizeRedirectUrl(rawCallback, roleHome)
+          : roleHome;
         const destinationUrl = new URL(safeDestination, request.nextUrl.origin);
         return NextResponse.redirect(destinationUrl);
+      }
+    }
+
+    // 9. Role-Based Routing & Authorization
+    if (request.headers.get('x-role-rewritten') === '1') {
+      return NextResponse.next();
+    }
+
+    const userRole = (request.cookies.get('ox_user_role')?.value || 'owner').toLowerCase();
+
+    // A. Root or /dashboard redirection -> land directly on role dashboard
+    if (pathname === '/' || pathname === '/dashboard') {
+      const roleDashboardUrl = new URL(`/${userRole}`, request.nextUrl.origin);
+      return NextResponse.redirect(roleDashboardUrl);
+    }
+
+    // B. Role-based API authorization (/api/owner/..., /api/staff/...)
+    const roleApiMatch = pathname.match(/^\/api\/(owner|admin|manager|staff)(?:\/(.*))?$/);
+    if (roleApiMatch) {
+      const targetApiRole = roleApiMatch[1];
+      const isRoleAllowed =
+        userRole === 'owner' ||
+        userRole === targetApiRole ||
+        (targetApiRole === 'staff' && (userRole === 'manager' || userRole === 'admin' || userRole === 'owner')) ||
+        (targetApiRole === 'manager' && userRole === 'owner');
+
+      if (!isRoleAllowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Forbidden: Requires ${targetApiRole.toUpperCase()} role privileges`,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // C. Role-prefixed page routing (/owner, /owner/branches, /staff/orders)
+    const rolePageMatch = pathname.match(/^\/(owner|admin|manager|staff)(?:\/(.*))?$/);
+    if (rolePageMatch) {
+      const targetRole = rolePageMatch[1];
+      const subpath = rolePageMatch[2] || '';
+      const rootSection = subpath.split('/')[0];
+
+      // Verify that user is authorized to enter this role workspace
+      const canAccessWorkspace = userRole === 'owner' || userRole === targetRole;
+      if (!canAccessWorkspace) {
+        // Redirect user to their own role dashboard
+        const redirectUrl = new URL(`/${userRole}`, request.nextUrl.origin);
+        return NextResponse.redirect(redirectUrl);
+      }
+
+      // Verify subpath is permitted for this role
+      if (subpath) {
+        const allowedSections = ROLE_ALLOWED_SUBPATHS[targetRole] || [];
+        if (!allowedSections.includes(rootSection)) {
+          // Subpath not allowed for this role (e.g. /staff/branches)
+          const fallbackUrl = new URL(`/${targetRole}`, request.nextUrl.origin);
+          return NextResponse.redirect(fallbackUrl);
+        }
+
+        // Rewrite internal request to the actual page route (e.g. /branches or /orders)
+        // while preserving the role-prefixed URL (/owner/branches) in the browser
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set('x-role-rewritten', '1');
+        const rewriteUrl = request.nextUrl.clone();
+        rewriteUrl.pathname = `/${subpath}`;
+        return NextResponse.rewrite(rewriteUrl, {
+          request: {
+            headers: requestHeaders,
+          },
+        });
+      }
+
+      // If subpath is empty (e.g. /owner, /staff, /manager, /admin), allow request to proceed to dedicated dashboard page!
+    }
+
+    // D. Un-prefixed page access (e.g. /branches, /orders, /kitchen directly entered)
+    const knownSections = [
+      'branches',
+      'employees',
+      'users',
+      'attendance',
+      'menu',
+      'orders',
+      'payments',
+      'kitchen',
+      'inventory',
+      'purchases',
+      'suppliers',
+      'expenses',
+      'salary',
+      'salaries',
+      'customers',
+      'reviews',
+      'feedback',
+      'sales',
+      'reports',
+      'audit-logs',
+      'settings',
+      'notifications',
+      'profile',
+    ];
+    const pathFirstSegment = pathname.replace(/^\//, '').split('/')[0];
+
+    if (knownSections.includes(pathFirstSegment)) {
+      const allowedForUser = ROLE_ALLOWED_SUBPATHS[userRole] || [];
+      if (allowedForUser.includes(pathFirstSegment)) {
+        const prefixedUrl = new URL(
+          `/${userRole}${pathname}`,
+          request.nextUrl.origin
+        );
+        prefixedUrl.search = request.nextUrl.search;
+        return NextResponse.redirect(prefixedUrl);
+      } else {
+        const fallbackUrl = new URL(`/${userRole}`, request.nextUrl.origin);
+        return NextResponse.redirect(fallbackUrl);
       }
     }
 
@@ -280,10 +486,12 @@ export function middleware(request: NextRequest) {
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'DENY');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-    response.headers.set(
-      'Strict-Transport-Security',
-      'max-age=63072000; includeSubDomains; preload'
-    );
+    if (isProduction && !isLocalhost && Boolean(process.env.VERCEL)) {
+      response.headers.set(
+        'Strict-Transport-Security',
+        'max-age=63072000; includeSubDomains; preload'
+      );
+    }
 
     return response;
   } catch (error) {

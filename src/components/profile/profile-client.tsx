@@ -430,7 +430,6 @@ export function ProfileClient({
                         width={96}
                         height={96}
                         className="size-full object-cover"
-                        unoptimized
                       />
                     ) : (
                       getInitials(profileData.user.name)

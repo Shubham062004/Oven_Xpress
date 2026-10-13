@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -364,10 +365,11 @@ export function ExpenseDetailClient({
                     </div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden bg-black/5 dark:bg-white/5 flex items-center justify-center max-h-96">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <Image
                         src={expense.receiptUrl}
                         alt={`Receipt for ${expense.expenseNumber}`}
+                        width={800}
+                        height={600}
                         className="max-h-96 w-auto object-contain"
                       />
                     </div>

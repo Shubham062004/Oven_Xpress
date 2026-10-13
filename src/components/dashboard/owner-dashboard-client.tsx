@@ -1,16 +1,30 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DashboardFilterBar } from './dashboard-filter-bar';
 import { ExecutiveKPIGrid } from './executive-kpi-grid';
-import { SalesTrendSection } from './sales-trend-section';
 import { BranchPerformanceSection } from './branch-performance-section';
 import { OperationsSummaryGrid } from './operations-summary-grid';
 import { RecentActivityFeed } from './recent-activity-feed';
 import { DashboardAlertWidget } from '@/components/notifications/dashboard-alert-widget';
+
+// Lazy-load Recharts-based trend chart to minimize initial JS bundle
+const SalesTrendSection = dynamic(
+  () => import('./sales-trend-section').then((mod) => mod.SalesTrendSection),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-6 rounded-2xl border border-border/60 bg-card/60 space-y-4">
+        <div className="h-6 w-36 bg-muted/40 rounded-md animate-pulse" />
+        <div className="h-70 w-full bg-muted/20 rounded-xl animate-pulse" />
+      </div>
+    ),
+  }
+);
 import type {
   ExecutiveDashboardData,
   DashboardDatePreset,

@@ -138,25 +138,43 @@ pnpm prisma db seed
 
 ---
 
-## 7. Manual Testing Procedure
+---
+
+## 7. Role-Based Route Namespaces & Scoped APIs
+
+Oven Xpress enforces role-based workspaces where every role lands on its dedicated dashboard and accesses modules within its role namespace:
+
+### Route Namespaces
+| Role | Dashboard | Permitted Module Subpaths | Example URLs |
+|------|-----------|---------------------------|--------------|
+| **OWNER** | `/owner` | All operational and administrative modules | `/owner/branches`, `/owner/employees`, `/owner/inventory`, `/owner/orders`, `/owner/reports`, `/owner/settings` |
+| **ADMIN** | `/admin` | Administrative modules (no destructive owner-only finance controls) | `/admin/branches`, `/admin/users`, `/admin/audit-logs`, `/admin/settings` |
+| **MANAGER** | `/manager` | Operational branch modules restricted to assigned branch | `/manager/orders`, `/manager/attendance`, `/manager/inventory`, `/manager/kitchen` |
+| **STAFF** | `/staff` | Shift-based operational tasks only | `/staff/kitchen`, `/staff/orders`, `/staff/attendance`, `/staff/profile`, `/staff/expenses` |
+
+### API Namespaces
+- `/api/owner/*`: e.g., `/api/owner/dashboard`, `/api/owner/branches`, `/api/owner/reports`
+- `/api/admin/*`: e.g., `/api/admin/dashboard`, `/api/admin/branches`
+- `/api/manager/*`: e.g., `/api/manager/dashboard`, `/api/manager/orders`, `/api/manager/attendance`
+- `/api/staff/*`: e.g., `/api/staff/dashboard`, `/api/staff/kitchen/orders`
+
+---
+
+## 8. Manual & Automated Testing Procedure
 
 ### Credentials Matrix
-| Persona | Email | Password | Role | Allowed Routes |
-|---------|-------|----------|------|----------------|
-| **Owner** | `owner@ovenxpress.com` | `Owner123!` | OWNER | `/`, `/users`, `/settings`, all |
-| **Admin** | `admin@ovenxpress.com` | `Admin123!` | ADMIN | `/`, `/users`, `/settings` |
-| **Manager** | `manager@ovenxpress.com` | `Manager123!` | MANAGER | `/`, `/users`, `/settings` |
-| **Staff** | `staff@ovenxpress.com` | `Staff123!` | STAFF | `/` (Blocked on `/settings`, `/users`) |
-| **Inactive** | `inactive@ovenxpress.com` | `Inactive123!` | STAFF (Inactive) | None (Login blocked) |
+| Persona | Email | Password | Role | Landing Route | Permitted Scope |
+|---------|-------|----------|------|---------------|-----------------|
+| **Owner** | `owner@ovenxpress.com` | `Owner123!` | OWNER | `/owner` | Full universal access across all branches and modules |
+| **Admin** | `admin@ovenxpress.com` | `Admin123!` | ADMIN | `/admin` | System admin, branches, users, logs |
+| **Manager** | `manager@ovenxpress.com` | `Manager123!` | MANAGER | `/manager` | Operational management scoped to assigned branch |
+| **Staff** | `staff@ovenxpress.com` | `Staff123!` | STAFF | `/staff` | Shift operations (orders, kitchen, attendance, profile) |
+| **Inactive** | `inactive@ovenxpress.com` | `Inactive123!` | STAFF (Inactive) | Blocked | None (Login blocked with `account-inactive`) |
 
-### Test Cases
-1. **Invalid Input**: Submit empty email/password -> verify field validation messages.
-2. **Wrong Password**: Submit valid email with wrong password -> verify generic error.
-3. **Inactive User**: Submit `inactive@ovenxpress.com` -> verify account deactivated message.
-4. **Successful Login**: Login as Owner -> verify header shows "Sarah Jenkins", OWNER badge, and initials "SJ".
-5. **Staff Access Boundary**:
-   - Login as Staff (`staff@ovenxpress.com`).
-   - Notice `/settings` and `/users` are hidden from sidebar.
-   - Manually type `http://localhost:3000/settings` in browser -> verify immediate redirect to `/unauthorized` (403 Access Denied).
-6. **Session Persistence**: Refresh page -> user remains logged in.
-7. **Sign Out**: Click User menu in header -> click "Sign out" -> verify redirected to `/login`, cookie destroyed.
+### Verification Test Suite
+Run the automated role-based verification test suite:
+```bash
+pnpm exec tsx --env-file=.env scripts/verify-role-based-architecture.ts
+```
+Expected result: **31 PASSED / 0 FAILED**.
+

@@ -429,6 +429,7 @@ model StockTransaction {
   createdAt    DateTime             @default(now())
 
   @@index([branchId, ingredientId])
+  @@index([branchId, ingredientId, type])
   @@index([branchId, createdAt])
   @@index([ingredientId, createdAt])
   @@index([type])
@@ -662,6 +663,7 @@ model Order {
   @@index([customerId])
   @@index([tableId])
   @@index([branchId, status])
+  @@index([branchId, status, createdAt])
   @@index([status, createdAt])
   @@index([branchId, createdAt])
 }

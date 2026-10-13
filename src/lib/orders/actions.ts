@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import { invalidateDashboardCaches } from '@/lib/cache/cache-service';
 import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import type { ActionResult } from '@/lib/auth/types';
@@ -46,7 +47,13 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-
+async function revalidateOrderRoutes(orderId?: string): Promise<void> {
+  await invalidateDashboardCaches();
+  revalidatePath('/orders');
+  if (orderId) {
+    revalidatePath(`/orders/${orderId}`);
+  }
+}
 
 /**
  * Concurrency-safe sequential order number generator.
@@ -814,7 +821,7 @@ export async function createOrder(
           return newOrder;
         });
 
-        revalidatePath('/orders');
+        await revalidateOrderRoutes();
         return { success: true, data: createdOrder };
       } catch (err) {
         if (
@@ -907,8 +914,7 @@ export async function updateOrder(
       },
     }).catch((e: unknown) => console.error('Failed to create order update audit log:', e));
 
-    revalidatePath('/orders');
-    revalidatePath(`/orders/${id}`);
+    await revalidateOrderRoutes(id);
     return { success: true, data: { id } };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -989,8 +995,7 @@ export async function updateOrderStatus(
       );
     });
 
-    revalidatePath('/orders');
-    revalidatePath(`/orders/${id}`);
+    await revalidateOrderRoutes(id);
     return { success: true, data: { id, status: newStatus } };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -1080,8 +1085,7 @@ export async function cancelOrder(
       );
     });
 
-    revalidatePath('/orders');
-    revalidatePath(`/orders/${order.id}`);
+    await revalidateOrderRoutes(order.id);
     return { success: true, data: { id: order.id } };
   } catch (error) {
     if (isRedirectError(error)) throw error;

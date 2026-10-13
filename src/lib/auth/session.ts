@@ -8,10 +8,11 @@ import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
 import { logAuthAttempt } from '@/lib/security/security-logger';
 
 export const SESSION_COOKIE_NAME = 'ox_session';
+export const ROLE_COOKIE_NAME = 'ox_user_role';
 export const SESSION_TTL_SECONDS = 10 * 60; // Exactly 10 minutes (600 seconds)
 
 /**
- * Creates a new session in the database and writes the secure HTTP-only cookie.
+ * Creates a new session in the database and writes the secure HTTP-only cookies.
  * Absolute 10-minute lifetime is enforced.
  */
 export async function createSession(
@@ -32,12 +33,28 @@ export async function createSession(
     },
   });
 
+  // Query role name for edge middleware routing
+  const userRecord = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: { select: { name: true } } },
+  });
+  const roleName = (userRecord?.role?.name || 'STAFF').toLowerCase();
+
   // Opportunistic cleanup of expired sessions
   cleanupExpiredSessions().catch(() => {});
 
-  // Set HTTP-only cookie with strict 10-minute maxAge
+  // Set HTTP-only cookies with strict 10-minute maxAge
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: SESSION_TTL_SECONDS,
+    expires: expiresAt,
+  });
+
+  cookieStore.set(ROLE_COOKIE_NAME, roleName, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -186,6 +203,21 @@ export async function validateSession(): Promise<SessionValidationResult> {
       Math.floor((sessionRecord.expiresAt.getTime() - now.getTime()) / 1000)
     );
 
+    try {
+      const currentRoleCookie = cookieStore.get(ROLE_COOKIE_NAME)?.value;
+      if (currentRoleCookie !== user.role.toLowerCase()) {
+        cookieStore.set(ROLE_COOKIE_NAME, user.role.toLowerCase(), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: remainingSeconds,
+        });
+      }
+    } catch {
+      // Cookies immutable in some Server Component contexts
+    }
+
     return {
       status: 'VALID',
       session,
@@ -244,6 +276,7 @@ export async function destroySession(): Promise<void> {
       sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
       if (sessionToken) {
         cookieStore.delete(SESSION_COOKIE_NAME);
+        cookieStore.delete(ROLE_COOKIE_NAME);
       }
     } catch {
       // Cookies are unavailable when invoked outside request context (e.g. CLI, scripts, tasks)
@@ -273,6 +306,7 @@ export async function destroyAllUserSessions(userId: string): Promise<void> {
     try {
       const cookieStore = await cookies();
       cookieStore.delete(SESSION_COOKIE_NAME);
+      cookieStore.delete(ROLE_COOKIE_NAME);
     } catch {
       // Cookies are unavailable outside request context
     }
