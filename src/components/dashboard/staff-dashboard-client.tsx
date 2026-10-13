@@ -79,8 +79,8 @@ export function StaffDashboardClient({ data }: StaffDashboardClientProps) {
       </div>
 
       {/* 2. Operations KPI Strip */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-4">
-        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-xs">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-4 min-w-0 w-full">
+        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Orders Today</span>
             <ShoppingCart className="size-4 text-primary shrink-0" />
@@ -93,7 +93,7 @@ export function StaffDashboardClient({ data }: StaffDashboardClientProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-xs">
+        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">In Preparation</span>
             <Clock className="size-4 text-amber-500 shrink-0" />
@@ -106,7 +106,7 @@ export function StaffDashboardClient({ data }: StaffDashboardClientProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-xs">
+        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Ready for Pickup</span>
             <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
@@ -119,7 +119,7 @@ export function StaffDashboardClient({ data }: StaffDashboardClientProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-xs">
+        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Kitchen Backlog</span>
             <ChefHat className="size-4 text-indigo-500 shrink-0" />
@@ -134,11 +134,11 @@ export function StaffDashboardClient({ data }: StaffDashboardClientProps) {
       </div>
 
       {/* 3. Operational Quick Workspaces */}
-      <div className="space-y-3">
+      <div className="space-y-3 min-w-0 w-full">
         <h2 className="text-sm sm:text-base font-semibold text-foreground">
           Quick Workspaces
         </h2>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 min-w-0 w-full">
           {/* Primary POS Terminal - Prominent on mobile */}
           <Link
             href="/staff/orders"

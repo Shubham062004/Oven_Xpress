@@ -72,8 +72,8 @@ export function ManagerDashboardClient({ data }: ManagerDashboardClientProps) {
       </div>
 
       {/* 2. Operations KPI Cards */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-4">
-        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-4 min-w-0 w-full">
+        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Today&apos;s Sales</span>
             <DollarSign className="size-4 text-emerald-500 shrink-0" />
@@ -86,7 +86,7 @@ export function ManagerDashboardClient({ data }: ManagerDashboardClientProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs">
+        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Active Kitchen Orders</span>
             <Clock className="size-4 text-amber-500 shrink-0" />
@@ -99,7 +99,7 @@ export function ManagerDashboardClient({ data }: ManagerDashboardClientProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs">
+        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Staff on Duty</span>
             <Users className="size-4 text-blue-500 shrink-0" />
@@ -115,7 +115,7 @@ export function ManagerDashboardClient({ data }: ManagerDashboardClientProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs">
+        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Low Stock Items</span>
             <AlertTriangle className="size-4 text-rose-500 shrink-0" />
@@ -130,58 +130,58 @@ export function ManagerDashboardClient({ data }: ManagerDashboardClientProps) {
       </div>
 
       {/* 3. Quick Navigation */}
-      <div className="space-y-3">
+      <div className="space-y-3 min-w-0 w-full">
         <h2 className="text-sm sm:text-base font-semibold text-foreground">
           Branch Management Shortcuts
         </h2>
-        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
           <Link
             href="/manager/orders"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5 min-h-18 sm:min-h-20"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5 min-h-18 sm:min-h-20 min-w-0"
           >
             <ShoppingCart className="size-5 text-primary group-hover:scale-110 transition-transform" />
-            <span className="mt-1.5 sm:mt-2 text-xs font-semibold">Orders</span>
+            <span className="mt-1.5 sm:mt-2 text-xs font-semibold truncate max-w-full">Orders</span>
           </Link>
           <Link
             href="/manager/inventory"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-indigo-500/50 hover:bg-indigo-500/5 min-h-18 sm:min-h-20"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-indigo-500/50 hover:bg-indigo-500/5 min-h-18 sm:min-h-20 min-w-0"
           >
             <Package className="size-5 text-indigo-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-1.5 sm:mt-2 text-xs font-semibold">Inventory</span>
+            <span className="mt-1.5 sm:mt-2 text-xs font-semibold truncate max-w-full">Inventory</span>
           </Link>
           <Link
             href="/manager/attendance"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-emerald-500/50 hover:bg-emerald-500/5 min-h-18 sm:min-h-20"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-emerald-500/50 hover:bg-emerald-500/5 min-h-18 sm:min-h-20 min-w-0"
           >
             <CalendarCheck className="size-5 text-emerald-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-1.5 sm:mt-2 text-xs font-semibold">Attendance</span>
+            <span className="mt-1.5 sm:mt-2 text-xs font-semibold truncate max-w-full">Attendance</span>
           </Link>
           <Link
             href="/manager/employees"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-amber-500/50 hover:bg-amber-500/5 min-h-18 sm:min-h-20"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-amber-500/50 hover:bg-amber-500/5 min-h-18 sm:min-h-20 min-w-0"
           >
             <Users className="size-5 text-amber-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-1.5 sm:mt-2 text-xs font-semibold">Staff</span>
+            <span className="mt-1.5 sm:mt-2 text-xs font-semibold truncate max-w-full">Staff</span>
           </Link>
           <Link
             href="/manager/expenses"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-rose-500/50 hover:bg-rose-500/5 min-h-18 sm:min-h-20"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-rose-500/50 hover:bg-rose-500/5 min-h-18 sm:min-h-20 min-w-0"
           >
             <Receipt className="size-5 text-rose-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-1.5 sm:mt-2 text-xs font-semibold">Expenses</span>
+            <span className="mt-1.5 sm:mt-2 text-xs font-semibold truncate max-w-full">Expenses</span>
           </Link>
           <Link
             href="/manager/reports"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-teal-500/50 hover:bg-teal-500/5 min-h-18 sm:min-h-20"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3 sm:p-3.5 text-center transition-all hover:border-teal-500/50 hover:bg-teal-500/5 min-h-18 sm:min-h-20 min-w-0"
           >
             <FileSpreadsheet className="size-5 text-teal-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-1.5 sm:mt-2 text-xs font-semibold">Reports</span>
+            <span className="mt-1.5 sm:mt-2 text-xs font-semibold truncate max-w-full">Reports</span>
           </Link>
         </div>
       </div>
 
       {/* 4. Split Section: Live Orders & Low Inventory */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 min-w-0 w-full">
         {/* Recent Branch Orders */}
         <div className="rounded-xl border bg-card shadow-xs">
           <div className="flex items-center justify-between border-b px-4 sm:px-5 py-3 sm:py-3.5">

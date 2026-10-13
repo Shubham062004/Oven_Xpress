@@ -13,7 +13,7 @@ export default async function ManagerDashboardPage() {
   const data = await getManagerDashboardData(user.id);
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="w-full min-w-0 max-w-7xl mx-auto">
       <ManagerDashboardClient data={data} />
     </div>
   );

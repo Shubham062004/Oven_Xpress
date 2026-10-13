@@ -33,7 +33,7 @@ export default async function OwnerDashboardPage({ searchParams }: OwnerDashboar
 
   if (!dashRes.success) {
     return (
-      <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <div className="w-full min-w-0 max-w-7xl mx-auto">
         <div className="p-6 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-center space-y-2">
           <h2 className="text-lg font-bold">Failed to load owner dashboard</h2>
           <p className="text-sm">{dashRes.error}</p>
@@ -43,7 +43,7 @@ export default async function OwnerDashboardPage({ searchParams }: OwnerDashboar
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="w-full min-w-0 max-w-7xl mx-auto">
       <OwnerDashboardClient initialData={dashRes.data} />
     </div>
   );

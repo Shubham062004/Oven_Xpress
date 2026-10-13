@@ -57,15 +57,15 @@ export function RecentActivityFeed({ activities, isPending }: RecentActivityFeed
   };
 
   return (
-    <Card className="border border-border/60 shadow-sm">
+    <Card className="border border-border/60 shadow-sm min-w-0 w-full">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-primary" />
-          <CardTitle className="text-base font-semibold text-foreground">
+        <div className="flex items-center gap-2 min-w-0">
+          <Clock className="w-4 h-4 text-primary shrink-0" />
+          <CardTitle className="text-base font-semibold text-foreground truncate">
             Live Activity Stream
           </CardTitle>
         </div>
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="text-xs shrink-0">
           Recent Events
         </Badge>
       </CardHeader>
@@ -85,32 +85,29 @@ export function RecentActivityFeed({ activities, isPending }: RecentActivityFeed
                 <ContentWrapper
                   key={act.id}
                   href={act.link || '#'}
-                  className={`flex items-start justify-between p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors text-xs ${
+                  className={`flex items-start justify-between gap-2 p-3 rounded-xl border border-border/40 hover:bg-muted/30 transition-colors text-xs min-w-0 ${
                     act.link ? 'cursor-pointer' : ''
                   }`}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
                     <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${color}`}>
                       <Icon className="w-3.5 h-3.5" />
                     </div>
-                    <div>
-                      <div className="font-semibold text-foreground">{act.title}</div>
-                      <div className="text-muted-foreground text-[11px] mt-0.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-foreground truncate">{act.title}</div>
+                      <div className="text-muted-foreground text-[11px] mt-0.5 line-clamp-2">
                         {act.description}
                       </div>
                       {act.branchName && (
-                        <div className="text-[10px] text-primary/80 font-medium mt-1">
+                        <div className="text-[10px] text-primary/80 font-medium mt-1 truncate">
                           📍 {act.branchName}
                         </div>
                       )}
                     </div>
                   </div>
-
-                  <div className="text-right shrink-0 ml-3">
-                    <span className="text-[10px] font-mono text-muted-foreground">
-                      {formatTime(act.timestamp)}
-                    </span>
-                  </div>
+                  <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
+                    {formatTime(act.timestamp)}
+                  </span>
                 </ContentWrapper>
               );
             })}

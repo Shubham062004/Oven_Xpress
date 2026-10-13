@@ -51,7 +51,7 @@ export function BranchPerformanceSection({
   });
 
   return (
-    <Card className="border border-border/60 shadow-xs">
+    <Card className="border border-border/60 shadow-xs min-w-0 w-full">
       <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
@@ -76,25 +76,25 @@ export function BranchPerformanceSection({
           </div>
         ) : (
           <div className={isPending ? 'opacity-50' : ''}>
-            {/* Mobile Branch Cards (<sm) */}
-            <div className="sm:hidden space-y-3">
+            {/* Mobile & Tablet Branch Cards (<lg) */}
+            <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
               {sortedBranches.map((b) => (
                 <div
                   key={b.branchId}
-                  className="p-3.5 rounded-xl border border-border/60 bg-card/60 space-y-2.5 shadow-xs"
+                  className="p-3.5 rounded-xl border border-border/60 bg-card/60 space-y-2.5 shadow-xs min-w-0"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <span className="font-bold text-sm text-foreground">{b.branchName}</span>
-                      <Badge variant="outline" className="text-[10px] font-mono px-1 py-0">
+                      <span className="font-bold text-sm text-foreground truncate">{b.branchName}</span>
+                      <Badge variant="outline" className="text-[10px] font-mono px-1 py-0 shrink-0">
                         {b.branchCode}
                       </Badge>
                     </div>
                     {canViewFinancials && (
                       <Badge
                         variant={b.operatingResult >= 0 ? 'default' : 'destructive'}
-                        className="text-[11px] font-bold"
+                        className="text-[11px] font-bold shrink-0"
                       >
                         {formatCurrency(b.operatingResult)}
                       </Badge>
@@ -102,19 +102,19 @@ export function BranchPerformanceSection({
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/40">
-                    <div className="p-2 rounded-lg bg-muted/40">
-                      <span className="text-[10px] text-muted-foreground uppercase font-semibold block">
+                    <div className="p-2 rounded-lg bg-muted/40 min-w-0">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold block truncate">
                         Net Sales
                       </span>
-                      <span className="text-sm font-bold text-primary">
+                      <span className="text-sm font-bold text-primary truncate block">
                         {canViewFinancials ? formatCurrency(b.netSales) : 'Restricted'}
                       </span>
                     </div>
-                    <div className="p-2 rounded-lg bg-muted/40">
-                      <span className="text-[10px] text-muted-foreground uppercase font-semibold block">
+                    <div className="p-2 rounded-lg bg-muted/40 min-w-0">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold block truncate">
                         Orders
                       </span>
-                      <span className="text-sm font-bold text-foreground">
+                      <span className="text-sm font-bold text-foreground truncate block">
                         {formatNumber(b.orderCount)}
                       </span>
                     </div>
@@ -122,17 +122,17 @@ export function BranchPerformanceSection({
 
                   {canViewFinancials && (
                     <div className="grid grid-cols-3 gap-1.5 text-[11px] text-muted-foreground pt-1">
-                      <div>
-                        <span className="text-[10px] block font-medium">Avg Ticket</span>
-                        <span className="font-semibold text-foreground">{formatCurrency(b.averageOrderValue)}</span>
+                      <div className="min-w-0">
+                        <span className="text-[10px] block font-medium truncate">Avg Ticket</span>
+                        <span className="font-semibold text-foreground truncate block">{formatCurrency(b.averageOrderValue)}</span>
                       </div>
-                      <div>
-                        <span className="text-[10px] block font-medium">Settled</span>
-                        <span className="font-semibold text-foreground">{formatCurrency(b.successfulPayments)}</span>
+                      <div className="min-w-0">
+                        <span className="text-[10px] block font-medium truncate">Settled</span>
+                        <span className="font-semibold text-foreground truncate block">{formatCurrency(b.successfulPayments)}</span>
                       </div>
-                      <div>
-                        <span className="text-[10px] block font-medium">Expenses</span>
-                        <span className="font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(b.approvedExpenses)}</span>
+                      <div className="min-w-0">
+                        <span className="text-[10px] block font-medium truncate">Expenses</span>
+                        <span className="font-semibold text-rose-600 dark:text-rose-400 truncate block">{formatCurrency(b.approvedExpenses)}</span>
                       </div>
                     </div>
                   )}
@@ -140,9 +140,9 @@ export function BranchPerformanceSection({
               ))}
             </div>
 
-            {/* Desktop/Tablet Table (sm:block) */}
-            <div className="hidden sm:block overflow-x-auto">
-              <Table>
+            {/* Desktop Table (lg:block) */}
+            <div className="hidden lg:block w-full min-w-0 overflow-x-auto">
+              <Table className="w-full min-w-[700px]">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead

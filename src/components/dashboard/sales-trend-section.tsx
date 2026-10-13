@@ -59,7 +59,7 @@ export function SalesTrendSection({
   const hasData = totalOrders > 0;
 
   return (
-    <Card className="border border-border/60 shadow-xs">
+    <Card className="border border-border/60 shadow-xs min-w-0 w-full overflow-hidden">
       <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -78,16 +78,17 @@ export function SalesTrendSection({
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="min-w-0">
         {!hasData ? (
           <div className="h-60 sm:h-72 w-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
             <p className="text-sm font-medium">No sales activity in this period</p>
             <p className="text-xs mt-1">Orders placed will reflect in this trend chart.</p>
           </div>
         ) : (
-          <div className={`h-60 sm:h-72 w-full ${isPending ? 'opacity-50' : ''}`}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
+          <div className={`h-60 sm:h-72 w-full min-w-0 relative ${isPending ? 'opacity-50' : ''}`}>
+            <div className="absolute inset-0 w-full h-full min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="dashboardSalesGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#f97316" stopOpacity={0.4} />
@@ -166,7 +167,8 @@ export function SalesTrendSection({
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        )}
+        </div>
+      )}
       </CardContent>
     </Card>
   );

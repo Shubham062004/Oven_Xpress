@@ -13,7 +13,7 @@ export default async function AdminDashboardPage() {
   const data = await getAdminDashboardData();
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="w-full min-w-0 max-w-7xl mx-auto">
       <AdminDashboardClient data={data} />
     </div>
   );

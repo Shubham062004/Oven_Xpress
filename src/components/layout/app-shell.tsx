@@ -16,7 +16,12 @@ export function AppShell({ children, user }: AppShellProps) {
   const { isCollapsed } = useSidebar();
 
   return (
-    <div className="relative flex min-h-screen">
+    <div
+      className={cn(
+        'relative min-h-screen w-full transition-[padding] duration-200 ease-in-out',
+        isCollapsed ? 'lg:pl-16' : 'lg:pl-60'
+      )}
+    >
       {/* Desktop sidebar with permission-filtered nav */}
       <Sidebar user={user} />
 
@@ -24,14 +29,9 @@ export function AppShell({ children, user }: AppShellProps) {
       <MobileSidebar user={user} />
 
       {/* Main content area */}
-      <div
-        className={cn(
-          'flex min-h-screen flex-1 flex-col transition-[margin] duration-200 ease-in-out',
-          isCollapsed ? 'lg:ml-16' : 'lg:ml-60'
-        )}
-      >
+      <div className="flex min-h-screen flex-col min-w-0 w-full">
         <Header user={user} />
-        <main className="flex-1 px-3 py-4 sm:p-6">{children}</main>
+        <main className="flex-1 min-w-0 w-full px-3 py-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

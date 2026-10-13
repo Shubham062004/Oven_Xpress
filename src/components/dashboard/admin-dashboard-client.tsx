@@ -74,8 +74,8 @@ export function AdminDashboardClient({ data }: AdminDashboardClientProps) {
       </div>
 
       {/* 2. Admin KPI Strip */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-4">
-        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-4 min-w-0 w-full">
+        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">System Users</span>
             <Users className="size-4 text-primary shrink-0" />
@@ -91,7 +91,7 @@ export function AdminDashboardClient({ data }: AdminDashboardClientProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs">
+        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Branch Outlets</span>
             <Building2 className="size-4 text-indigo-500 shrink-0" />
@@ -107,7 +107,7 @@ export function AdminDashboardClient({ data }: AdminDashboardClientProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs">
+        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Registered Staff</span>
             <UserCheck className="size-4 text-emerald-500 shrink-0" />
@@ -120,7 +120,7 @@ export function AdminDashboardClient({ data }: AdminDashboardClientProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs">
+        <div className="rounded-xl border bg-card p-3.5 sm:p-4 shadow-xs min-w-0">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[11px] sm:text-xs font-medium">Audit Events</span>
             <Activity className="size-4 text-amber-500 shrink-0" />
@@ -135,60 +135,60 @@ export function AdminDashboardClient({ data }: AdminDashboardClientProps) {
       </div>
 
       {/* 3. Administration Shortcuts */}
-      <div className="space-y-3">
+      <div className="space-y-3 min-w-0 w-full">
         <h2 className="text-sm sm:text-base font-semibold text-foreground">
           Administrative Modules
         </h2>
-        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
           <Link
             href="/admin/users"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5 min-w-0"
           >
             <Shield className="size-5 text-primary group-hover:scale-110 transition-transform" />
-            <span className="mt-2 text-xs font-semibold">User Accounts</span>
+            <span className="mt-2 text-xs font-semibold truncate max-w-full">User Accounts</span>
           </Link>
           <Link
             href="/admin/branches"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5 min-w-0"
           >
             <Building2 className="size-5 text-indigo-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-2 text-xs font-semibold">Branches</span>
+            <span className="mt-2 text-xs font-semibold truncate max-w-full">Branches</span>
           </Link>
           <Link
             href="/admin/employees"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5 min-w-0"
           >
             <Users className="size-5 text-amber-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-2 text-xs font-semibold">Employees</span>
+            <span className="mt-2 text-xs font-semibold truncate max-w-full">Employees</span>
           </Link>
           <Link
             href="/admin/attendance"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5 min-w-0"
           >
             <UserCheck className="size-5 text-emerald-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-2 text-xs font-semibold">Attendance</span>
+            <span className="mt-2 text-xs font-semibold truncate max-w-full">Attendance</span>
           </Link>
           <Link
             href="/admin/audit-logs"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5 min-w-0"
           >
             <ScrollText className="size-5 text-rose-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-2 text-xs font-semibold">Audit Logs</span>
+            <span className="mt-2 text-xs font-semibold truncate max-w-full">Audit Logs</span>
           </Link>
           <Link
             href="/admin/settings"
-            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5"
+            className="group flex flex-col items-center justify-center rounded-xl border bg-card p-3.5 text-center transition-all hover:border-primary/50 hover:bg-primary/5 min-w-0"
           >
             <Settings className="size-5 text-slate-500 group-hover:scale-110 transition-transform" />
-            <span className="mt-2 text-xs font-semibold">Settings</span>
+            <span className="mt-2 text-xs font-semibold truncate max-w-full">Settings</span>
           </Link>
         </div>
       </div>
 
       {/* 4. Split: Recent User Accounts & Audit Trail */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 min-w-0 w-full">
         {/* User Accounts */}
-        <div className="rounded-xl border bg-card shadow-xs">
+        <div className="rounded-xl border bg-card shadow-xs min-w-0 w-full">
           <div className="flex items-center justify-between border-b px-4 sm:px-5 py-3 sm:py-3.5">
             <h3 className="text-sm font-semibold text-foreground">
               Recent System Users

@@ -101,10 +101,10 @@ export function DashboardFilterBar({
   };
 
   return (
-    <div className="bg-card/70 backdrop-blur border border-border/60 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3 sm:space-y-4">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
+    <div className="bg-card/70 backdrop-blur border border-border/60 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3 sm:space-y-4 min-w-0 w-full">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 min-w-0">
         {/* Date Preset Segmented Control (Smooth horizontal scroll on phone) */}
-        <div className="flex items-center gap-1.5 p-1 bg-muted/40 border border-border/40 rounded-xl overflow-x-auto no-scrollbar scroll-smooth w-full lg:w-auto">
+        <div className="flex items-center gap-1.5 p-1 bg-muted/40 border border-border/40 rounded-xl overflow-x-auto no-scrollbar scroll-smooth w-full lg:w-auto min-w-0">
           {PRESET_OPTIONS.map((opt) => {
             const isActive = preset === opt.value;
             return (
@@ -126,17 +126,17 @@ export function DashboardFilterBar({
         </div>
 
         {/* Branch Filter & Utility Actions */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto min-w-0">
           {/* Branch Selector */}
           {!isBranchRestricted && branches.length > 1 && (
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto min-w-0">
               <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
               <select
                 aria-label="Filter by branch"
                 value={selectedBranchId}
                 onChange={(e) => handleBranchSelect(e.target.value)}
                 disabled={isPending}
-                className="w-full sm:w-auto text-xs bg-background border border-border/70 rounded-xl px-3 py-2 sm:py-1.5 min-h-11 sm:min-h-8 font-medium focus:ring-1 focus:ring-primary focus:outline-none cursor-pointer"
+                className="w-full sm:w-auto max-w-full text-xs bg-background border border-border/70 rounded-xl px-3 py-2 sm:py-1.5 min-h-11 sm:min-h-8 font-medium focus:ring-1 focus:ring-primary focus:outline-none cursor-pointer truncate"
               >
                 <option value="all">All Accessible Branches ({branches.length})</option>
                 {branches.map((b) => (

@@ -58,8 +58,8 @@ function SingleKPICard({
   }
 
   return (
-    <Card className="relative overflow-hidden border border-border/60 shadow-xs hover:shadow-md transition-all duration-200">
-      <CardContent className="p-3.5 sm:p-5">
+    <Card className="relative overflow-hidden border border-border/60 shadow-xs hover:shadow-md transition-all duration-200 min-w-0 w-full">
+      <CardContent className="p-3 sm:p-4 md:p-5 min-w-0">
         <div className="flex items-start justify-between gap-1">
           <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">
             {kpi.label}
@@ -69,9 +69,9 @@ function SingleKPICard({
           </div>
         </div>
 
-        <div className="mt-2 sm:mt-3">
+        <div className="mt-2 sm:mt-3 min-w-0">
           <div
-            className={`text-base sm:text-xl md:text-2xl font-bold tracking-tight truncate ${
+            className={`text-base sm:text-lg md:text-xl font-bold tracking-tight truncate ${
               isPending ? 'opacity-50' : ''
             }`}
             title={kpi.formattedValue}
@@ -79,7 +79,7 @@ function SingleKPICard({
             {kpi.formattedValue}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1 sm:mt-2">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 mt-1 sm:mt-2">
             {hasComparison ? (
               <span
                 className={`inline-flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] font-medium px-1.5 py-0.5 rounded-md border ${badgeVariant}`}
@@ -109,7 +109,7 @@ export function ExecutiveKPIGrid({
   isPending,
 }: ExecutiveKPIGridProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0 w-full">
       <div className="flex items-center justify-between">
         <h2 className="text-xs sm:text-sm font-semibold tracking-tight text-foreground uppercase">
           Executive Summary
@@ -119,7 +119,7 @@ export function ExecutiveKPIGrid({
         </span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3.5">
         {/* 1. Net Sales (Financial) */}
         {canViewFinancials && (
           <SingleKPICard

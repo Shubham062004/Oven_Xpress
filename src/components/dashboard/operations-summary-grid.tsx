@@ -49,9 +49,9 @@ export function OperationsSummaryGrid({
   isPending,
 }: OperationsSummaryGridProps) {
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 ${isPending ? 'opacity-50' : ''}`}>
+    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 min-w-0 w-full ${isPending ? 'opacity-50' : ''}`}>
       {/* ─── 1. Order Status & Channels ────────────────────────────────────── */}
-      <Card className="border border-border/60 shadow-sm flex flex-col justify-between">
+      <Card className="border border-border/60 shadow-sm flex flex-col justify-between min-w-0 w-full">
         <div>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
@@ -143,7 +143,7 @@ export function OperationsSummaryGrid({
       </Card>
 
       {/* ─── 2. Payment Overview ────────────────────────────────────────────── */}
-      <Card className="border border-border/60 shadow-sm flex flex-col justify-between">
+      <Card className="border border-border/60 shadow-sm flex flex-col justify-between min-w-0 w-full">
         <div>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
@@ -208,7 +208,7 @@ export function OperationsSummaryGrid({
       </Card>
 
       {/* ─── 3. Top Selling Products ───────────────────────────────────────── */}
-      <Card className="border border-border/60 shadow-sm flex flex-col justify-between">
+      <Card className="border border-border/60 shadow-sm flex flex-col justify-between min-w-0 w-full">
         <div>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
@@ -261,7 +261,7 @@ export function OperationsSummaryGrid({
       </Card>
 
       {/* ─── 4. Inventory Health ───────────────────────────────────────────── */}
-      <Card className="border border-border/60 shadow-sm flex flex-col justify-between">
+      <Card className="border border-border/60 shadow-sm flex flex-col justify-between min-w-0 w-full">
         <div>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
@@ -335,7 +335,7 @@ export function OperationsSummaryGrid({
       </Card>
 
       {/* ─── 5. Attendance Facts ───────────────────────────────────────────── */}
-      <Card className="border border-border/60 shadow-sm flex flex-col justify-between">
+      <Card className="border border-border/60 shadow-sm flex flex-col justify-between min-w-0 w-full">
         <div>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
@@ -401,7 +401,7 @@ export function OperationsSummaryGrid({
       </Card>
 
       {/* ─── 6. Pending Approvals & Feedback ───────────────────────────────── */}
-      <Card className="border border-border/60 shadow-sm flex flex-col justify-between">
+      <Card className="border border-border/60 shadow-sm flex flex-col justify-between min-w-0 w-full">
         <div>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">

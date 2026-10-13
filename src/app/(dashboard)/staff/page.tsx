@@ -13,7 +13,7 @@ export default async function StaffDashboardPage() {
   const data = await getStaffDashboardData(user.id);
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="w-full min-w-0 max-w-7xl mx-auto">
       <StaffDashboardClient data={data} />
     </div>
   );

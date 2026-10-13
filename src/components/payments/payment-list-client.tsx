@@ -218,7 +218,7 @@ export function PaymentListClient({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
       {/* Header */}
       <PageHeader
         title="Payment Management"
@@ -238,128 +238,128 @@ export function PaymentListClient({
       </PageHeader>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-7 gap-2.5 sm:gap-3 min-w-0 w-full">
         {/* Total Payments */}
-        <Card className="border shadow-xs col-span-2 sm:col-span-1 lg:col-span-1">
+        <Card className="border shadow-xs min-w-0 col-span-2 sm:col-span-1 md:col-span-1 2xl:col-span-1">
           <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <CreditCard className="h-3.5 w-3.5 text-primary" />
-              Total Successful
+            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 truncate">
+              <CreditCard className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="truncate">Total Successful</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-bold text-foreground">
+          <CardContent className="p-3 pt-0 min-w-0">
+            <div className="text-lg sm:text-xl font-bold text-foreground truncate" title={`₹${stats.totalSuccessfulPayments.amount.toFixed(2)}`}>
               ₹{stats.totalSuccessfulPayments.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground truncate">
               {stats.totalSuccessfulPayments.count} payment{stats.totalSuccessfulPayments.count === 1 ? '' : 's'}
             </p>
           </CardContent>
         </Card>
 
         {/* Cash */}
-        <Card className="border shadow-xs">
+        <Card className="border shadow-xs min-w-0">
           <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Banknote className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              Cash
+            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 truncate">
+              <Banknote className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="truncate">Cash</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+          <CardContent className="p-3 pt-0 min-w-0">
+            <div className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 truncate" title={`₹${stats.cash.amount.toFixed(2)}`}>
               ₹{stats.cash.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground truncate">
               {stats.cash.count} transaction{stats.cash.count === 1 ? '' : 's'}
             </p>
           </CardContent>
         </Card>
 
         {/* UPI */}
-        <Card className="border shadow-xs">
+        <Card className="border shadow-xs min-w-0">
           <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Smartphone className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-              UPI
+            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 truncate">
+              <Smartphone className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span className="truncate">UPI</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+          <CardContent className="p-3 pt-0 min-w-0">
+            <div className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400 truncate" title={`₹${stats.upi.amount.toFixed(2)}`}>
               ₹{stats.upi.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground truncate">
               {stats.upi.count} transaction{stats.upi.count === 1 ? '' : 's'}
             </p>
           </CardContent>
         </Card>
 
         {/* Card */}
-        <Card className="border shadow-xs">
+        <Card className="border shadow-xs min-w-0">
           <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <CreditCard className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-              Card
+            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 truncate">
+              <CreditCard className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span className="truncate">Card</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
+          <CardContent className="p-3 pt-0 min-w-0">
+            <div className="text-lg sm:text-xl font-bold text-indigo-600 dark:text-indigo-400 truncate" title={`₹${stats.card.amount.toFixed(2)}`}>
               ₹{stats.card.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground truncate">
               {stats.card.count} transaction{stats.card.count === 1 ? '' : 's'}
             </p>
           </CardContent>
         </Card>
 
         {/* Online / Other */}
-        <Card className="border shadow-xs">
+        <Card className="border shadow-xs min-w-0">
           <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-              Online / Other
+            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 truncate">
+              <Globe className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="truncate">Online / Other</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-bold text-amber-600 dark:text-amber-400">
+          <CardContent className="p-3 pt-0 min-w-0">
+            <div className="text-lg sm:text-xl font-bold text-amber-600 dark:text-amber-400 truncate" title={`₹${(stats.online.amount + stats.other.amount).toFixed(2)}`}>
               ₹{(stats.online.amount + stats.other.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground truncate">
               {stats.online.count + stats.other.count} transaction{(stats.online.count + stats.other.count) === 1 ? '' : 's'}
             </p>
           </CardContent>
         </Card>
 
         {/* Refunded */}
-        <Card className="border shadow-xs">
+        <Card className="border shadow-xs min-w-0">
           <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-              <RotateCcw className="h-3.5 w-3.5" />
-              Refunded
+            <CardTitle className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+              <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Refunded</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+          <CardContent className="p-3 pt-0 min-w-0">
+            <div className="text-lg sm:text-xl font-bold text-purple-600 dark:text-purple-400 truncate" title={`₹${stats.refunded.amount.toFixed(2)}`}>
               ₹{stats.refunded.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground truncate">
               {stats.refunded.count} refund{stats.refunded.count === 1 ? '' : 's'}
             </p>
           </CardContent>
         </Card>
 
         {/* Failed */}
-        <Card className="border shadow-xs">
+        <Card className="border shadow-xs min-w-0">
           <CardHeader className="p-3 pb-1">
-            <CardTitle className="text-[11px] font-semibold text-destructive uppercase tracking-wider flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              Failed
+            <CardTitle className="text-[11px] font-semibold text-destructive uppercase tracking-wider flex items-center gap-1.5 truncate">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Failed</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-xl font-bold text-destructive">
+          <CardContent className="p-3 pt-0 min-w-0">
+            <div className="text-lg sm:text-xl font-bold text-destructive truncate">
               {stats.failed.count}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground truncate">
               ₹0 in ledger (audited)
             </p>
           </CardContent>
@@ -367,92 +367,100 @@ export function PaymentListClient({
       </div>
 
       {/* Filter & Search Toolbar */}
-      <Card className="border shadow-xs">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+      <Card className="border shadow-xs min-w-0">
+        <CardContent className="p-3 sm:p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3">
             {/* Search Input */}
-            <div className="relative md:col-span-2">
+            <div className="relative sm:col-span-2 lg:col-span-2 xl:col-span-2 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search payment #, order #, reference..."
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9"
+                className="pl-9 w-full"
               />
             </div>
 
             {/* Branch Filter */}
             {!isBranchRestricted && (
-              <Select value={selectedBranch} onValueChange={(v) => v && handleBranchChange(v)}>
+              <div className="min-w-0">
+                <Select value={selectedBranch} onValueChange={(v) => v && handleBranchChange(v)}>
+                  <SelectTrigger className="w-full">
+                    <div className="flex items-center gap-2 truncate">
+                      <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <SelectValue placeholder="All Branches" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Branches</SelectItem>
+                    {branches.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name} ({b.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Method Filter */}
+            <div className="min-w-0">
+              <Select value={selectedMethod} onValueChange={(v) => v && handleMethodChange(v)}>
                 <SelectTrigger className="w-full">
-                  <div className="flex items-center gap-2 truncate">
-                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <SelectValue placeholder="All Branches" />
-                  </div>
+                  <SelectValue placeholder="All Tender Types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Branches</SelectItem>
-                  {branches.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name} ({b.code})
+                  <SelectItem value="all">All Tender Types</SelectItem>
+                  {(Object.keys(PAYMENT_METHODS) as PaymentMethod[]).map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {PAYMENT_METHODS[m].label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            )}
-
-            {/* Method Filter */}
-            <Select value={selectedMethod} onValueChange={(v) => v && handleMethodChange(v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="All Tender Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Tender Types</SelectItem>
-                {(Object.keys(PAYMENT_METHODS) as PaymentMethod[]).map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {PAYMENT_METHODS[m].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            </div>
 
             {/* Status Filter */}
-            <Select value={selectedStatus} onValueChange={(v) => v && handleStatusChange(v)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {(Object.keys(PAYMENT_STATUS_META) as PaymentStatus[]).map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {PAYMENT_STATUS_META[s].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="min-w-0">
+              <Select value={selectedStatus} onValueChange={(v) => v && handleStatusChange(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {(Object.keys(PAYMENT_STATUS_META) as PaymentStatus[]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {PAYMENT_STATUS_META[s].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Date Range Quick Filter */}
-            <Select value={dateRange} onValueChange={(v) => v && handleDateRangeChange(v)}>
-              <SelectTrigger className="w-full">
-                <div className="flex items-center gap-2 truncate">
-                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <SelectValue placeholder="All Time" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="yesterday">Yesterday</SelectItem>
-                <SelectItem value="7days">Last 7 Days</SelectItem>
-                <SelectItem value="30days">Last 30 Days</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="min-w-0">
+              <Select value={dateRange} onValueChange={(v) => v && handleDateRangeChange(v)}>
+                <SelectTrigger className="w-full">
+                  <div className="flex items-center gap-2 truncate">
+                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <SelectValue placeholder="All Time" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="yesterday">Yesterday</SelectItem>
+                  <SelectItem value="7days">Last 7 Days</SelectItem>
+                  <SelectItem value="30days">Last 30 Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Ledger Table (Desktop) & Cards (Mobile) */}
-      <Card className="border shadow-xs">
+      <Card className="border shadow-xs min-w-0 w-full overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
             <TableSkeleton rows={8} />
@@ -467,8 +475,8 @@ export function PaymentListClient({
           ) : (
             <>
               {/* Desktop Table View */}
-              <div className="hidden md:block overflow-x-auto">
-                <Table>
+              <div className="hidden md:block w-full min-w-0 max-w-full overflow-x-auto">
+                <Table className="w-full min-w-[760px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Payment #</TableHead>
@@ -489,10 +497,10 @@ export function PaymentListClient({
 
                       return (
                         <TableRow key={p.id} className="hover:bg-muted/40 transition-colors">
-                          <TableCell className="font-bold text-foreground">
+                          <TableCell className="font-bold text-foreground whitespace-nowrap">
                             {p.paymentNumber}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap">
                             <Link
                               href={`/orders/${p.orderId}`}
                               className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
@@ -502,28 +510,28 @@ export function PaymentListClient({
                             </Link>
                           </TableCell>
                           <TableCell>
-                            <span className="font-medium text-foreground">{p.branchName}</span>
+                            <span className="font-medium text-foreground block truncate max-w-44">{p.branchName}</span>
                             <span className="text-xs text-muted-foreground block">{p.branchCode}</span>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap">
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-muted/60 text-foreground">
                               <MethodIcon className="h-3.5 w-3.5 text-muted-foreground" />
                               {PAYMENT_METHODS[p.method]?.label}
                             </span>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap">
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${statusMeta.className}`}
                             >
                               {statusMeta.label}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right whitespace-nowrap">
                             <span
                               className={`font-bold block ${
                                 p.status === PaymentStatus.FAILED
-                                  ? 'line-through text-muted-foreground'
-                                  : 'text-foreground'
+                                   ? 'line-through text-muted-foreground'
+                                   : 'text-foreground'
                               }`}
                             >
                               ₹{p.amount.toFixed(2)}
@@ -534,10 +542,10 @@ export function PaymentListClient({
                               </span>
                             )}
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground font-mono">
+                          <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">
                             {p.referenceNumber || '—'}
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                             {p.processedBy}
                           </TableCell>
                           <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">
@@ -551,27 +559,27 @@ export function PaymentListClient({
               </div>
 
               {/* Mobile Card View */}
-              <div className="md:hidden divide-y">
+              <div className="md:hidden divide-y divide-border/60">
                 {payments.map((p) => {
                   const MethodIcon = PAYMENT_METHODS[p.method]?.icon || CreditCard;
                   const statusMeta = PAYMENT_STATUS_META[p.status];
 
                   return (
-                    <div key={p.id} className="p-4 space-y-2.5">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="font-bold text-sm text-foreground block">
+                    <div key={p.id} className="p-3.5 sm:p-4 space-y-2.5">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-sm text-foreground block truncate">
                             {p.paymentNumber}
                           </span>
                           <Link
                             href={`/orders/${p.orderId}`}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline mt-0.5"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline mt-0.5 truncate max-w-full"
                           >
-                            Order: {p.orderNumber}
-                            <ExternalLink className="h-3 w-3" />
+                            <span>Order: {p.orderNumber}</span>
+                            <ExternalLink className="h-3 w-3 shrink-0" />
                           </Link>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <span
                             className={`text-base font-bold block ${
                               p.status === PaymentStatus.FAILED ? 'line-through text-muted-foreground' : 'text-foreground'
@@ -587,22 +595,49 @@ export function PaymentListClient({
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
+                      {p.refundedAmount > 0 && (
+                        <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                          Refunded: ₹{p.refundedAmount.toFixed(2)}
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center justify-between text-xs text-muted-foreground pt-1.5 border-t border-border/40 gap-1.5">
                         <span className="inline-flex items-center gap-1">
                           <MethodIcon className="h-3.5 w-3.5" />
                           {PAYMENT_METHODS[p.method]?.label}
                         </span>
-                        <span>{p.branchName}</span>
+                        <span className="truncate max-w-36">{p.branchName}</span>
                         <span>{new Date(p.processedAt).toLocaleDateString()}</span>
                       </div>
+
+                      {/* Expandable Reconciliation & Audit Details */}
+                      <details className="text-xs text-muted-foreground pt-1 group">
+                        <summary className="cursor-pointer select-none text-[11px] font-medium text-primary/80 hover:text-primary transition-colors flex items-center gap-1">
+                          <span>Reconciliation Details</span>
+                        </summary>
+                        <div className="mt-2 p-2.5 rounded-lg bg-muted/40 space-y-1 font-mono text-[11px]">
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground font-sans">Reference / Auth:</span>
+                            <span className="text-foreground truncate">{p.referenceNumber || '—'}</span>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground font-sans">Processed By:</span>
+                            <span className="text-foreground truncate">{p.processedBy}</span>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <span className="text-muted-foreground font-sans">Timestamp:</span>
+                            <span className="text-foreground">{new Date(p.processedAt).toLocaleTimeString()}</span>
+                          </div>
+                        </div>
+                      </details>
                     </div>
                   );
                 })}
               </div>
 
               {/* Pagination Controls */}
-              <div className="flex items-center justify-between p-4 border-t bg-muted/10 text-xs">
-                <span className="text-muted-foreground">
+              <div className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 border-t bg-muted/10 text-xs gap-3">
+                <span className="text-muted-foreground text-center sm:text-left">
                   Showing {payments.length} of {pagination.total} transaction{pagination.total === 1 ? '' : 's'}
                 </span>
                 <div className="flex items-center gap-2">
@@ -616,7 +651,7 @@ export function PaymentListClient({
                     <ChevronLeft className="h-3.5 w-3.5" />
                     Previous
                   </Button>
-                  <span className="font-medium text-foreground px-2">
+                  <span className="font-medium text-foreground px-2 whitespace-nowrap">
                     Page {pagination.page} of {pagination.totalPages}
                   </span>
                   <Button

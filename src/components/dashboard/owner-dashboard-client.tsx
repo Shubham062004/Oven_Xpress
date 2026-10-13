@@ -133,7 +133,7 @@ export function OwnerDashboardClient({ initialData }: OwnerDashboardClientProps)
   const formattedPeriod = `${data.dateRange.startDate} to ${data.dateRange.endDate}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
       {/* ─── Page Hero Banner ──────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 pb-4 border-b border-border/40">
         <div>
@@ -210,8 +210,8 @@ export function OwnerDashboardClient({ initialData }: OwnerDashboardClientProps)
       />
 
       {/* ─── Section 2: Sales Velocity & Live Feed ─────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-0 w-full">
+        <div className="lg:col-span-2 min-w-0 w-full">
           <SalesTrendSection
             data={data.salesTrend}
             grouping={data.salesTrendGrouping}
@@ -219,7 +219,7 @@ export function OwnerDashboardClient({ initialData }: OwnerDashboardClientProps)
             isPending={isPending}
           />
         </div>
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 min-w-0 w-full">
           <RecentActivityFeed
             activities={data.recentActivity}
             isPending={isPending}
