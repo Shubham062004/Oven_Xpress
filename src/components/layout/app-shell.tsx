@@ -31,7 +31,7 @@ export function AppShell({ children, user }: AppShellProps) {
         )}
       >
         <Header user={user} />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 px-3 py-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

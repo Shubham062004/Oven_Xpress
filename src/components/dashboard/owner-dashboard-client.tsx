@@ -135,26 +135,26 @@ export function OwnerDashboardClient({ initialData }: OwnerDashboardClientProps)
   return (
     <div className="space-y-6">
       {/* ─── Page Hero Banner ──────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-border/40">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 pb-4 border-b border-border/40">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground">
               Welcome back, {data.userName}
             </h1>
-            <Badge variant="outline" className="text-xs uppercase font-mono py-0.5">
+            <Badge variant="outline" className="text-[10px] sm:text-xs uppercase font-mono py-0.5">
               {data.userRole}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+          <p className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
             <span>Central Business Command & Operational State</span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span className="font-medium text-foreground">
               Period: {data.preset === 'today' ? 'Today' : formattedPeriod}
             </span>
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start md:self-auto">
           {data.isBranchRestricted && (
             <Badge variant="secondary" className="text-xs py-1 px-2.5">
               Assigned Branch Scope

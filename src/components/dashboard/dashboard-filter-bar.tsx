@@ -101,10 +101,10 @@ export function DashboardFilterBar({
   };
 
   return (
-    <div className="bg-card/70 backdrop-blur border border-border/60 rounded-2xl p-4 shadow-sm space-y-4">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        {/* Date Preset Segmented Control */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-muted/40 border border-border/40 rounded-xl">
+    <div className="bg-card/70 backdrop-blur border border-border/60 rounded-2xl p-3 sm:p-4 shadow-xs space-y-3 sm:space-y-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
+        {/* Date Preset Segmented Control (Smooth horizontal scroll on phone) */}
+        <div className="flex items-center gap-1.5 p-1 bg-muted/40 border border-border/40 rounded-xl overflow-x-auto no-scrollbar scroll-smooth w-full lg:w-auto">
           {PRESET_OPTIONS.map((opt) => {
             const isActive = preset === opt.value;
             return (
@@ -113,9 +113,9 @@ export function DashboardFilterBar({
                 type="button"
                 onClick={() => handlePresetSelect(opt.value)}
                 disabled={isPending}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                className={`shrink-0 px-3 py-1.5 min-h-9 sm:min-h-8 text-xs font-medium rounded-lg transition-all ${
                   isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                 }`}
               >
@@ -126,17 +126,17 @@ export function DashboardFilterBar({
         </div>
 
         {/* Branch Filter & Utility Actions */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
           {/* Branch Selector */}
           {!isBranchRestricted && branches.length > 1 && (
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
               <select
                 aria-label="Filter by branch"
                 value={selectedBranchId}
                 onChange={(e) => handleBranchSelect(e.target.value)}
                 disabled={isPending}
-                className="text-xs bg-background border border-border/70 rounded-xl px-3 py-1.5 font-medium focus:ring-1 focus:ring-primary focus:outline-none cursor-pointer"
+                className="w-full sm:w-auto text-xs bg-background border border-border/70 rounded-xl px-3 py-2 sm:py-1.5 min-h-11 sm:min-h-8 font-medium focus:ring-1 focus:ring-primary focus:outline-none cursor-pointer"
               >
                 <option value="all">All Accessible Branches ({branches.length})</option>
                 {branches.map((b) => (
@@ -149,44 +149,49 @@ export function DashboardFilterBar({
           )}
 
           {isBranchRestricted && branches.length === 1 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border border-border/40 rounded-xl text-xs font-medium">
-              <Building2 className="w-3.5 h-3.5 text-primary" />
-              <span>{branches[0].name}</span>
-              <Badge variant="outline" className="text-[10px] py-0 px-1 font-mono">
+            <div className="flex items-center justify-between sm:justify-start gap-2 px-3 py-2 sm:py-1.5 bg-muted/40 border border-border/40 rounded-xl text-xs font-medium min-h-11 sm:min-h-8">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="truncate">{branches[0].name}</span>
+              </div>
+              <Badge variant="outline" className="text-[10px] py-0 px-1 font-mono shrink-0">
                 {branches[0].code}
               </Badge>
             </div>
           )}
 
-          {/* Refresh Button */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onRefresh}
-            disabled={isPending}
-            className="h-8 gap-1.5 text-xs rounded-xl"
-            aria-label="Refresh dashboard data"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isPending ? 'animate-spin text-primary' : ''}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
+          {/* Action Buttons Row */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Refresh Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              disabled={isPending}
+              className="flex-1 sm:flex-initial h-10 sm:h-8 min-h-10 sm:min-h-8 gap-1.5 text-xs rounded-xl justify-center"
+              aria-label="Refresh dashboard data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isPending ? 'animate-spin text-primary' : ''}`} />
+              <span>Refresh</span>
+            </Button>
 
-          {/* Export CSV Button */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={isPending || exporting}
-            className="h-8 gap-1.5 text-xs rounded-xl hover:text-primary"
-            aria-label="Export dashboard summary CSV"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">
-              {exporting ? 'Exporting...' : 'Export CSV'}
-            </span>
-          </Button>
+            {/* Export CSV Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={isPending || exporting}
+              className="flex-1 sm:flex-initial h-10 sm:h-8 min-h-10 sm:min-h-8 gap-1.5 text-xs rounded-xl hover:text-primary justify-center"
+              aria-label="Export dashboard summary CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>
+                {exporting ? 'Exporting...' : 'Export CSV'}
+              </span>
+            </Button>
+          </div>
         </div>
       </div>
 

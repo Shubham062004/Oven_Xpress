@@ -51,12 +51,12 @@ export function BranchPerformanceSection({
   });
 
   return (
-    <Card className="border border-border/60 shadow-sm">
-      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+    <Card className="border border-border/60 shadow-xs">
+      <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-primary" />
-            <CardTitle className="text-base font-semibold text-foreground">
+            <CardTitle className="text-sm sm:text-base font-semibold text-foreground">
               Branch Operational Performance
             </CardTitle>
           </div>
@@ -64,7 +64,7 @@ export function BranchPerformanceSection({
             Factual side-by-side operational metrics across authorized locations.
           </p>
         </div>
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="outline" className="text-xs self-start sm:self-auto">
           {branches.length} {branches.length === 1 ? 'Branch' : 'Branches'}
         </Badge>
       </CardHeader>
@@ -75,105 +75,172 @@ export function BranchPerformanceSection({
             No branch performance records found for this period.
           </div>
         ) : (
-          <div className={`overflow-x-auto ${isPending ? 'opacity-50' : ''}`}>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead
-                    className="cursor-pointer font-semibold text-xs"
-                    onClick={() => handleSort('branchName')}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Branch</span>
-                      <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+          <div className={isPending ? 'opacity-50' : ''}>
+            {/* Mobile Branch Cards (<sm) */}
+            <div className="sm:hidden space-y-3">
+              {sortedBranches.map((b) => (
+                <div
+                  key={b.branchId}
+                  className="p-3.5 rounded-xl border border-border/60 bg-card/60 space-y-2.5 shadow-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="font-bold text-sm text-foreground">{b.branchName}</span>
+                      <Badge variant="outline" className="text-[10px] font-mono px-1 py-0">
+                        {b.branchCode}
+                      </Badge>
                     </div>
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer font-semibold text-xs"
-                    onClick={() => handleSort('orderCount')}
-                  >
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Orders</span>
-                      <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+                    {canViewFinancials && (
+                      <Badge
+                        variant={b.operatingResult >= 0 ? 'default' : 'destructive'}
+                        className="text-[11px] font-bold"
+                      >
+                        {formatCurrency(b.operatingResult)}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/40">
+                    <div className="p-2 rounded-lg bg-muted/40">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold block">
+                        Net Sales
+                      </span>
+                      <span className="text-sm font-bold text-primary">
+                        {canViewFinancials ? formatCurrency(b.netSales) : 'Restricted'}
+                      </span>
                     </div>
-                  </TableHead>
+                    <div className="p-2 rounded-lg bg-muted/40">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold block">
+                        Orders
+                      </span>
+                      <span className="text-sm font-bold text-foreground">
+                        {formatNumber(b.orderCount)}
+                      </span>
+                    </div>
+                  </div>
+
                   {canViewFinancials && (
-                    <>
-                      <TableHead
-                        className="text-right cursor-pointer font-semibold text-xs"
-                        onClick={() => handleSort('netSales')}
-                      >
-                        <div className="flex items-center justify-end gap-1">
-                          <span>Net Sales</span>
-                          <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
-                        </div>
-                      </TableHead>
-                      <TableHead className="text-right font-semibold text-xs">
-                        Avg Order Value
-                      </TableHead>
-                      <TableHead className="text-right font-semibold text-xs">
-                        Payments Settled
-                      </TableHead>
-                      <TableHead className="text-right font-semibold text-xs">
-                        Expenses
-                      </TableHead>
-                      <TableHead
-                        className="text-right cursor-pointer font-semibold text-xs"
-                        onClick={() => handleSort('operatingResult')}
-                      >
-                        <div className="flex items-center justify-end gap-1">
-                          <span>Operating Result</span>
-                          <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
-                        </div>
-                      </TableHead>
-                    </>
-                  )}
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {sortedBranches.map((b) => (
-                  <TableRow key={b.branchId} className="text-xs hover:bg-muted/40 transition-colors">
-                    <TableCell className="font-medium py-3">
-                      <div className="flex items-center gap-2">
-                        <span>{b.branchName}</span>
-                        <Badge variant="outline" className="text-[10px] font-mono py-0 px-1">
-                          {b.branchCode}
-                        </Badge>
+                    <div className="grid grid-cols-3 gap-1.5 text-[11px] text-muted-foreground pt-1">
+                      <div>
+                        <span className="text-[10px] block font-medium">Avg Ticket</span>
+                        <span className="font-semibold text-foreground">{formatCurrency(b.averageOrderValue)}</span>
                       </div>
-                    </TableCell>
+                      <div>
+                        <span className="text-[10px] block font-medium">Settled</span>
+                        <span className="font-semibold text-foreground">{formatCurrency(b.successfulPayments)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] block font-medium">Expenses</span>
+                        <span className="font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(b.approvedExpenses)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
-                    <TableCell className="text-right font-semibold">
-                      {formatNumber(b.orderCount)}
-                    </TableCell>
-
+            {/* Desktop/Tablet Table (sm:block) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead
+                      className="cursor-pointer font-semibold text-xs"
+                      onClick={() => handleSort('branchName')}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Branch</span>
+                        <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer font-semibold text-xs"
+                      onClick={() => handleSort('orderCount')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <span>Orders</span>
+                        <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                    </TableHead>
                     {canViewFinancials && (
                       <>
-                        <TableCell className="text-right font-semibold text-primary">
-                          {formatCurrency(b.netSales)}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {formatCurrency(b.averageOrderValue)}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {formatCurrency(b.successfulPayments)}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {formatCurrency(b.approvedExpenses)}
-                        </TableCell>
-                        <TableCell
-                          className={`text-right font-bold ${
-                            b.operatingResult >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'
-                          }`}
+                        <TableHead
+                          className="text-right cursor-pointer font-semibold text-xs"
+                          onClick={() => handleSort('netSales')}
                         >
-                          {formatCurrency(b.operatingResult)}
-                        </TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Net Sales</span>
+                            <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="text-right font-semibold text-xs">
+                          Avg Order Value
+                        </TableHead>
+                        <TableHead className="text-right font-semibold text-xs">
+                          Payments Settled
+                        </TableHead>
+                        <TableHead className="text-right font-semibold text-xs">
+                          Expenses
+                        </TableHead>
+                        <TableHead
+                          className="text-right cursor-pointer font-semibold text-xs"
+                          onClick={() => handleSort('operatingResult')}
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Operating Result</span>
+                            <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+                          </div>
+                        </TableHead>
                       </>
                     )}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+
+                <TableBody>
+                  {sortedBranches.map((b) => (
+                    <TableRow key={b.branchId} className="text-xs hover:bg-muted/40 transition-colors">
+                      <TableCell className="font-medium py-3">
+                        <div className="flex items-center gap-2">
+                          <span>{b.branchName}</span>
+                          <Badge variant="outline" className="text-[10px] font-mono py-0 px-1">
+                            {b.branchCode}
+                          </Badge>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="text-right font-semibold">
+                        {formatNumber(b.orderCount)}
+                      </TableCell>
+
+                      {canViewFinancials && (
+                        <>
+                          <TableCell className="text-right font-semibold text-primary">
+                            {formatCurrency(b.netSales)}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatCurrency(b.averageOrderValue)}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatCurrency(b.successfulPayments)}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatCurrency(b.approvedExpenses)}
+                          </TableCell>
+                          <TableCell
+                            className={`text-right font-bold ${
+                              b.operatingResult >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'
+                            }`}
+                          >
+                            {formatCurrency(b.operatingResult)}
+                          </TableCell>
+                        </>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
       </CardContent>

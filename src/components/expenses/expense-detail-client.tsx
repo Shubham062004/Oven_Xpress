@@ -465,7 +465,7 @@ export function ExpenseDetailClient({
                 <div className="relative border-l border-border/80 pl-4 space-y-4 text-xs ml-2">
                   {expense.auditLogs.map((log) => (
                     <div key={log.id} className="relative">
-                      <div className="absolute -left-[21px] top-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
+                      <div className="absolute -left-5.25 top-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
                       <div className="font-semibold text-foreground">
                         {log.action.replace(/_/g, ' ')}
                       </div>

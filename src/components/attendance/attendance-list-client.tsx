@@ -832,12 +832,12 @@ export function AttendanceListClient({
 
                       <div className="mt-3 flex items-center justify-between border-t pt-2.5 text-xs text-muted-foreground">
                         <span>Marked by: {record.markedBy ?? 'System'}</span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {isCheckedInWithoutOut && canUpdateAttendance && (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 text-xs px-2 gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400"
+                              className="min-h-9 text-xs px-3 gap-1.5 border-amber-500/40 text-amber-700 dark:text-amber-400"
                               onClick={() =>
                                 handleQuickCheckOut(
                                   record.id,
@@ -845,14 +845,14 @@ export function AttendanceListClient({
                                 )
                               }
                             >
-                              <LogOut className="size-3" />
+                              <LogOut className="size-3.5" />
                               Check Out
                             </Button>
                           )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs"
+                            className="min-h-9 px-3 text-xs"
                             onClick={() => router.push(`/attendance/${record.id}`)}
                           >
                             Details
@@ -861,7 +861,7 @@ export function AttendanceListClient({
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 px-2 text-xs"
+                              className="min-h-9 px-3 text-xs"
                               onClick={() => {
                                 setSelectedAttendance(record);
                                 setAttendanceDialogOpen(true);
@@ -945,114 +945,196 @@ export function AttendanceListClient({
               }
             />
           ) : (
-            <div className="rounded-lg border bg-card shadow-xs overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Shift Name</TableHead>
-                    <TableHead>Branch</TableHead>
-                    <TableHead>Scheduled Hours</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {shifts.map((shift) => {
-                    const durationStr = computeShiftHours(shift.startTime, shift.endTime);
-                    const isOvernight = shift.endTime < shift.startTime;
+            <>
+              {/* Desktop Shifts Table */}
+              <div className="hidden md:block rounded-lg border bg-card shadow-xs overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Shift Name</TableHead>
+                      <TableHead>Branch</TableHead>
+                      <TableHead>Scheduled Hours</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {shifts.map((shift) => {
+                      const durationStr = computeShiftHours(shift.startTime, shift.endTime);
+                      const isOvernight = shift.endTime < shift.startTime;
 
-                    return (
-                      <TableRow key={shift.id}>
-                        {/* Name */}
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {isOvernight ? (
-                              <Moon className="size-4 text-indigo-500" />
+                      return (
+                        <TableRow key={shift.id}>
+                          {/* Name */}
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {isOvernight ? (
+                                <Moon className="size-4 text-indigo-500" />
+                              ) : (
+                                <Clock className="size-4 text-primary" />
+                              )}
+                              <span className="font-semibold text-foreground">{shift.name}</span>
+                            </div>
+                          </TableCell>
+
+                          {/* Branch */}
+                          <TableCell>
+                            <span className="text-sm">{shift.branch.name}</span>
+                            <span className="block text-xs text-muted-foreground">{shift.branch.city}</span>
+                          </TableCell>
+
+                          {/* Hours */}
+                          <TableCell>
+                            <span className="font-mono text-xs font-medium">
+                              {shift.startTime} → {shift.endTime}
+                            </span>
+                          </TableCell>
+
+                          {/* Duration */}
+                          <TableCell>
+                            <span className="text-xs text-muted-foreground">{durationStr}</span>
+                          </TableCell>
+
+                          {/* Status */}
+                          <TableCell>
+                            {shift.status === 'ACTIVE' ? (
+                              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                                Active
+                              </Badge>
                             ) : (
-                              <Clock className="size-4 text-primary" />
+                              <Badge variant="outline" className="text-muted-foreground">
+                                Inactive
+                              </Badge>
                             )}
-                            <span className="font-semibold text-foreground">{shift.name}</span>
-                          </div>
-                        </TableCell>
+                          </TableCell>
 
-                        {/* Branch */}
-                        <TableCell>
-                          <span className="text-sm">{shift.branch.name}</span>
-                          <span className="block text-xs text-muted-foreground">{shift.branch.city}</span>
-                        </TableCell>
+                          {/* Actions */}
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {canUpdateShift && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-9 w-9 p-0"
+                                  onClick={() => {
+                                    setSelectedShift(shift);
+                                    setShiftDialogOpen(true);
+                                  }}
+                                  title="Edit Shift"
+                                >
+                                  <Pencil className="size-4 text-muted-foreground" />
+                                </Button>
+                              )}
 
-                        {/* Hours */}
-                        <TableCell>
-                          <span className="font-mono text-xs font-medium">
-                            {shift.startTime} → {shift.endTime}
-                          </span>
-                        </TableCell>
+                              {canDeactivateShift && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-9 w-9 p-0"
+                                  onClick={() => {
+                                    setShiftToToggle(shift);
+                                    setShiftStatusDialogOpen(true);
+                                  }}
+                                  title={shift.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                                >
+                                  <Power
+                                    className={`size-4 ${
+                                      shift.status === 'ACTIVE'
+                                        ? 'text-muted-foreground hover:text-destructive'
+                                        : 'text-emerald-600'
+                                    }`}
+                                  />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
 
-                        {/* Duration */}
-                        <TableCell>
-                          <span className="text-xs text-muted-foreground">{durationStr}</span>
-                        </TableCell>
+              {/* Mobile Shifts Card List */}
+              <div className="space-y-3 md:hidden">
+                {shifts.map((shift) => {
+                  const durationStr = computeShiftHours(shift.startTime, shift.endTime);
+                  const isOvernight = shift.endTime < shift.startTime;
 
-                        {/* Status */}
-                        <TableCell>
-                          {shift.status === 'ACTIVE' ? (
-                            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-                              Active
-                            </Badge>
+                  return (
+                    <Card key={shift.id} className="p-4 shadow-xs">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          {isOvernight ? (
+                            <Moon className="size-4 text-indigo-500 shrink-0" />
                           ) : (
-                            <Badge variant="outline" className="text-muted-foreground">
-                              Inactive
-                            </Badge>
+                            <Clock className="size-4 text-primary shrink-0" />
                           )}
-                        </TableCell>
-
-                        {/* Actions */}
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {canUpdateShift && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => {
-                                  setSelectedShift(shift);
-                                  setShiftDialogOpen(true);
-                                }}
-                                title="Edit Shift"
-                              >
-                                <Pencil className="size-4 text-muted-foreground" />
-                              </Button>
-                            )}
-
-                            {canDeactivateShift && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => {
-                                  setShiftToToggle(shift);
-                                  setShiftStatusDialogOpen(true);
-                                }}
-                                title={shift.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-                              >
-                                <Power
-                                  className={`size-4 ${
-                                    shift.status === 'ACTIVE'
-                                      ? 'text-muted-foreground hover:text-destructive'
-                                      : 'text-emerald-600'
-                                  }`}
-                                />
-                              </Button>
-                            )}
+                          <div>
+                            <span className="font-semibold text-sm text-foreground">{shift.name}</span>
+                            <span className="block text-xs text-muted-foreground">{shift.branch.name} ({shift.branch.city})</span>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                        </div>
+                        {shift.status === 'ACTIVE' ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-xs">
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground text-xs">
+                            Inactive
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between border-t pt-2.5 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Hours: </span>
+                          <span className="font-mono font-medium">{shift.startTime} → {shift.endTime}</span>
+                          <span className="text-muted-foreground ml-1.5">({durationStr})</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {canUpdateShift && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="min-h-9 min-w-9 p-0"
+                              onClick={() => {
+                                setSelectedShift(shift);
+                                setShiftDialogOpen(true);
+                              }}
+                              title="Edit Shift"
+                            >
+                              <Pencil className="size-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                          {canDeactivateShift && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="min-h-9 min-w-9 p-0"
+                              onClick={() => {
+                                setShiftToToggle(shift);
+                                setShiftStatusDialogOpen(true);
+                              }}
+                              title={shift.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                            >
+                              <Power
+                                className={`size-4 ${
+                                  shift.status === 'ACTIVE'
+                                    ? 'text-muted-foreground hover:text-destructive'
+                                    : 'text-emerald-600'
+                                }`}
+                              />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
           )}
         </TabsContent>
       </Tabs>

@@ -347,7 +347,7 @@ export function MenuItemList({
                       </Badge>
                     </div>
                     <span className="font-mono text-base font-bold text-foreground">
-                      ${item.price.toFixed(2)}
+                      ₹{item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
 
@@ -386,13 +386,13 @@ export function MenuItemList({
                     {item.status}
                   </Badge>
 
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <Link
                       href={`/menu/items/${item.id}`}
                       className={buttonVariants({
                         variant: 'outline',
                         size: 'sm',
-                        className: 'h-7 px-2.5 text-xs',
+                        className: 'min-h-9 px-3 text-xs',
                       })}
                     >
                       Details
@@ -402,9 +402,10 @@ export function MenuItemList({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleOpenEdit(item)}
-                        className="h-7 px-2 text-xs"
+                        className="min-h-9 min-w-9 p-0 text-xs"
+                        title="Edit Item"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
                     )}
                     {canDeactivate && (
@@ -412,9 +413,10 @@ export function MenuItemList({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleOpenStatusDialog(item)}
-                        className="h-7 px-2 text-xs"
+                        className="min-h-9 min-w-9 p-0 text-xs"
+                        title="Change Status"
                       >
-                        <Power className="h-3.5 w-3.5" />
+                        <Power className="h-4 w-4" />
                       </Button>
                     )}
                   </div>

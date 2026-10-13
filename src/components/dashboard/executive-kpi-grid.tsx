@@ -58,36 +58,41 @@ function SingleKPICard({
   }
 
   return (
-    <Card className="relative overflow-hidden border border-border/60 shadow-sm hover:shadow-md transition-all duration-200">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+    <Card className="relative overflow-hidden border border-border/60 shadow-xs hover:shadow-md transition-all duration-200">
+      <CardContent className="p-3.5 sm:p-5">
+        <div className="flex items-start justify-between gap-1">
+          <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">
             {kpi.label}
           </span>
-          <div className={`p-2 rounded-xl ${accentColor}`}>
-            <Icon className="w-4 h-4" />
+          <div className={`p-1.5 sm:p-2 rounded-xl shrink-0 ${accentColor}`}>
+            <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
         </div>
 
-        <div className="mt-3">
-          <div className={`text-2xl font-bold tracking-tight ${isPending ? 'opacity-50' : ''}`}>
+        <div className="mt-2 sm:mt-3">
+          <div
+            className={`text-base sm:text-xl md:text-2xl font-bold tracking-tight truncate ${
+              isPending ? 'opacity-50' : ''
+            }`}
+            title={kpi.formattedValue}
+          >
             {kpi.formattedValue}
           </div>
 
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1 sm:mt-2">
             {hasComparison ? (
               <span
-                className={`inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-md border ${badgeVariant}`}
+                className={`inline-flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-[11px] font-medium px-1.5 py-0.5 rounded-md border ${badgeVariant}`}
               >
-                <TrendIcon className="w-3 h-3" />
+                <TrendIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 {kpi.changePercentage! > 0 ? `+${kpi.changePercentage}%` : `${kpi.changePercentage}%`}
               </span>
             ) : (
-              <span className="text-[11px] text-muted-foreground">vs prev period: N/A</span>
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground">vs prev: N/A</span>
             )}
 
             {kpi.helperText && (
-              <span className="text-[11px] text-muted-foreground truncate" title={kpi.helperText}>
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground truncate hidden xs:inline" title={kpi.helperText}>
                 • {kpi.helperText}
               </span>
             )}
@@ -106,15 +111,15 @@ export function ExecutiveKPIGrid({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold tracking-tight text-foreground uppercase">
+        <h2 className="text-xs sm:text-sm font-semibold tracking-tight text-foreground uppercase">
           Executive Summary
         </h2>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-[11px] sm:text-xs text-muted-foreground">
           {canViewFinancials ? 'Operational P&L Perspective' : 'Operational Volume View'}
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3.5">
         {/* 1. Net Sales (Financial) */}
         {canViewFinancials && (
           <SingleKPICard

@@ -322,9 +322,9 @@ export function KitchenBoardClient({
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col select-none">
       {/* ── Operational KDS Header Bar ────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-card border-b shadow-xs px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <header className="sticky top-0 z-30 bg-card border-b shadow-xs px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
         {/* Left: Branding, Branch Indicator & Link */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between w-full sm:w-auto gap-3">
           <Link
             href="/orders"
             className="flex items-center gap-2 text-foreground hover:opacity-80 transition-opacity"
@@ -335,10 +335,10 @@ export function KitchenBoardClient({
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-base font-black tracking-tight uppercase">
+                <span className="text-sm sm:text-base font-black tracking-tight uppercase">
                   Oven Xpress
                 </span>
-                <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 uppercase">
+                <span className="text-[10px] sm:text-[11px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 uppercase">
                   KDS Live
                 </span>
               </div>
@@ -349,15 +349,15 @@ export function KitchenBoardClient({
           </Link>
 
           {/* Branch Switcher (or locked badge) */}
-          <div className="ml-2 pl-3 border-l flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+          <div className="sm:ml-2 sm:pl-3 sm:border-l flex items-center gap-1.5 sm:gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
             {userBranchId ? (
-              <span className="text-xs font-bold text-foreground">
+              <span className="text-xs font-bold text-foreground truncate max-w-32 sm:max-w-none">
                 {branches.find((b) => b.id === userBranchId)?.name || 'Assigned Branch'}
               </span>
             ) : (
               <Select value={selectedBranch} onValueChange={(val) => { if (val) handleBranchChange(val); }}>
-                <SelectTrigger className="h-7 text-xs w-44 font-semibold bg-muted/50 border-none">
+                <SelectTrigger className="h-7 text-xs w-36 sm:w-44 font-semibold bg-muted/50 border-none">
                   <SelectValue placeholder="All Branches" />
                 </SelectTrigger>
                 <SelectContent>
@@ -373,19 +373,19 @@ export function KitchenBoardClient({
           </div>
         </div>
 
-        {/* Center: Operational KPI Counters */}
-        <div className="flex items-center gap-2 bg-muted/40 p-1 rounded-xl border">
+        {/* Center: Operational KPI Counters & Column Switcher (Grid on phone for easy thumb reach) */}
+        <div className="grid grid-cols-4 sm:flex items-center gap-1 bg-muted/40 p-1 rounded-xl border w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveColumnView('ALL')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold transition-all min-h-10 sm:min-h-8 ${
               activeColumnView === 'ALL'
                 ? 'bg-background shadow-xs text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <span>All Active</span>
-            <Badge variant="secondary" className="h-5 px-1.5 text-[11px] font-bold">
+            <span>All</span>
+            <Badge variant="secondary" className="h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-[11px] font-bold">
               {boardData.stats.totalActiveCount}
             </Badge>
           </button>
@@ -393,14 +393,14 @@ export function KitchenBoardClient({
           <button
             type="button"
             onClick={() => setActiveColumnView('NEW')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold transition-all min-h-10 sm:min-h-8 ${
               activeColumnView === 'NEW'
                 ? 'bg-amber-500 text-white shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <span>New</span>
-            <Badge className="h-5 px-1.5 text-[11px] font-bold bg-amber-600 text-white">
+            <Badge className="h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-[11px] font-bold bg-amber-600 text-white">
               {boardData.stats.newOrdersCount}
             </Badge>
           </button>
@@ -408,14 +408,14 @@ export function KitchenBoardClient({
           <button
             type="button"
             onClick={() => setActiveColumnView('PREPARING')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold transition-all min-h-10 sm:min-h-8 ${
               activeColumnView === 'PREPARING'
                 ? 'bg-purple-600 text-white shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <span>Prep</span>
-            <Badge className="h-5 px-1.5 text-[11px] font-bold bg-purple-700 text-white">
+            <Badge className="h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-[11px] font-bold bg-purple-700 text-white">
               {boardData.stats.preparingOrdersCount}
             </Badge>
           </button>
@@ -423,28 +423,28 @@ export function KitchenBoardClient({
           <button
             type="button"
             onClick={() => setActiveColumnView('READY')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold transition-all min-h-10 sm:min-h-8 ${
               activeColumnView === 'READY'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <span>Ready</span>
-            <Badge className="h-5 px-1.5 text-[11px] font-bold bg-emerald-700 text-white">
+            <Badge className="h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-[11px] font-bold bg-emerald-700 text-white">
               {boardData.stats.readyOrdersCount}
             </Badge>
           </button>
         </div>
 
         {/* Right: Controls (Filter, Auto-refresh, Fullscreen, User, Exit) */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
           {/* Order Type Filter */}
           <Select value={orderTypeFilter} onValueChange={(val) => { if (val) handleTypeChange(val); }}>
-            <SelectTrigger className="h-8 text-xs w-32 font-medium">
+            <SelectTrigger className="h-8 text-xs flex-1 sm:w-32 font-medium">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Order Types</SelectItem>
+              <SelectItem value="ALL">All Types</SelectItem>
               <SelectItem value={OrderType.DINE_IN}>Dine-In</SelectItem>
               <SelectItem value={OrderType.TAKEAWAY}>Takeaway</SelectItem>
               <SelectItem value={OrderType.DELIVERY}>Delivery</SelectItem>
@@ -456,7 +456,7 @@ export function KitchenBoardClient({
             variant="outline"
             size="sm"
             onClick={() => setIsAutoRefresh(!isAutoRefresh)}
-            className="h-8 px-2.5 text-xs gap-1.5"
+            className="h-8 px-2.5 text-xs gap-1.5 shrink-0"
             title={isAutoRefresh ? 'Pause Auto-Refresh' : 'Enable Auto-Refresh'}
           >
             {isAutoRefresh ? (
@@ -478,7 +478,7 @@ export function KitchenBoardClient({
             size="sm"
             onClick={() => fetchBoard()}
             disabled={isRefreshing}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 shrink-0"
             title="Refresh Now"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
@@ -489,7 +489,7 @@ export function KitchenBoardClient({
             variant="ghost"
             size="sm"
             onClick={toggleFullscreen}
-            className="h-8 w-8 p-0 hidden sm:flex"
+            className="h-8 w-8 p-0 hidden sm:flex shrink-0"
             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
           >
             {isFullscreen ? (
@@ -510,7 +510,7 @@ export function KitchenBoardClient({
           {/* Exit / Return to dashboard */}
           <Link
             href="/orders"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted shrink-0"
             title="Return to Main App"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -518,10 +518,10 @@ export function KitchenBoardClient({
           </Link>
 
           {/* Kitchen Logout */}
-          <form action={logoutAction}>
+          <form action={logoutAction} className="shrink-0">
             <button
               type="submit"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10 transition-colors min-h-8"
               title="Logout"
             >
               <LogOut className="h-3.5 w-3.5" />
@@ -532,8 +532,8 @@ export function KitchenBoardClient({
       </header>
 
       {/* ── Main KDS Board Grid ──────────────────────────────────────────────── */}
-      <main className="flex-1 p-4 overflow-x-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-w-3xl h-full items-start">
+      <main className="flex-1 p-3 sm:p-4 overflow-x-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full h-full items-start">
           {/* COLUMN 1: NEW / CONFIRMED ORDERS */}
           {(activeColumnView === 'ALL' || activeColumnView === 'NEW') && (
             <div className="space-y-3 flex flex-col h-full bg-muted/20 p-3 rounded-xl border">
@@ -644,12 +644,12 @@ export function KitchenBoardClient({
                               type="button"
                               onClick={() => handleStartPreparing(order)}
                               disabled={isPending || isOrderProcessing}
-                              className="w-full h-9 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs gap-1.5 shadow-xs"
+                              className="w-full min-h-11 h-11 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm gap-2 shadow-xs"
                             >
                               {isOrderProcessing ? (
                                 <>
                                   <Loader2 className="h-4 w-4 animate-spin" />
-                                  Checking Stock & Starting...
+                                  Starting...
                                 </>
                               ) : (
                                 <>
@@ -764,7 +764,7 @@ export function KitchenBoardClient({
                               type="button"
                               onClick={() => handleMarkReady(order)}
                               disabled={isPending || isOrderProcessing}
-                              className="w-full h-9 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs gap-1.5 shadow-xs"
+                              className="w-full min-h-11 h-11 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm gap-2 shadow-xs"
                             >
                               {isOrderProcessing ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -858,7 +858,7 @@ export function KitchenBoardClient({
                               onClick={() => handleCompleteOrder(order)}
                               disabled={isPending || isOrderProcessing}
                               variant="outline"
-                              className="w-full h-9 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 font-bold text-xs gap-1.5"
+                              className="w-full min-h-11 h-11 border-emerald-500/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 font-bold text-sm gap-2"
                             >
                               {isOrderProcessing ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />

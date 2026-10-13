@@ -314,7 +314,8 @@ export function CustomerListClient({
       {/* Customers Table */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b bg-muted/40 text-xs font-semibold uppercase text-muted-foreground">
                 <tr>
@@ -446,9 +447,132 @@ export function CustomerListClient({
             </table>
           </div>
 
+          {/* Mobile Card List View */}
+          <div className="md:hidden divide-y divide-border">
+            {initialCustomers.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground p-4">
+                <Users className="mx-auto size-9 opacity-30 mb-2" />
+                <p className="text-base font-semibold">No customers found</p>
+                <p className="text-xs">
+                  Try adjusting your search criteria or register a new customer profile.
+                </p>
+              </div>
+            ) : (
+              initialCustomers.map((cust) => (
+                <div key={cust.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <Link
+                        href={`/customers/${cust.id}`}
+                        className="font-semibold text-sm hover:text-primary hover:underline text-foreground"
+                      >
+                        {cust.name}
+                      </Link>
+                      <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                        {cust.phone || cust.maskedPhone || 'No phone'}
+                      </div>
+                      {(cust.email || cust.maskedEmail) && (
+                        <div className="text-xs text-muted-foreground">
+                          {cust.email || cust.maskedEmail}
+                        </div>
+                      )}
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className={
+                        cust.status === 'ACTIVE'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold text-[11px]'
+                          : 'bg-muted text-muted-foreground font-semibold text-[11px]'
+                      }
+                    >
+                      {cust.status}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-xs border-t pt-2.5 bg-muted/20 -mx-4 px-4 py-2">
+                    <div>
+                      <span className="text-muted-foreground text-[11px] block">Orders</span>
+                      <span className="font-bold text-foreground">{cust.totalOrders}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-[11px] block">Spend</span>
+                      <span className="font-bold text-foreground">₹{cust.totalSpend.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-[11px] block">Last Order</span>
+                      <span className="text-muted-foreground truncate block">
+                        {cust.lastOrderDate
+                          ? new Date(cust.lastOrderDate).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                            })
+                          : 'Never'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-1.5 pt-1">
+                    <Link
+                      href={`/customers/${cust.id}`}
+                      className={buttonVariants({
+                        variant: 'ghost',
+                        size: 'sm',
+                        className: 'min-h-9 px-3 text-xs',
+                      })}
+                    >
+                      <Eye className="size-3.5 mr-1" />
+                      View
+                    </Link>
+
+                    {canUpdate && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-9 px-3 text-xs"
+                        onClick={() => {
+                          setEditingCustomer(cust);
+                          setIsCreateOpen(true);
+                        }}
+                      >
+                        <Edit2 className="size-3.5 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+
+                    {canDeactivate && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`min-h-9 px-3 text-xs ${
+                          cust.status === 'ACTIVE'
+                            ? 'text-rose-600 hover:text-rose-700 dark:text-rose-400'
+                            : 'text-emerald-600 hover:text-emerald-700 dark:text-emerald-400'
+                        }`}
+                        onClick={() => handleToggleStatus(cust)}
+                        disabled={isPending}
+                      >
+                        {cust.status === 'ACTIVE' ? (
+                          <>
+                            <UserX className="size-3.5 mr-1" />
+                            Deactivate
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="size-3.5 mr-1" />
+                            Activate
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
           {/* Pagination Controls */}
           {initialPagination.totalPages > 1 && (
-            <div className="flex items-center justify-between border-t px-4 py-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t px-4 py-3">
               <p className="text-xs text-muted-foreground">
                 Showing{' '}
                 <span className="font-medium">
@@ -469,12 +593,12 @@ export function CustomerListClient({
                   size="sm"
                   onClick={() => handlePageChange(initialPagination.page - 1)}
                   disabled={initialPagination.page <= 1 || isPending}
-                  className="gap-1 h-8"
+                  className="gap-1 min-h-9 text-xs"
                 >
                   <ChevronLeft className="size-3.5" />
                   Previous
                 </Button>
-                <span className="text-xs font-medium">
+                <span className="text-xs font-medium px-1">
                   {initialPagination.page} / {initialPagination.totalPages}
                 </span>
                 <Button
@@ -484,7 +608,7 @@ export function CustomerListClient({
                   disabled={
                     initialPagination.page >= initialPagination.totalPages || isPending
                   }
-                  className="gap-1 h-8"
+                  className="gap-1 min-h-9 text-xs"
                 >
                   Next
                   <ChevronRight className="size-3.5" />

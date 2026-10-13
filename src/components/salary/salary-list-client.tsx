@@ -355,9 +355,10 @@ export function SalaryListClient({
         </div>
       </Card>
 
-      {/* Records Table */}
+      {/* Records Table / Mobile Cards */}
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <tr>
@@ -488,9 +489,90 @@ export function SalaryListClient({
           </table>
         </div>
 
+        {/* Mobile Card List View */}
+        <div className="md:hidden divide-y divide-border/60">
+          {initialRecords.length > 0 ? (
+            initialRecords.map((record) => {
+              const statusMeta =
+                SALARY_RECORD_STATUS_META[record.status] ||
+                SALARY_RECORD_STATUS_META.DRAFT;
+
+              return (
+                <div key={record.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <Link
+                        href={`/salary/${record.id}`}
+                        className="font-mono text-xs font-bold text-foreground hover:text-primary hover:underline"
+                      >
+                        {record.salaryNumber}
+                      </Link>
+                      <div className="font-medium text-sm text-foreground mt-0.5">
+                        {record.employee.firstName} {record.employee.lastName}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono">
+                        {record.employee.employeeCode} • {record.employee.designation}
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs shrink-0 ${statusMeta.badgeClass}`}
+                    >
+                      {statusMeta.label}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs border-t pt-2.5">
+                    <div>
+                      <span className="text-muted-foreground">Branch: </span>
+                      <span className="font-medium text-foreground">{record.branch.name}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Period: </span>
+                      <span className="font-medium text-foreground">{formatDateRange(record.periodStart, record.periodEnd)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Base: </span>
+                      <span className="font-medium text-foreground">{formatINR(record.baseSalary)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Gross: </span>
+                      <span className="font-bold text-foreground">{formatINR(record.grossAmount)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Link
+                      href={`/salary/${record.id}`}
+                      className={buttonVariants({
+                        variant: 'outline',
+                        size: 'sm',
+                        className: 'min-h-9 w-full sm:w-auto gap-1.5 text-xs',
+                      })}
+                    >
+                      <Eye className="size-3.5" />
+                      Review Salary Record
+                    </Link>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="py-12 text-center text-muted-foreground p-4">
+              <Banknote className="mx-auto size-8 text-muted-foreground/40 mb-2" />
+              <p className="text-base font-semibold">No salary records found</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {branchFilter || statusFilter || search
+                  ? 'Try changing or clearing your search filters.'
+                  : 'Create your first salary period record using the button above.'}
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Pagination Footer */}
         {initialPagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t px-4 py-3 text-xs text-muted-foreground">
             <div>
               Showing {(initialPagination.page - 1) * initialPagination.pageSize + 1} to{' '}
               {Math.min(
@@ -506,12 +588,12 @@ export function SalaryListClient({
                 size="sm"
                 onClick={() => handlePageChange(initialPagination.page - 1)}
                 disabled={!initialPagination.hasPrevPage || isPending}
-                className="h-8 gap-1 text-xs"
+                className="min-h-9 gap-1 text-xs"
               >
                 <ChevronLeft className="size-3.5" />
                 Previous
               </Button>
-              <span>
+              <span className="px-1 font-medium">
                 Page {initialPagination.page} of {initialPagination.totalPages}
               </span>
               <Button
@@ -519,7 +601,7 @@ export function SalaryListClient({
                 size="sm"
                 onClick={() => handlePageChange(initialPagination.page + 1)}
                 disabled={!initialPagination.hasNextPage || isPending}
-                className="h-8 gap-1 text-xs"
+                className="min-h-9 gap-1 text-xs"
               >
                 Next
                 <ChevronRight className="size-3.5" />

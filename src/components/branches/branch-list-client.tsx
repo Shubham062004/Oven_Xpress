@@ -230,7 +230,7 @@ export function BranchListClient({
       </PageHeader>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 grid-cols-3">
         <Card size="sm">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -319,53 +319,38 @@ export function BranchListClient({
         />
       )}
 
-      {/* Branch Table */}
+      {/* Branch List */}
       {branches.length > 0 && (
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Branch</TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead className="hidden md:table-cell">Location</TableHead>
-                <TableHead className="hidden lg:table-cell">Contact</TableHead>
-                <TableHead className="hidden xl:table-cell">Hours</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden sm:table-cell">Created</TableHead>
-                <TableHead className="w-10">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {branches.map((branch) => (
-                <TableRow key={branch.id}>
-                  <TableCell className="font-medium">
-                    {branch.name}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {branch.code}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {getLocationString(branch)}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {branch.phone || branch.email || '—'}
-                  </TableCell>
-                  <TableCell className="hidden xl:table-cell">
-                    {branch.openingTime && branch.closingTime
-                      ? `${formatTime(branch.openingTime)} – ${formatTime(branch.closingTime)}`
-                      : '—'}
-                  </TableCell>
-                  <TableCell>
+        <>
+          {/* Mobile Card List */}
+          <div className="sm:hidden space-y-3">
+            {branches.map((branch) => (
+              <Card key={branch.id} className="border-border/60 shadow-xs">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => handleView(branch)}
+                        className="font-semibold text-sm text-primary hover:underline text-left truncate block w-full"
+                      >
+                        {branch.name}
+                      </button>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="font-mono text-xs shrink-0">
+                          {branch.code}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {getLocationString(branch)}
+                        </span>
+                      </div>
+                    </div>
                     <Badge
                       variant={branch.status === 'ACTIVE' ? 'default' : 'secondary'}
                       className={
                         branch.status === 'ACTIVE'
-                          ? 'bg-success/10 text-success'
-                          : 'bg-muted text-muted-foreground'
+                          ? 'bg-success/10 text-success shrink-0'
+                          : 'bg-muted text-muted-foreground shrink-0'
                       }
                     >
                       {branch.status === 'ACTIVE' ? (
@@ -375,54 +360,158 @@ export function BranchListClient({
                       )}
                       {branch.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground">
-                    {formatDate(branch.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Actions for ${branch.name}`}
-                          />
+                  </div>
+
+                  {(branch.phone || branch.email) && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {branch.phone || branch.email}
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleView(branch)}
+                      className="min-h-11 h-auto flex-1 text-xs gap-1.5"
+                    >
+                      <Eye className="size-3.5" />
+                      View
+                    </Button>
+                    {canUpdate && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(branch)}
+                        className="min-h-11 h-auto flex-1 text-xs gap-1.5"
+                      >
+                        <Pencil className="size-3.5" />
+                        Edit
+                      </Button>
+                    )}
+                    {canDeactivate && (
+                      <Button
+                        variant={branch.status === 'ACTIVE' ? 'ghost' : 'ghost'}
+                        size="sm"
+                        onClick={() => handleStatusToggle(branch)}
+                        className={`min-h-11 h-auto flex-1 text-xs gap-1.5 ${
+                          branch.status === 'ACTIVE' ? 'text-destructive hover:text-destructive' : 'text-emerald-600 hover:text-emerald-600'
+                        }`}
+                      >
+                        <Power className="size-3.5" />
+                        {branch.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop/Tablet Table */}
+          <div className="hidden sm:block rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Branch</TableHead>
+                  <TableHead>Code</TableHead>
+                  <TableHead className="hidden md:table-cell">Location</TableHead>
+                  <TableHead className="hidden lg:table-cell">Contact</TableHead>
+                  <TableHead className="hidden xl:table-cell">Hours</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden sm:table-cell">Created</TableHead>
+                  <TableHead className="w-10">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {branches.map((branch) => (
+                  <TableRow key={branch.id}>
+                    <TableCell className="font-medium">
+                      {branch.name}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {branch.code}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {getLocationString(branch)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {branch.phone || branch.email || '—'}
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell">
+                      {branch.openingTime && branch.closingTime
+                        ? `${formatTime(branch.openingTime)} – ${formatTime(branch.closingTime)}`
+                        : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={branch.status === 'ACTIVE' ? 'default' : 'secondary'}
+                        className={
+                          branch.status === 'ACTIVE'
+                            ? 'bg-success/10 text-success'
+                            : 'bg-muted text-muted-foreground'
                         }
                       >
-                        <MoreHorizontal className="size-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" sideOffset={4}>
-                        <DropdownMenuItem onClick={() => handleView(branch)}>
-                          <Eye className="size-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        {canUpdate && (
-                          <DropdownMenuItem onClick={() => handleEdit(branch)}>
-                            <Pencil className="size-4" />
-                            Edit
+                        {branch.status === 'ACTIVE' ? (
+                          <CheckCircle2 className="mr-1 size-3" />
+                        ) : (
+                          <XCircle className="mr-1 size-3" />
+                        )}
+                        {branch.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+                      {formatDate(branch.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Actions for ${branch.name}`}
+                            />
+                          }
+                        >
+                          <MoreHorizontal className="size-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={4}>
+                          <DropdownMenuItem onClick={() => handleView(branch)}>
+                            <Eye className="size-4" />
+                            View Details
                           </DropdownMenuItem>
-                        )}
-                        {canDeactivate && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant={branch.status === 'ACTIVE' ? 'destructive' : 'default'}
-                              onClick={() => handleStatusToggle(branch)}
-                            >
-                              <Power className="size-4" />
-                              {branch.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                          {canUpdate && (
+                            <DropdownMenuItem onClick={() => handleEdit(branch)}>
+                              <Pencil className="size-4" />
+                              Edit
                             </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                          )}
+                          {canDeactivate && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant={branch.status === 'ACTIVE' ? 'destructive' : 'default'}
+                                onClick={() => handleStatusToggle(branch)}
+                              >
+                                <Power className="size-4" />
+                                {branch.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {/* Create Dialog */}

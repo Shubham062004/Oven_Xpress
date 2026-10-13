@@ -689,16 +689,16 @@ export function ExpenseListClient({
                         <span>{methodMeta?.shortLabel}</span>
                       </div>
 
-                      <div className="flex items-center justify-end gap-2 pt-1">
+                      <div className="flex items-center justify-end gap-2 pt-1 flex-wrap">
                         <Link href={`/expenses/${exp.id}`}>
-                          <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <Button variant="outline" size="sm" className="min-h-9 px-3 text-xs">
                             Details
                           </Button>
                         </Link>
                         {isPendingItem && canApprove && (
                           <Button
                             size="sm"
-                            className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            className="min-h-9 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                             onClick={() => setApprovalTarget({ expense: exp, mode: 'approve' })}
                           >
                             Approve
@@ -708,7 +708,7 @@ export function ExpenseListClient({
                           <Button
                             variant="destructive"
                             size="sm"
-                            className="h-7 text-xs"
+                            className="min-h-9 px-3 text-xs"
                             onClick={() => setApprovalTarget({ expense: exp, mode: 'reject' })}
                           >
                             Reject
@@ -718,7 +718,7 @@ export function ExpenseListClient({
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 text-xs text-amber-600 border-amber-500/30"
+                            className="min-h-9 px-3 text-xs text-amber-600 border-amber-500/30"
                             onClick={() => setCancelTarget(exp)}
                           >
                             Cancel

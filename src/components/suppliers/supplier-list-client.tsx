@@ -481,22 +481,22 @@ export function SupplierListClient({
                       <span className="font-semibold text-foreground">{sup.totalOrders}</span> orders • ₹
                       {sup.totalSpend.toLocaleString('en-IN')} spend
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <Link
                         href={`/suppliers/${sup.id}`}
                         className={buttonVariants({
                           variant: 'ghost',
                           size: 'sm',
-                          className: 'h-8 px-2',
+                          className: 'min-h-9 px-3 text-xs',
                         })}
                       >
                         Details
                       </Link>
                       {canUpdate && (
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-8 px-2"
+                          className="min-h-9 px-3 text-xs"
                           onClick={() => handleOpenEdit(sup)}
                         >
                           Edit

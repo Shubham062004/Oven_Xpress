@@ -243,7 +243,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
           <button
             type="button"
             onClick={() => setActiveTab('stock')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`px-3 py-1.5 min-h-9 text-xs font-semibold rounded-md transition-all ${
               activeTab === 'stock'
                 ? 'bg-card text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
@@ -254,7 +254,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
           <button
             type="button"
             onClick={() => setActiveTab('ledger')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`px-3 py-1.5 min-h-9 text-xs font-semibold rounded-md transition-all ${
               activeTab === 'ledger'
                 ? 'bg-card text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
@@ -377,7 +377,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                 if (val) setBranchFilter(val);
               }}
             >
-              <SelectTrigger className="w-full sm:w-44">
+              <SelectTrigger className="w-full sm:w-44 min-h-9 sm:min-h-0">
                 <SelectValue placeholder="Branch" />
               </SelectTrigger>
               <SelectContent>
@@ -399,7 +399,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                   if (val) setHealthFilter(val as 'ALL' | StockHealthStatus);
                 }}
               >
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full sm:w-40 min-h-9 sm:min-h-0">
                   <SelectValue placeholder="Stock Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -416,7 +416,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                   if (val) setStatusFilter(val as 'ALL' | 'ACTIVE' | 'INACTIVE');
                 }}
               >
-                <SelectTrigger className="w-full sm:w-32">
+                <SelectTrigger className="w-full sm:w-32 min-h-9 sm:min-h-0">
                   <SelectValue placeholder="Tracking" />
                 </SelectTrigger>
                 <SelectContent>
@@ -433,7 +433,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                 if (val) setLedgerTypeFilter(val);
               }}
             >
-              <SelectTrigger className="w-full sm:w-48">
+              <SelectTrigger className="w-full sm:w-48 min-h-9 sm:min-h-0">
                 <SelectValue placeholder="Transaction Type" />
               </SelectTrigger>
               <SelectContent>
@@ -703,7 +703,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                         className={buttonVariants({
                           variant: 'outline',
                           size: 'sm',
-                          className: 'h-7 px-2.5 text-xs gap-1',
+                          className: 'min-h-11 h-auto px-3 text-xs gap-1',
                         })}
                       >
                         History & Details
@@ -716,7 +716,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                             variant="ghost"
                             size="sm"
                             onClick={() => openAdjustForItem(item)}
-                            className="h-7 px-2 text-xs"
+                            className="min-h-11 h-auto px-3 text-xs"
                           >
                             Adjust
                           </Button>
@@ -726,7 +726,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                             variant="ghost"
                             size="sm"
                             onClick={() => openWastageForItem(item)}
-                            className="h-7 px-2 text-xs text-destructive"
+                            className="min-h-11 h-auto px-3 text-xs text-destructive"
                           >
                             Wastage
                           </Button>
@@ -751,17 +751,17 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
               description="Inventory transactions such as receipts, wastage, and transfers will appear in this immutable audit ledger."
             />
           ) : (
-            <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+            <div className="rounded-lg border border-border bg-card shadow-sm overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableHead>Time</TableHead>
-                    <TableHead>Branch</TableHead>
+                    <TableHead className="hidden sm:table-cell">Branch</TableHead>
                     <TableHead>Ingredient</TableHead>
-                    <TableHead>Transaction Type</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead>Operator / Performed By</TableHead>
-                    <TableHead>Reason / Notes</TableHead>
+                    <TableHead className="hidden md:table-cell">Operator</TableHead>
+                    <TableHead className="hidden lg:table-cell">Notes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -776,7 +776,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                         })}
                       </TableCell>
 
-                      <TableCell className="text-xs font-medium text-foreground">
+                      <TableCell className="hidden sm:table-cell text-xs font-medium text-foreground">
                         {tx.branchName}
                       </TableCell>
 
@@ -810,11 +810,11 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                         </span>
                       </TableCell>
 
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                         {tx.performedBy}
                       </TableCell>
 
-                      <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
+                      <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-xs truncate">
                         {tx.reasonLabel ? (
                           <span className="font-medium text-foreground mr-1">
                             [{tx.reasonLabel}]

@@ -264,7 +264,7 @@ export function EmployeeListClient({
       </PageHeader>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card size="sm">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -332,7 +332,7 @@ export function EmployeeListClient({
         <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
           {/* Branch Filter */}
           <Select value={branchFilter} onValueChange={handleBranchFilter}>
-            <SelectTrigger id="branch-filter" className="w-full sm:w-44">
+            <SelectTrigger id="branch-filter" className="w-full sm:w-44 min-h-9 sm:min-h-0">
               <SelectValue placeholder="Branch" />
             </SelectTrigger>
             <SelectContent>
@@ -347,7 +347,7 @@ export function EmployeeListClient({
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={handleStatusFilter}>
-            <SelectTrigger id="status-filter" className="w-full sm:w-32">
+            <SelectTrigger id="status-filter" className="w-full sm:w-32 min-h-9 sm:min-h-0">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -360,7 +360,7 @@ export function EmployeeListClient({
           {/* Designation Filter */}
           {designations.length > 0 && (
             <Select value={designationFilter} onValueChange={handleDesignationFilter}>
-              <SelectTrigger id="designation-filter" className="w-full sm:w-40">
+              <SelectTrigger id="designation-filter" className="w-full sm:w-40 min-h-9 sm:min-h-0">
                 <SelectValue placeholder="Designation" />
               </SelectTrigger>
               <SelectContent>
@@ -610,12 +610,12 @@ export function EmployeeListClient({
                     Joined {formatDate(emp.joiningDate)}
                   </span>
                   <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" onClick={() => handleView(emp)}>
+                    <Button variant="outline" size="sm" onClick={() => handleView(emp)} className="min-h-11 h-auto">
                       <Eye className="mr-1 size-3.5" />
                       View
                     </Button>
                     {canUpdate && (
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(emp)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(emp)} className="min-h-11 h-auto min-w-11">
                         <Pencil className="size-3.5" />
                       </Button>
                     )}
@@ -624,11 +624,11 @@ export function EmployeeListClient({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleStatusToggle(emp)}
-                        className={
+                        className={`min-h-11 h-auto min-w-11 ${
                           emp.employmentStatus === 'ACTIVE'
                             ? 'text-destructive'
                             : 'text-green-600'
-                        }
+                        }`}
                       >
                         <Power className="size-3.5" />
                       </Button>

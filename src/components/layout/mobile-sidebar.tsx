@@ -76,7 +76,7 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-md px-3 py-2.5 min-h-11 text-sm font-medium transition-colors',
                   'hover:bg-accent hover:text-accent-foreground',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   isActive
@@ -96,11 +96,11 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
           <Separator className="mb-3" />
           {user ? (
             <Link
-              href="/profile"
+              href={`/${userRole}/profile`}
               onClick={() => setMobileOpen(false)}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors mb-1',
-                pathname.startsWith('/profile')
+                'flex items-center gap-3 rounded-md px-3 py-2.5 min-h-11 text-sm font-medium transition-colors mb-1',
+                pathname.startsWith(`/${userRole}/profile`)
                   ? 'bg-accent text-primary'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
@@ -117,7 +117,7 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-md px-3 py-2.5 min-h-11 text-sm font-medium transition-colors',
                   'hover:bg-accent hover:text-accent-foreground',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   isActive

@@ -60,17 +60,25 @@ export function Header({ user }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-1.5 sm:gap-2 border-b bg-background/95 px-2 sm:px-4 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
       {/* Mobile menu trigger */}
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
+        className="lg:hidden min-h-11 min-w-11"
         onClick={() => setMobileOpen(true)}
         aria-label="Open navigation menu"
       >
         <Menu className="size-5" />
       </Button>
+
+      {/* Mobile branch context badge — visible only on small screens */}
+      {user?.branchName && (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground truncate max-w-32 sm:max-w-40 lg:hidden">
+          <Building2 className="size-3 shrink-0" />
+          <span className="truncate">{user.branchName}</span>
+        </span>
+      )}
 
       {/* Spacer pushes right-side items */}
       <div className="flex-1" />
@@ -126,7 +134,7 @@ export function Header({ user }: HeaderProps) {
                 </span>
               </div>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-2rem)] p-2">
+            <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-1rem)] p-2">
               <DropdownMenuLabel className="font-normal px-2 py-1.5">
                 <div className="flex flex-col space-y-2">
                   <div className="flex items-center gap-2.5">
@@ -166,22 +174,22 @@ export function Header({ user }: HeaderProps) {
 
               <DropdownMenuSeparator className="my-1.5" />
 
-              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
+              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-2 sm:py-1.5 rounded-md min-h-11 sm:min-h-0" />}>
                 <UserIcon className="size-4 text-muted-foreground" />
                 <span className="text-sm">Profile</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile?tab=account`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
+              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile?tab=account`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-2 sm:py-1.5 rounded-md min-h-11 sm:min-h-0" />}>
                 <SettingsIcon className="size-4 text-muted-foreground" />
                 <span className="text-sm">Account Settings</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile/password`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
+              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile/password`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-2 sm:py-1.5 rounded-md min-h-11 sm:min-h-0" />}>
                 <Lock className="size-4 text-muted-foreground" />
                 <span className="text-sm">Change Password</span>
               </DropdownMenuItem>
 
-              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile?tab=preferences`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-1.5 rounded-md" />}>
+              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile?tab=preferences`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-2 sm:py-1.5 rounded-md min-h-11 sm:min-h-0" />}>
                 <Sliders className="size-4 text-muted-foreground" />
                 <span className="text-sm">Preferences</span>
               </DropdownMenuItem>
@@ -191,7 +199,7 @@ export function Header({ user }: HeaderProps) {
               <form action={logoutAction} className="w-full">
                 <button
                   type="submit"
-                  className="relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-destructive outline-none transition-colors hover:bg-destructive/10 focus:bg-destructive/10 font-medium"
+                  className="relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-2 sm:py-1.5 min-h-11 sm:min-h-0 text-sm text-destructive outline-none transition-colors hover:bg-destructive/10 focus:bg-destructive/10 font-medium"
                 >
                   <LogOut className="size-4" />
                   <span>Sign out</span>

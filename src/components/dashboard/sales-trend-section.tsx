@@ -59,11 +59,11 @@ export function SalesTrendSection({
   const hasData = totalOrders > 0;
 
   return (
-    <Card className="border border-border/60 shadow-sm">
-      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+    <Card className="border border-border/60 shadow-xs">
+      <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-base font-semibold text-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="text-sm sm:text-base font-semibold text-foreground">
               Sales & Order Velocity
             </CardTitle>
             <Badge variant="outline" className="text-[10px] uppercase font-mono">
@@ -80,14 +80,14 @@ export function SalesTrendSection({
 
       <CardContent>
         {!hasData ? (
-          <div className="h-70 w-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+          <div className="h-60 sm:h-72 w-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
             <p className="text-sm font-medium">No sales activity in this period</p>
             <p className="text-xs mt-1">Orders placed will reflect in this trend chart.</p>
           </div>
         ) : (
-          <div className={`h-70 w-full ${isPending ? 'opacity-50' : ''}`}>
+          <div className={`h-60 sm:h-72 w-full ${isPending ? 'opacity-50' : ''}`}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 10, right: 15, left: 0, bottom: 0 }}>
+              <AreaChart data={data} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="dashboardSalesGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#f97316" stopOpacity={0.4} />

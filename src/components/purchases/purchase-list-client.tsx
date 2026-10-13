@@ -599,7 +599,7 @@ export function PurchaseListClient({
                         className={buttonVariants({
                           variant: 'ghost',
                           size: 'sm',
-                          className: 'h-8 text-xs',
+                          className: 'min-h-9 px-3 text-xs',
                         })}
                       >
                         View Order
@@ -608,9 +608,9 @@ export function PurchaseListClient({
                         <Link
                           href={`/purchases/${po.id}`}
                           className={buttonVariants({
-                            variant: 'ghost',
+                            variant: 'outline',
                             size: 'sm',
-                            className: 'h-8 text-xs text-emerald-600',
+                            className: 'min-h-9 px-3 text-xs text-emerald-600 border-emerald-500/30',
                           })}
                         >
                           Receive
@@ -620,7 +620,7 @@ export function PurchaseListClient({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 text-xs text-destructive hover:text-destructive"
+                          className="min-h-9 px-3 text-xs text-destructive hover:text-destructive"
                           onClick={() => handleOpenCancel(po)}
                         >
                           Cancel

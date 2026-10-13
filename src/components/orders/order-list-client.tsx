@@ -413,9 +413,9 @@ export function OrderListClient({
           <CardContent className="px-4 pb-4">
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold tracking-tight text-foreground">
-                ${stats.todayRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                ${stats.todayRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </span>
-              <DollarSign className="size-4 text-muted-foreground" />
+              <DollarSign className="size-4 text-muted-foreground" aria-label="Revenue" />
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">From completed orders</p>
           </CardContent>
@@ -441,7 +441,7 @@ export function OrderListClient({
               <button
                 type="button"
                 onClick={() => handleDateFilter('today')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                className={`px-3 py-1.5 min-h-9 text-xs font-medium rounded-md transition-all ${
                   dateFilter === 'today'
                     ? 'bg-background shadow-xs text-foreground font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
@@ -452,7 +452,7 @@ export function OrderListClient({
               <button
                 type="button"
                 onClick={() => handleDateFilter('all')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                className={`px-3 py-1.5 min-h-9 text-xs font-medium rounded-md transition-all ${
                   dateFilter === 'all'
                     ? 'bg-background shadow-xs text-foreground font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
@@ -467,7 +467,7 @@ export function OrderListClient({
             {/* Branch Filter (hidden if manager locked) */}
             {branches.length > 1 && !userBranchId && (
               <Select value={selectedBranch} onValueChange={(val) => { if (val) handleBranchFilter(val); }}>
-                <SelectTrigger className="w-[180px] h-8 text-xs">
+                <SelectTrigger className="w-full sm:w-45 h-9 sm:h-8 text-xs">
                   <SelectValue placeholder="All Branches" />
                 </SelectTrigger>
                 <SelectContent>
@@ -483,7 +483,7 @@ export function OrderListClient({
 
             {/* Order Type Filter */}
             <Select value={selectedType} onValueChange={(val) => { if (val) handleTypeFilter(val); }}>
-              <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectTrigger className="w-full sm:w-35 h-9 sm:h-8 text-xs">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -496,7 +496,7 @@ export function OrderListClient({
 
             {/* Order Status Filter */}
             <Select value={selectedStatus} onValueChange={(val) => { if (val) handleStatusFilter(val); }}>
-              <SelectTrigger className="w-[150px] h-8 text-xs">
+              <SelectTrigger className="w-full sm:w-37.5 h-9 sm:h-8 text-xs">
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -521,7 +521,7 @@ export function OrderListClient({
                   setDateFilter('today');
                   setSearch('');
                 }}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground ml-auto"
+                className="h-9 sm:h-8 px-2 text-xs text-muted-foreground hover:text-foreground ml-auto"
               >
                 Reset Filters
               </Button>
@@ -566,14 +566,14 @@ export function OrderListClient({
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-[140px]">Order #</TableHead>
+                      <TableHead className="w-35">Order #</TableHead>
                       <TableHead>Type & Seating</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead>Branch</TableHead>
                       <TableHead className="text-center">Items</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right w-[80px]">Actions</TableHead>
+                      <TableHead className="text-right w-20">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -632,7 +632,7 @@ export function OrderListClient({
                         </TableCell>
 
                         <TableCell className="text-right font-semibold text-sm">
-                          ${ord.totalAmount.toFixed(2)}
+                          ₹{ord.totalAmount.toFixed(2)}
                         </TableCell>
 
                         <TableCell>{getStatusBadge(ord.status)}</TableCell>
@@ -737,7 +737,7 @@ export function OrderListClient({
                     <div className="flex items-center justify-between text-xs pt-1">
                       <div>{getTypeBadge(ord.orderType, ord.tableNumber)}</div>
                       <div className="font-bold text-sm text-foreground">
-                        ${ord.totalAmount.toFixed(2)}
+                        ₹{ord.totalAmount.toFixed(2)}
                       </div>
                     </div>
 
@@ -751,7 +751,7 @@ export function OrderListClient({
                           className={buttonVariants({
                             variant: 'ghost',
                             size: 'sm',
-                            className: 'h-8 px-2 text-xs',
+                            className: 'min-h-11 h-auto px-3 text-xs',
                           })}
                         >
                           Details
@@ -768,7 +768,7 @@ export function OrderListClient({
                                   orderNumber: ord.orderNumber,
                                 })
                               }
-                              className="h-8 px-2 text-xs text-destructive hover:text-destructive"
+                              className="min-h-11 h-auto px-3 text-xs text-destructive hover:text-destructive"
                             >
                               Cancel
                             </Button>
@@ -792,7 +792,7 @@ export function OrderListClient({
                       size="sm"
                       onClick={() => fetchOrders(pagination.page - 1)}
                       disabled={pagination.page <= 1 || isLoading}
-                      className="h-7 px-2"
+                      className="h-9 sm:h-7 px-3 sm:px-2"
                     >
                       <ChevronLeft className="size-3.5" />
                       Prev
@@ -802,7 +802,7 @@ export function OrderListClient({
                       size="sm"
                       onClick={() => fetchOrders(pagination.page + 1)}
                       disabled={pagination.page >= pagination.totalPages || isLoading}
-                      className="h-7 px-2"
+                      className="h-9 sm:h-7 px-3 sm:px-2"
                     >
                       Next
                       <ChevronRight className="size-3.5" />

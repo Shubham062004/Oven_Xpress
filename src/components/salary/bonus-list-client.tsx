@@ -288,9 +288,10 @@ export function BonusListClient({
         </div>
       </Card>
 
-      {/* Bonuses Table */}
+      {/* Bonuses Table / Mobile Cards */}
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <tr>
@@ -367,7 +368,7 @@ export function BonusListClient({
                                 size="sm"
                                 onClick={() => handleApprove(bonus.id)}
                                 disabled={isPending}
-                                className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                                 title="Approve Bonus"
                               >
                                 <Check className="size-4" />
@@ -380,7 +381,7 @@ export function BonusListClient({
                                   setRejectReason('');
                                 }}
                                 disabled={isPending}
-                                className="h-7 w-7 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                className="h-8 w-8 p-0 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                                 title="Reject Bonus"
                               >
                                 <X className="size-4" />
@@ -396,7 +397,7 @@ export function BonusListClient({
                                 size="sm"
                                 onClick={() => handleCancel(bonus.id)}
                                 disabled={isPending}
-                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                                 title="Cancel Bonus"
                               >
                                 <Ban className="size-3.5" />
@@ -424,9 +425,128 @@ export function BonusListClient({
           </table>
         </div>
 
+        {/* Mobile Card List View */}
+        <div className="md:hidden divide-y divide-border/60">
+          {initialBonuses.length > 0 ? (
+            initialBonuses.map((bonus) => {
+              const statusMeta =
+                BONUS_STATUS_META[bonus.status] ||
+                BONUS_STATUS_META.DRAFT;
+
+              return (
+                <div key={bonus.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-sm text-foreground">
+                        {bonus.employee.firstName} {bonus.employee.lastName}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono">
+                        {bonus.employee.employeeCode} • {bonus.employee.designation}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {bonus.branch.name}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                        +{formatINR(bonus.amount)}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs mt-1 ${statusMeta.badgeClass}`}
+                      >
+                        {statusMeta.label}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="text-xs bg-muted/30 p-2.5 rounded-md border border-border/40 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Category:</span>
+                      <Badge variant="outline" className="text-[11px] font-normal">
+                        {BONUS_TYPE_LABELS[bonus.type] || bonus.type}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Award Date:</span>
+                      <span className="font-medium">{formatDateShort(bonus.bonusDate)}</span>
+                    </div>
+                    <div className="pt-1 text-muted-foreground">
+                      <span className="font-medium text-foreground">Reason: </span>
+                      {bonus.reason}
+                    </div>
+                    {bonus.rejectionReason && (
+                      <div className="text-[11px] text-rose-600 dark:text-rose-400 italic pt-0.5">
+                        Rejection: {bonus.rejectionReason}
+                      </div>
+                    )}
+                  </div>
+
+                  {((bonus.status === BonusStatus.PENDING_APPROVAL && canApproveBonus) ||
+                    ((bonus.status === BonusStatus.DRAFT || bonus.status === BonusStatus.PENDING_APPROVAL) && canCancelBonus)) && (
+                    <div className="flex items-center justify-end gap-2 pt-1 border-t">
+                      {bonus.status === BonusStatus.PENDING_APPROVAL && canApproveBonus && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleApprove(bonus.id)}
+                            disabled={isPending}
+                            className="min-h-9 px-3 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-500/30 gap-1"
+                          >
+                            <Check className="size-3.5" />
+                            Approve
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setRejectBonusId(bonus.id);
+                              setRejectReason('');
+                            }}
+                            disabled={isPending}
+                            className="min-h-9 px-3 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-500/30 gap-1"
+                          >
+                            <X className="size-3.5" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      {(bonus.status === BonusStatus.DRAFT ||
+                        bonus.status === BonusStatus.PENDING_APPROVAL) &&
+                        canCancelBonus && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCancel(bonus.id)}
+                            disabled={isPending}
+                            className="min-h-9 px-3 text-xs text-muted-foreground gap-1"
+                          >
+                            <Ban className="size-3.5" />
+                            Cancel
+                          </Button>
+                        )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="py-12 text-center text-muted-foreground p-4">
+              <Gift className="mx-auto size-8 text-muted-foreground/40 mb-2" />
+              <p className="text-base font-semibold">No bonus awards recorded</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {branchFilter || statusFilter || search
+                  ? 'Try changing your search filters.'
+                  : 'Award your first employee bonus or incentive using the button above.'}
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Pagination Footer */}
         {initialPagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t px-4 py-3 text-xs text-muted-foreground">
             <div>
               Showing {(initialPagination.page - 1) * initialPagination.pageSize + 1} to{' '}
               {Math.min(
@@ -442,12 +562,12 @@ export function BonusListClient({
                 size="sm"
                 onClick={() => handlePageChange(initialPagination.page - 1)}
                 disabled={!initialPagination.hasPrevPage || isPending}
-                className="h-8 gap-1 text-xs"
+                className="min-h-9 gap-1 text-xs"
               >
                 <ChevronLeft className="size-3.5" />
                 Previous
               </Button>
-              <span>
+              <span className="px-1 font-medium">
                 Page {initialPagination.page} of {initialPagination.totalPages}
               </span>
               <Button
@@ -455,7 +575,7 @@ export function BonusListClient({
                 size="sm"
                 onClick={() => handlePageChange(initialPagination.page + 1)}
                 disabled={!initialPagination.hasNextPage || isPending}
-                className="h-8 gap-1 text-xs"
+                className="min-h-9 gap-1 text-xs"
               >
                 Next
                 <ChevronRight className="size-3.5" />

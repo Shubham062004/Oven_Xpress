@@ -56,7 +56,7 @@ export function DateRangePicker({
     <div
       className={`flex flex-wrap items-center gap-2 bg-card/60 backdrop-blur-sm border border-border/60 p-1.5 rounded-xl shadow-xs ${className}`}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {PRESET_OPTIONS.map((opt) => {
           const isActive = currentPreset === opt.preset && !isCustomOpen;
           return (
@@ -65,7 +65,7 @@ export function DateRangePicker({
               type="button"
               variant={isActive ? 'default' : 'ghost'}
               size="sm"
-              className={`h-8 px-3 text-xs font-medium rounded-lg transition-all ${
+              className={`min-h-9 px-2.5 sm:px-3 text-xs font-medium rounded-lg transition-all ${
                 isActive
                   ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground'
@@ -81,7 +81,7 @@ export function DateRangePicker({
           type="button"
           variant={currentPreset === 'custom' || isCustomOpen ? 'default' : 'ghost'}
           size="sm"
-          className={`h-8 px-3 text-xs font-medium rounded-lg transition-all ${
+          className={`min-h-9 px-2.5 sm:px-3 text-xs font-medium rounded-lg transition-all ${
             currentPreset === 'custom' || isCustomOpen
               ? 'bg-primary text-primary-foreground shadow-xs'
               : 'text-muted-foreground hover:text-foreground'

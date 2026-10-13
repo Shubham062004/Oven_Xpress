@@ -52,7 +52,7 @@ export function ReportTableWrapper({
               size="sm"
               onClick={onExportCSV}
               disabled={exportDisabled || exportLoading}
-              className="h-8 px-3 text-xs font-medium rounded-lg border-border/60 gap-1.5 hover:bg-muted/50 transition-colors"
+              className="min-h-9 px-3 text-xs font-medium rounded-lg border-border/60 gap-1.5 hover:bg-muted/50 transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               {exportLoading ? 'Exporting...' : 'Export CSV'}
@@ -61,7 +61,7 @@ export function ReportTableWrapper({
         </div>
       </CardHeader>
 
-      <CardContent className="p-0">
+      <CardContent className="p-0 overflow-x-auto">
         {loading ? (
           <div className="p-6 space-y-3">
             <Skeleton className="h-9 w-full" />
