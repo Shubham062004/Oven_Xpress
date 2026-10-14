@@ -3,11 +3,12 @@
 import { redirect } from 'next/navigation';
 
 import { prisma } from '@/lib/db/prisma';
-import { verifyPassword, DUMMY_BCRYPT_HASH } from '@/lib/auth/password';
+import { verifyPassword, hashPassword, DUMMY_BCRYPT_HASH } from '@/lib/auth/password';
 import { createSession, destroySession } from '@/lib/auth/session';
 import { getCurrentUser } from '@/lib/auth/guards';
 import {
   loginSchema,
+  registerSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
@@ -38,6 +39,16 @@ export interface LoginFormState extends ActionResult {
     password?: string[];
   };
   unverified?: boolean;
+}
+
+export interface RegisterFormState extends ActionResult {
+  fieldErrors?: {
+    name?: string[];
+    email?: string[];
+    phone?: string[];
+    password?: string[];
+    confirmPassword?: string[];
+  };
 }
 
 export interface PasswordResetFormState extends ActionResult<{ devResetUrl?: string }> {
@@ -281,12 +292,20 @@ export async function loginAction(
       select: { role: { select: { name: true } } },
     });
     const roleSlug = (userRoleRecord?.role?.name || 'STAFF').toLowerCase();
-    const defaultRolePath = `/${roleSlug}`;
+    const isCustomer = roleSlug === 'customer';
+    const defaultRolePath = isCustomer ? '/' : `/${roleSlug}`;
 
-    // 8. Safe redirect on success to role-specific dashboard
-    const targetUrl = callbackUrl && callbackUrl !== '/' && callbackUrl !== '/dashboard'
-      ? sanitizeRedirectUrl(callbackUrl, defaultRolePath)
-      : defaultRolePath;
+    // 8. Safe redirect on success to role-specific dashboard or customer homepage
+    let targetUrl: string;
+    if (isCustomer) {
+      targetUrl = callbackUrl && callbackUrl !== '/dashboard'
+        ? sanitizeRedirectUrl(callbackUrl, '/')
+        : '/';
+    } else {
+      targetUrl = callbackUrl && callbackUrl !== '/' && callbackUrl !== '/dashboard'
+        ? sanitizeRedirectUrl(callbackUrl, defaultRolePath)
+        : defaultRolePath;
+    }
 
     redirect(targetUrl);
   } catch (error) {
@@ -303,6 +322,206 @@ export async function loginAction(
     return {
       success: false,
       error: 'An unexpected authentication error occurred. Please try again later.',
+    };
+  }
+}
+
+/**
+ * Server Action for self-service customer registration.
+ * Validates inputs, creates User account with CUSTOMER role, creates/links Customer profile,
+ * issues a session, and redirects to callbackUrl or customer homepage.
+ */
+export async function registerAction(
+  _prevState: RegisterFormState | null,
+  formData: FormData
+): Promise<RegisterFormState> {
+  const name = formData.get('name');
+  const email = formData.get('email');
+  const phone = formData.get('phone');
+  const password = formData.get('password');
+  const confirmPassword = formData.get('confirmPassword');
+  const callbackUrl = (formData.get('callbackUrl') as string) || '/';
+  const clientCtx = await getClientContext();
+
+  // 1. Anti-Bot Honeypot Protection
+  if (!validateHoneypot(formData)) {
+    logTrafficAnomaly({
+      type: 'BOT_HONEYPOT_TRIGGERED',
+      path: '/register',
+      method: 'POST',
+      clientIp: clientCtx.ipAddress ?? undefined,
+      userAgent: clientCtx.userAgent ?? undefined,
+      statusCode: 400,
+      reason: 'Automated script completed hidden honeypot trap field',
+    });
+
+    return {
+      success: false,
+      error: 'Invalid registration request.',
+    };
+  }
+
+  // 2. Validate form fields
+  const validationResult = registerSchema.safeParse({
+    name,
+    email,
+    phone,
+    password,
+    confirmPassword,
+  });
+
+  if (!validationResult.success) {
+    const errorFormatted = validationResult.error.flatten();
+    return {
+      success: false,
+      error: 'Please fix the errors below.',
+      fieldErrors: {
+        name: errorFormatted.fieldErrors.name,
+        email: errorFormatted.fieldErrors.email,
+        phone: errorFormatted.fieldErrors.phone,
+        password: errorFormatted.fieldErrors.password,
+        confirmPassword: errorFormatted.fieldErrors.confirmPassword,
+      },
+    };
+  }
+
+  const { name: cleanName, email: cleanEmail, phone: cleanPhone, password: cleanPassword } = validationResult.data;
+
+  // 3. Abuse check / Rate limiting
+  const abuseCheck = checkLoginAbuse({
+    email: cleanEmail,
+    clientIp: clientCtx.ipAddress ?? undefined,
+  });
+
+  if (!abuseCheck.allowed) {
+    return {
+      success: false,
+      error: 'Too many registration attempts. Please try again later.',
+    };
+  }
+
+  try {
+    // 4. Check if user already exists with this email
+    const existingUser = await prisma.user.findUnique({
+      where: { email: cleanEmail.toLowerCase() },
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        error: 'An account with this email address already exists. Please log in.',
+        fieldErrors: {
+          email: ['Email address is already registered'],
+        },
+      };
+    }
+
+    // 5. Query or seed CUSTOMER role
+    let customerRole = await prisma.role.findUnique({
+      where: { name: 'CUSTOMER' },
+    });
+
+    if (!customerRole) {
+      customerRole = await prisma.role.create({
+        data: {
+          name: 'CUSTOMER',
+          description: 'Self-service customer ordering account',
+        },
+      });
+    }
+
+    // 6. Check if customer profile exists with phone
+    const existingCustomer = await prisma.customer.findUnique({
+      where: { phone: cleanPhone },
+    });
+
+    if (existingCustomer && existingCustomer.userId) {
+      return {
+        success: false,
+        error: 'An account with this phone number is already registered. Please log in.',
+        fieldErrors: {
+          phone: ['Phone number is already associated with an account'],
+        },
+      };
+    }
+
+    // 7. Hash password
+    const hashedPassword = await hashPassword(cleanPassword);
+
+    // 8. Create User and link or create Customer in a transaction
+    const newUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name: cleanName,
+          email: cleanEmail.toLowerCase(),
+          phone: cleanPhone,
+          passwordHash: hashedPassword,
+          roleId: customerRole.id,
+          isActive: true,
+          emailVerified: new Date(),
+        },
+      });
+
+      if (existingCustomer) {
+        await tx.customer.update({
+          where: { id: existingCustomer.id },
+          data: {
+            userId: user.id,
+            email: existingCustomer.email || cleanEmail.toLowerCase(),
+            name: cleanName,
+          },
+        });
+      } else {
+        await tx.customer.create({
+          data: {
+            name: cleanName,
+            email: cleanEmail.toLowerCase(),
+            phone: cleanPhone,
+            userId: user.id,
+            status: 'ACTIVE',
+          },
+        });
+      }
+
+      return user;
+    });
+
+    // 9. Log audit
+    await createAuditLog({
+      actorUserId: newUser.id,
+      action: AUDIT_ACTIONS.AUTH_LOGIN,
+      entityType: AUDIT_ENTITY_TYPES.SESSION,
+      entityId: newUser.id,
+      description: `Customer account registered: ${newUser.name} (${newUser.email})`,
+      metadata: { role: 'CUSTOMER' },
+    }).catch((e) => console.error('Failed to log registration audit:', e));
+
+    // 10. Automatically establish customer session
+    await createSession(newUser.id, {
+      ipAddress: clientCtx.ipAddress ?? undefined,
+      userAgent: clientCtx.userAgent ?? undefined,
+    });
+
+    // 11. Safe redirect to destination
+    const targetUrl = callbackUrl && callbackUrl !== '/dashboard'
+      ? sanitizeRedirectUrl(callbackUrl, '/')
+      : '/';
+
+    redirect(targetUrl);
+  } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'digest' in error &&
+      typeof (error as { digest?: unknown }).digest === 'string' &&
+      (error as { digest: string }).digest.startsWith('NEXT_REDIRECT')
+    ) {
+      throw error;
+    }
+    console.error('Registration error:', error);
+    return {
+      success: false,
+      error: 'An unexpected error occurred during registration. Please try again.',
     };
   }
 }

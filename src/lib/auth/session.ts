@@ -9,18 +9,29 @@ import { logAuthAttempt } from '@/lib/security/security-logger';
 
 export const SESSION_COOKIE_NAME = 'ox_session';
 export const ROLE_COOKIE_NAME = 'ox_user_role';
-export const SESSION_TTL_SECONDS = 10 * 60; // Exactly 10 minutes (600 seconds)
+export const SESSION_TTL_SECONDS = 10 * 60; // Exactly 10 minutes (600 seconds) for ERP users
+export const CUSTOMER_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days for customer users
 
 /**
  * Creates a new session in the database and writes the secure HTTP-only cookies.
- * Absolute 10-minute lifetime is enforced.
+ * ERP users get a strict 10-minute absolute lifetime.
+ * Customer users get a 7-day session for comfortable browsing/ordering.
  */
 export async function createSession(
   userId: string,
   metadata?: { ipAddress?: string; userAgent?: string }
 ): Promise<string> {
   const sessionToken = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+
+  // Query role name to determine session TTL and for edge middleware routing
+  const userRecord = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: { select: { name: true } } },
+  });
+  const roleName = (userRecord?.role?.name || 'STAFF').toLowerCase();
+  const isCustomer = roleName === 'customer';
+  const ttlSeconds = isCustomer ? CUSTOMER_SESSION_TTL_SECONDS : SESSION_TTL_SECONDS;
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   // Store in database
   await prisma.session.create({
@@ -33,24 +44,17 @@ export async function createSession(
     },
   });
 
-  // Query role name for edge middleware routing
-  const userRecord = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: { select: { name: true } } },
-  });
-  const roleName = (userRecord?.role?.name || 'STAFF').toLowerCase();
-
   // Opportunistic cleanup of expired sessions
   cleanupExpiredSessions().catch(() => {});
 
-  // Set HTTP-only cookies with strict 10-minute maxAge
+  // Set HTTP-only cookies
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: SESSION_TTL_SECONDS,
+    maxAge: ttlSeconds,
     expires: expiresAt,
   });
 
@@ -59,7 +63,7 @@ export async function createSession(
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: SESSION_TTL_SECONDS,
+    maxAge: ttlSeconds,
     expires: expiresAt,
   });
 

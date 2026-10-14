@@ -214,6 +214,7 @@ export const ROLES = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
   STAFF: 'STAFF',
+  CUSTOMER: 'CUSTOMER',
 } as const;
 
 export type RoleName = (typeof ROLES)[keyof typeof ROLES];
@@ -655,5 +656,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleName, readonly PermissionCode[
     PERMISSIONS.ISSUE_CREATE,
     PERMISSIONS.NOTIFICATION_READ,
     PERMISSIONS.NOTIFICATION_DISMISS,
+  ],
+  CUSTOMER: [
+    // Customers have no ERP permissions.
+    // Access is controlled by role checks in customer-facing routes.
   ],
 };

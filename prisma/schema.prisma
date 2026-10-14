@@ -13,6 +13,7 @@ model User {
   email                   String                   @unique
   passwordHash            String
   phone                   String?
+  addresses               Json?                    @default("[]")
   avatarUrl               String?
   passwordChangedAt       DateTime?
   roleId                  String
@@ -23,6 +24,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   employee                Employee?
+  customer                Customer?
   notifications           Notification[]
   auditLogs               AuditLog[]
   preference              UserPreference?
@@ -114,6 +116,7 @@ model Branch {
   id          String       @id @default(cuid())
   name        String
   code        String       @unique
+  slug        String?      @unique
   description String?
   address     String
   city        String
@@ -584,6 +587,8 @@ model Customer {
   email     String?
   address   String?
   notes     String?
+  userId    String?        @unique
+  user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   status    CustomerStatus @default(ACTIVE)
   orders    Order[]
   reviews   Review[]
@@ -594,6 +599,7 @@ model Customer {
   @@index([phone])
   @@index([name])
   @@index([status])
+  @@index([userId])
 }
 
 model RestaurantTable {
@@ -1381,5 +1387,17 @@ model UserPreference {
   updatedAt         DateTime @updatedAt
 
   @@index([userId])
+}
+
+model Coupon {
+  id           String    @id
+  code         String    @unique
+  discount     Decimal   @db.Decimal
+  discountType String    @default("percentage")
+  minOrder     Decimal   @default(0) @db.Decimal
+  maxDiscount  Decimal?  @db.Decimal
+  expiresAt    DateTime? @db.Timestamp(6)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
 }
 

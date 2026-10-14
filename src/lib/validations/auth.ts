@@ -91,7 +91,34 @@ export const resendVerificationSchema = z.object({
     .email({ message: 'Please enter a valid email address' }),
 });
 
+export const registerSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, { message: 'Name must be at least 2 characters long' })
+      .max(100, { message: 'Name cannot exceed 100 characters' }),
+    email: z
+      .string()
+      .trim()
+      .min(1, { message: 'Email address is required' })
+      .email({ message: 'Please enter a valid email address' }),
+    phone: z
+      .string()
+      .trim()
+      .min(10, { message: 'Phone number must be at least 10 digits' })
+      .max(15, { message: 'Phone number cannot exceed 15 digits' })
+      .regex(/^[0-9+\s\-()]+$/, { message: 'Please enter a valid phone number' }),
+    password: strongPasswordSchema,
+    confirmPassword: z.string().min(1, { message: 'Please confirm your password' }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
 export type LoginInput = z.infer<typeof loginSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;

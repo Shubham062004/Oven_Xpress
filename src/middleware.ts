@@ -13,13 +13,26 @@ import { logTrafficAnomaly } from '@/lib/security/security-logger';
 
 const SESSION_COOKIE_NAME = 'ox_session';
 
-// Paths that unauthenticated users can access
+// Paths that unauthenticated users can access (auth forms)
 const PUBLIC_PATHS = [
   '/login',
   '/unauthorized',
   '/forgot-password',
   '/reset-password',
   '/verify-email',
+  '/register',
+];
+
+// Customer-facing public paths — accessible without any authentication
+const CUSTOMER_PUBLIC_PATHS = [
+  '/b',       // /b/[slug], /b/[slug]/menu, etc.
+  '/cart',
+];
+
+// Customer-facing paths that require CUSTOMER (or staff) authentication
+const CUSTOMER_PROTECTED_PATHS = [
+  '/checkout',
+  '/account',
 ];
 
 // Methods that should never be processed by application routes
@@ -106,6 +119,9 @@ const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
   ],
 };
 
+// ERP internal roles (non-customer)
+const ERP_ROLES = new Set(['owner', 'admin', 'manager', 'staff']);
+
 export function middleware(request: NextRequest) {
   try {
     const { pathname, search } = request.nextUrl;
@@ -116,7 +132,6 @@ export function middleware(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     // 1. Enforce HTTPS in production (except on local development / loopback addresses)
-    // Checks reverse proxy forwarding header ('x-forwarded-proto') or direct URL protocol
     const proto =
       request.headers.get('x-forwarded-proto') ||
       request.nextUrl.protocol.replace(':', '');
@@ -298,6 +313,18 @@ export function middleware(request: NextRequest) {
       (path) => pathname === path || pathname.startsWith(`${path}/`)
     );
 
+    // Determine if this is a customer-facing public path (no auth needed)
+    const isCustomerPublicPath =
+      pathname === '/' ||
+      CUSTOMER_PUBLIC_PATHS.some(
+        (path) => pathname === path || pathname.startsWith(`${path}/`)
+      );
+
+    // Determine if this is a customer-facing protected path (needs auth)
+    const isCustomerProtectedPath = CUSTOMER_PROTECTED_PATHS.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    );
+
     // 6. If user is unauthenticated and attempting to access a protected API route
     if (!sessionCookie && isApiPath) {
       return NextResponse.json(
@@ -312,7 +339,20 @@ export function middleware(request: NextRequest) {
     }
 
     // 7. If user is not authenticated and trying to access a protected page
-    if (!sessionCookie && !isPublicPath && !isApiPath) {
+    // Allow customer public paths and auth pages through without session
+    if (!sessionCookie && !isPublicPath && !isCustomerPublicPath && !isApiPath) {
+      // Customer protected paths redirect to login with return URL
+      if (isCustomerProtectedPath) {
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = '/login';
+        if (pathname !== '/' && isSafeRedirectUrl(pathname)) {
+          loginUrl.searchParams.set('callbackUrl', pathname);
+          loginUrl.searchParams.set('returnTo', pathname);
+        }
+        return NextResponse.redirect(loginUrl);
+      }
+
+      // ERP paths redirect to login with session-expired
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = '/login';
       loginUrl.searchParams.set('reason', 'session-expired');
@@ -341,7 +381,8 @@ export function middleware(request: NextRequest) {
 
       if (sessionCookie) {
         const rawRole = request.cookies.get('ox_user_role')?.value?.toLowerCase();
-        const roleHome = rawRole ? `/${rawRole}` : '/owner';
+        // CUSTOMER role goes to homepage, ERP roles go to their dashboard
+        const roleHome = rawRole === 'customer' ? '/' : (rawRole ? `/${rawRole}` : '/owner');
         const rawCallback =
           request.nextUrl.searchParams.get('callbackUrl') ||
           request.nextUrl.searchParams.get('returnTo');
@@ -358,17 +399,60 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    const userRole = (request.cookies.get('ox_user_role')?.value || 'owner').toLowerCase();
+    const userRole = (request.cookies.get('ox_user_role')?.value || '').toLowerCase();
+    const isCustomerRole = userRole === 'customer';
+    const isErpRole = ERP_ROLES.has(userRole);
 
-    // A. Root or /dashboard redirection -> land directly on role dashboard
+    // A. Root page — for ERP users redirect to their dashboard, for customers/public let through
     if (pathname === '/' || pathname === '/dashboard') {
-      const roleDashboardUrl = new URL(`/${userRole}`, request.nextUrl.origin);
-      return NextResponse.redirect(roleDashboardUrl);
+      if (sessionCookie && isErpRole) {
+        const roleDashboardUrl = new URL(`/${userRole}`, request.nextUrl.origin);
+        return NextResponse.redirect(roleDashboardUrl);
+      }
+      // Customer users and unauthenticated visitors see the customer homepage
+      return NextResponse.next();
     }
 
-    // B. Role-based API authorization (/api/owner/..., /api/staff/...)
+    // B. Customer public paths — let everyone through (customer, staff, or unauthenticated)
+    if (isCustomerPublicPath) {
+      return NextResponse.next();
+    }
+
+    // C. Customer protected paths — require auth but NOT ERP role check
+    if (isCustomerProtectedPath) {
+      // Already handled unauthenticated redirect above (step 7)
+      // If authenticated customer, let through
+      if (isCustomerRole) {
+        return NextResponse.next();
+      }
+      // ERP users accessing customer routes — also let through (they have auth)
+      if (isErpRole) {
+        return NextResponse.next();
+      }
+      // Unknown role with session — let through, page will handle authorization
+      return NextResponse.next();
+    }
+
+    // D. Block CUSTOMER role from accessing ERP routes
+    if (sessionCookie && isCustomerRole) {
+      const rolePageMatch = pathname.match(/^\/(owner|admin|manager|staff)(?:\/(.*))?$/);
+      if (rolePageMatch) {
+        // Customer trying to access an ERP dashboard — send to homepage
+        return NextResponse.redirect(new URL('/', request.nextUrl.origin));
+      }
+    }
+
+    // E. Role-based API authorization (/api/owner/..., /api/staff/...)
     const roleApiMatch = pathname.match(/^\/api\/(owner|admin|manager|staff)(?:\/(.*))?$/);
     if (roleApiMatch) {
+      // Block customers from ERP API endpoints
+      if (isCustomerRole) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: Insufficient privileges' },
+          { status: 403 }
+        );
+      }
+
       const targetApiRole = roleApiMatch[1];
       const isRoleAllowed =
         userRole === 'owner' ||
@@ -387,9 +471,14 @@ export function middleware(request: NextRequest) {
       }
     }
 
-    // C. Role-prefixed page routing (/owner, /owner/branches, /staff/orders)
+    // F. Role-prefixed page routing (/owner, /owner/branches, /staff/orders)
     const rolePageMatch = pathname.match(/^\/(owner|admin|manager|staff)(?:\/(.*))?$/);
     if (rolePageMatch) {
+      // Block customers from ERP workspaces
+      if (isCustomerRole) {
+        return NextResponse.redirect(new URL('/', request.nextUrl.origin));
+      }
+
       const targetRole = rolePageMatch[1];
       const subpath = rolePageMatch[2] || '';
       const rootSection = subpath.split('/')[0];
@@ -427,7 +516,7 @@ export function middleware(request: NextRequest) {
       // If subpath is empty (e.g. /owner, /staff, /manager, /admin), allow request to proceed to dedicated dashboard page!
     }
 
-    // D. Un-prefixed page access (e.g. /branches, /orders, /kitchen directly entered)
+    // G. Un-prefixed page access (e.g. /branches, /orders, /kitchen directly entered)
     const knownSections = [
       'branches',
       'employees',
@@ -456,24 +545,31 @@ export function middleware(request: NextRequest) {
     const pathFirstSegment = pathname.replace(/^\//, '').split('/')[0];
 
     if (knownSections.includes(pathFirstSegment)) {
-      const allowedForUser = ROLE_ALLOWED_SUBPATHS[userRole] || [];
-      if (allowedForUser.includes(pathFirstSegment)) {
-        const prefixedUrl = new URL(
-          `/${userRole}${pathname}`,
-          request.nextUrl.origin
-        );
-        prefixedUrl.search = request.nextUrl.search;
-        return NextResponse.redirect(prefixedUrl);
-      } else {
-        const fallbackUrl = new URL(`/${userRole}`, request.nextUrl.origin);
-        return NextResponse.redirect(fallbackUrl);
+      // Customers should not access ERP sections directly
+      if (isCustomerRole) {
+        return NextResponse.redirect(new URL('/', request.nextUrl.origin));
+      }
+
+      if (isErpRole) {
+        const allowedForUser = ROLE_ALLOWED_SUBPATHS[userRole] || [];
+        if (allowedForUser.includes(pathFirstSegment)) {
+          const prefixedUrl = new URL(
+            `/${userRole}${pathname}`,
+            request.nextUrl.origin
+          );
+          prefixedUrl.search = request.nextUrl.search;
+          return NextResponse.redirect(prefixedUrl);
+        } else {
+          const fallbackUrl = new URL(`/${userRole}`, request.nextUrl.origin);
+          return NextResponse.redirect(fallbackUrl);
+        }
       }
     }
 
     const response = NextResponse.next();
 
     // Prevent stale/bfcache serving of authenticated pages
-    if (!isPublicPath && !isApiPath) {
+    if (!isPublicPath && !isApiPath && !isCustomerPublicPath) {
       response.headers.set(
         'Cache-Control',
         'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'

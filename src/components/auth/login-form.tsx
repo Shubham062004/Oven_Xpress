@@ -187,7 +187,16 @@ export function LoginForm() {
           <ShieldCheck className="size-3.5" />
           <span>Quick-Fill Demo Credentials (Testing)</span>
         </div>
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            onClick={() => fillCredentials('customer@ovenxpress.com', 'Customer123!')}
+            className="text-[11px] border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 font-semibold"
+          >
+            Customer
+          </Button>
           <Button
             type="button"
             variant="outline"
