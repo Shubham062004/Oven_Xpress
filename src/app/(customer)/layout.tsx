@@ -110,6 +110,14 @@ export default async function CustomerLayout({
                   </Link>
                 </li>
                 <li>
+                  <Link
+                    href="/report-bug"
+                    className="hover:text-primary transition-colors flex items-center gap-1.5 text-primary/90 font-medium"
+                  >
+                    <span>Report a Bug</span>
+                  </Link>
+                </li>
+                <li>
                   <Link href="/login" className="hover:text-primary transition-colors">
                     Staff Portal
                   </Link>

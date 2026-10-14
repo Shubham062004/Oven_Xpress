@@ -202,6 +202,10 @@ export const PERMISSIONS = {
   // Audit Logs & System Activity
   AUDIT_READ: 'audit.read',
   AUDIT_EXPORT: 'audit.export',
+
+  // Bug Reports (Technical Customer Bug Reports - Owner only)
+  BUG_REPORT_READ: 'bug_report.read',
+  BUG_REPORT_UPDATE: 'bug_report.update',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -225,6 +229,8 @@ export type RoleName = (typeof ROLES)[keyof typeof ROLES];
 export const DEFAULT_ROLE_PERMISSIONS: Record<RoleName, readonly PermissionCode[]> = {
   OWNER: [
     PERMISSIONS.DASHBOARD_READ,
+    PERMISSIONS.BUG_REPORT_READ,
+    PERMISSIONS.BUG_REPORT_UPDATE,
     PERMISSIONS.USERS_READ,
     PERMISSIONS.USERS_CREATE,
     PERMISSIONS.USERS_UPDATE,

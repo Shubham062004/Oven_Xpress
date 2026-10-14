@@ -27,6 +27,9 @@ const PUBLIC_PATHS = [
 const CUSTOMER_PUBLIC_PATHS = [
   '/b',       // /b/[slug], /b/[slug]/menu, etc.
   '/cart',
+  '/track',
+  '/report-bug',
+  '/api/bug-reports',
 ];
 
 // Customer-facing paths that require CUSTOMER (or staff) authentication
@@ -58,6 +61,7 @@ const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
     'reviews',
     'feedback',
     'sales',
+    'bug-reports',
     'reports',
     'audit-logs',
     'settings',
@@ -541,6 +545,7 @@ export function middleware(request: NextRequest) {
       'settings',
       'notifications',
       'profile',
+      'bug-reports',
     ];
     const pathFirstSegment = pathname.replace(/^\//, '').split('/')[0];
 

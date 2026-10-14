@@ -28,6 +28,7 @@ model User {
   notifications           Notification[]
   auditLogs               AuditLog[]
   preference              UserPreference?
+  bugReports              BugReport[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -1278,6 +1279,7 @@ enum NotificationType {
   UNPAID_ORDER
   ATTENDANCE_ALERT
   OPERATIONAL_EXCEPTION
+  BUG_REPORT
 }
 
 enum NotificationSeverity {
@@ -1399,5 +1401,52 @@ model Coupon {
   expiresAt    DateTime? @db.Timestamp(6)
   isActive     Boolean   @default(true)
   createdAt    DateTime  @default(now()) @db.Timestamp(6)
+}
+
+enum BugReportCategory {
+  LOGIN_REGISTRATION
+  MENU
+  CART
+  CHECKOUT_PAYMENT
+  ORDER_TRACKING
+  ACCOUNT
+  UI_DISPLAY
+  OTHER
+}
+
+enum BugReportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model BugReport {
+  id             String            @id @default(cuid())
+  reportNumber   String            @unique
+  title          String
+  description    String
+  category       BugReportCategory @default(OTHER)
+  status         BugReportStatus   @default(OPEN)
+  userId         String?
+  user           User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  reporterName   String?
+  reporterEmail  String?
+  reporterPhone  String?
+  pageUrl        String?
+  userAgent      String?
+  deviceInfo     Json?
+  screenshotUrl  String?
+  resolvedBy     String?
+  resolvedAt     DateTime?
+  resolutionNote String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([reportNumber])
 }
 

@@ -20,6 +20,7 @@ import {
   MessageSquare,
   Bell,
   ScrollText,
+  Bug,
 } from 'lucide-react';
 
 import { PERMISSIONS } from '@/lib/permissions/definitions';
@@ -158,6 +159,12 @@ export const mainNavItems: NavItem[] = [
     icon: ScrollText,
     requiredPermission: PERMISSIONS.AUDIT_READ,
   },
+  {
+    label: 'Bug Reports',
+    href: '/bug-reports',
+    icon: Bug,
+    requiredPermission: PERMISSIONS.BUG_REPORT_READ,
+  },
 ];
 
 export const bottomNavItems: NavItem[] = [
@@ -197,6 +204,7 @@ export const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
     'sales',
     'reports',
     'audit-logs',
+    'bug-reports',
     'settings',
     'notifications',
     'profile',

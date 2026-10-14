@@ -12,6 +12,7 @@ import {
   Home,
   Briefcase,
   ShoppingBag,
+  Bug,
 } from 'lucide-react';
 import { logoutAction } from '@/lib/auth/actions';
 import type { Metadata } from 'next';
@@ -212,6 +213,31 @@ export default async function CustomerAccountPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Support & Bug Reporting */}
+      <div className="bg-card rounded-2xl border border-border/70 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <Bug className="size-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-foreground">
+              Technical Issue or System Glitch?
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Report checkout issues, visual bugs, or broken pages directly to our engineering team.
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href="/report-bug"
+          className="px-4 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-colors inline-flex items-center gap-1.5 shrink-0"
+        >
+          <span>Report a Bug</span>
+          <ChevronRight className="size-3.5" />
+        </Link>
       </div>
     </div>
   );

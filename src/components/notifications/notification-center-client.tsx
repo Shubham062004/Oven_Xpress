@@ -18,6 +18,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Bug,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -98,6 +99,8 @@ function getTypeMeta(type: string): { label: string; icon: React.ReactNode } {
       return { label: 'Unpaid Order', icon: <CreditCard className="w-3.5 h-3.5" /> };
     case 'ATTENDANCE_ALERT':
       return { label: 'Attendance Alert', icon: <Calendar className="w-3.5 h-3.5" /> };
+    case 'BUG_REPORT':
+      return { label: 'Bug Report', icon: <Bug className="w-3.5 h-3.5 text-rose-500" /> };
     default:
       return { label: 'Operational Alert', icon: <Info className="w-3.5 h-3.5" /> };
   }
@@ -444,6 +447,7 @@ export function NotificationCenterClient({
               <SelectItem value="FAILED_PAYMENT">Failed Payments</SelectItem>
               <SelectItem value="UNPAID_ORDER">Unpaid Orders</SelectItem>
               <SelectItem value="ATTENDANCE_ALERT">Attendance</SelectItem>
+              <SelectItem value="BUG_REPORT">Bug Reports</SelectItem>
             </SelectContent>
           </Select>
 
