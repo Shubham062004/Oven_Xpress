@@ -171,8 +171,9 @@ export function ReportBugForm({ initialUser }: ReportBugFormProps) {
         title: title.trim(),
         category,
       });
-    } catch (err: any) {
-      setError(err?.message || 'A network error occurred. Please try again.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'A network error occurred. Please try again.';
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -207,7 +208,7 @@ export function ReportBugForm({ initialUser }: ReportBugFormProps) {
             Bug Report Submitted!
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Thank you for helping us improve Oven Xpress. Our engineering team has been
+            Thank you for helping us improve Oven Express. Our engineering team has been
             notified directly and will investigate the issue promptly.
           </p>
         </div>

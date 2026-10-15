@@ -104,7 +104,7 @@ export const SETTING_DEFINITIONS: Record<string, SettingDefinition> = {
     category: 'BUSINESS',
     dataType: 'STRING',
     allowedScopes: ['GLOBAL'],
-    defaultValue: 'Oven Xpress',
+    defaultValue: 'Oven Express',
     validate: createStringValidator({ min: 1, max: 100 }),
   },
   BUSINESS_LEGAL_NAME: {
@@ -114,7 +114,7 @@ export const SETTING_DEFINITIONS: Record<string, SettingDefinition> = {
     category: 'BUSINESS',
     dataType: 'STRING',
     allowedScopes: ['GLOBAL'],
-    defaultValue: 'Oven Xpress Bakery & Cafe Ltd',
+    defaultValue: 'Oven Express Bakery & Cafe Ltd',
     validate: createStringValidator({ min: 1, max: 150 }),
   },
   BUSINESS_PHONE: {

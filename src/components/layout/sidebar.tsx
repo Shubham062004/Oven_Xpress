@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
@@ -56,13 +57,20 @@ export function Sidebar({ user }: SidebarProps) {
           isCollapsed ? 'justify-center' : 'gap-2'
         )}
       >
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <span className="text-sm font-bold">OX</span>
+        <div className="relative flex size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-white/90 dark:bg-zinc-900 border border-sidebar-border">
+          <Image
+            src="/logo.png"
+            alt="Oven Express"
+            fill
+            sizes="32px"
+            className="object-contain p-0.5"
+            priority
+          />
         </div>
         {!isCollapsed && (
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-semibold text-sidebar-foreground truncate">
-              Oven Xpress
+              Oven Express
             </span>
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
               {user?.role || 'Portal'}

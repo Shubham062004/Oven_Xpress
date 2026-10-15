@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useTransition } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ChefHat,
   Clock,
@@ -330,13 +331,20 @@ export function KitchenBoardClient({
             className="flex items-center gap-2 text-foreground hover:opacity-80 transition-opacity"
             title="Exit to Orders Dashboard"
           >
-            <div className="p-1.5 rounded-lg bg-primary text-primary-foreground shadow-xs">
-              <ChefHat className="h-5 w-5" />
+            <div className="relative size-8 rounded-lg overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border shadow-xs shrink-0 flex items-center justify-center">
+              <Image
+                src="/logo.png"
+                alt="Oven Express"
+                fill
+                sizes="32px"
+                className="object-contain p-0.5"
+                priority
+              />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-sm sm:text-base font-black tracking-tight uppercase">
-                  Oven Xpress
+                  Oven Express
                 </span>
                 <span className="text-[10px] sm:text-[11px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 uppercase">
                   KDS Live

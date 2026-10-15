@@ -1,12 +1,13 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ResetPasswordForm } from '@/components/auth/reset-password-form';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Set New Password | Oven Xpress',
+  title: 'Set New Password',
   description: 'Enter your new password to complete account recovery',
 };
 
@@ -26,10 +27,19 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
 
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
-            <span className="text-lg font-bold tracking-wider">OX</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">Oven Xpress</h1>
+          <Link href="/" className="group flex items-center gap-2">
+            <div className="relative flex size-14 items-center justify-center rounded-2xl overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border/60 shadow-lg shadow-orange-500/10 group-hover:scale-105 transition-transform p-1">
+              <Image
+                src="/logo.png"
+                alt="Oven Express"
+                fill
+                sizes="56px"
+                className="object-contain p-1"
+                priority
+              />
+            </div>
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight">Oven Express</h1>
           <p className="text-sm text-muted-foreground">
             Multi-Branch Restaurant Management
           </p>

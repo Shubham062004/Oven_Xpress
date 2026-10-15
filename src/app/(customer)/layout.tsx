@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { getPublicBranches } from '@/lib/customer/branch-service';
 import { getCurrentUser } from '@/lib/auth/guards';
 import { CartProvider } from '@/context/cart-context';
@@ -6,7 +7,7 @@ import { CustomerHeader } from '@/components/customer/customer-header';
 import { FloatingCartBar } from '@/components/customer/floating-cart-bar';
 import { MobileBottomNav } from '@/components/customer/mobile-bottom-nav';
 import Link from 'next/link';
-import { UtensilsCrossed, Heart, ShieldCheck, Clock, MapPin, Sparkles } from 'lucide-react';
+import { Heart, MapPin } from 'lucide-react';
 
 export default async function CustomerLayout({
   children,
@@ -36,11 +37,17 @@ export default async function CustomerLayout({
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-xs">
             {/* Brand */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white">
-                  <UtensilsCrossed className="size-4" />
+              <div className="flex items-center gap-2.5">
+                <div className="relative size-8 rounded-lg overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border/60 shadow-sm flex items-center justify-center">
+                  <Image
+                    src="/logo.png"
+                    alt="Oven Express"
+                    fill
+                    sizes="32px"
+                    className="object-contain p-0.5"
+                  />
                 </div>
-                <span className="font-extrabold text-base">Oven Xpress</span>
+                <span className="font-extrabold text-base tracking-tight">Oven Express</span>
               </div>
               <p className="text-muted-foreground leading-relaxed">
                 Artisanal sourdough pizzas, wood-fired gourmet burgers, and fresh baked goods delivered fast and hot.

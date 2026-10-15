@@ -2,14 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ShoppingBag,
   MapPin,
   ChevronDown,
   User,
-  UtensilsCrossed,
   Search,
-  Sparkles,
 } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -48,12 +47,19 @@ export function CustomerHeader({ branches, user }: CustomerHeaderProps) {
             {/* Left: Brand & Branch Picker */}
             <div className="flex items-center gap-3 sm:gap-5 min-w-0">
               <Link href="/" className="group flex items-center gap-2.5 shrink-0">
-                <div className="flex size-9 sm:size-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
-                  <UtensilsCrossed className="size-5" />
+                <div className="relative size-9 sm:size-10 rounded-xl overflow-hidden shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform bg-white/90 dark:bg-zinc-900 border border-border/40 flex items-center justify-center">
+                  <Image
+                    src="/logo.png"
+                    alt="Oven Express"
+                    fill
+                    sizes="40px"
+                    className="object-contain p-0.5"
+                    priority
+                  />
                 </div>
                 <div className="hidden xs:block">
                   <span className="font-extrabold text-base sm:text-lg tracking-tight text-foreground flex items-center gap-1">
-                    Oven<span className="text-primary font-black">Xpress</span>
+                    Oven<span className="text-primary font-black">Express</span>
                   </span>
                   <span className="block text-[10px] text-muted-foreground uppercase tracking-widest -mt-1 font-semibold">
                     Artisanal Kitchen

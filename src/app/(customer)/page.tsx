@@ -5,10 +5,8 @@ import {
   Sparkles,
   Flame,
   Clock,
-  ShieldCheck,
   ChevronRight,
   MapPin,
-  Utensils,
   ArrowRight,
   CheckCircle2,
   Phone,
@@ -18,7 +16,7 @@ import { getFeaturedMenuHighlights } from '@/lib/customer/menu-service';
 import { ItemCard } from '@/components/customer/item-card';
 
 export const metadata = {
-  title: 'Artisanal Wood-Fired Pizzas & Fresh Breads | Oven Xpress',
+  title: 'Oven Xpress',
   description:
     'Order fresh, wood-fired artisanal pizzas, 48-hour fermented sourdough breads, and gourmet burgers from Oven Xpress. Fast 30-minute delivery to your doorstep.',
 };
@@ -101,10 +99,13 @@ export default async function CustomerHomePage() {
           {/* Right Visual Image */}
           <div className="lg:col-span-5 relative">
             <div className="relative mx-auto aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border-4 border-background ring-1 ring-border/50 group">
-              <img
+              <Image
                 src="/images/hero-pizza.jpg"
-                alt="Oven Xpress Margherita Pizza with fresh basil and mozzarella"
-                className="size-full object-cover group-hover:scale-105 transition-transform duration-700"
+                alt="Oven Express Margherita Pizza with fresh basil and mozzarella"
+                fill
+                sizes="(max-width: 768px) 100vw, 500px"
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
+                priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 text-white">
@@ -197,7 +198,7 @@ export default async function CustomerHomePage() {
         <div className="rounded-3xl bg-gradient-to-r from-stone-900 via-neutral-900 to-stone-950 text-white p-6 sm:p-10 border border-white/10 shadow-xl overflow-hidden relative">
           <div className="relative z-10 max-w-2xl space-y-4">
             <span className="text-amber-400 font-extrabold text-xs uppercase tracking-widest">
-              The Oven Xpress Standard
+              The Oven Express Standard
             </span>
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
               We Never Compromise On Real Food Quality
@@ -220,6 +221,17 @@ export default async function CustomerHomePage() {
                 <span>Triple-insulated thermal bags guarantee hot delivery</span>
               </div>
             </div>
+          </div>
+
+          {/* Right Brand Badge Seal */}
+          <div className="hidden lg:flex absolute right-10 top-1/2 -translate-y-1/2 size-44 items-center justify-center pointer-events-none">
+            <Image
+              src="/logo.png"
+              alt="Oven Express Official Seal"
+              width={176}
+              height={176}
+              className="object-contain filter drop-shadow-[0_10px_25px_rgba(249,115,22,0.35)] opacity-95 hover:scale-105 transition-transform duration-300"
+            />
           </div>
         </div>
       </section>
@@ -249,11 +261,10 @@ export default async function CustomerHomePage() {
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-bold text-base text-foreground">{b.name}</h3>
                   <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                      b.isOpenNow
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${b.isOpenNow
                         ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
                         : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
-                    }`}
+                      }`}
                   >
                     {b.isOpenNow ? 'OPEN NOW' : 'CLOSED'}
                   </span>

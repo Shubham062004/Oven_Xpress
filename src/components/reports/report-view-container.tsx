@@ -171,10 +171,14 @@ export function ReportViewContainer({
       {/* ─── PRINT ONLY AUDIT HEADER ─── */}
       <div className="hidden print:block mb-6 border-b border-gray-400 pb-4">
         <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Oven Xpress</h1>
-            <h2 className="text-lg font-semibold text-gray-700 mt-1">{title}</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+          <div className="flex items-center gap-3.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Oven Express" className="w-14 h-14 object-contain" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Oven Express</h1>
+              <h2 className="text-lg font-semibold text-gray-700 mt-0.5">{title}</h2>
+              <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+            </div>
           </div>
           <div className="text-right text-xs text-gray-600 space-y-1">
             <p><strong>Scope:</strong> {activeBranchName}</p>

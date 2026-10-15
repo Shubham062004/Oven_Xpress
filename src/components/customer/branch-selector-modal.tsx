@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import {
   MapPin,
   Clock,
   Check,
   Search,
   X,
-  Store,
   ChevronRight,
   Phone,
 } from 'lucide-react';
-import { useCart, type BranchInfo } from '@/context/cart-context';
+import { useCart } from '@/context/cart-context';
 import { useRouter } from 'next/navigation';
 
 export interface BranchSelectorProps {
@@ -70,13 +70,19 @@ export function BranchSelectorModal({
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-border/60 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <Store className="size-5" />
+            <div className="relative size-9 rounded-xl overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border/60 shadow-sm flex items-center justify-center shrink-0">
+              <Image
+                src="/logo.png"
+                alt="Oven Express"
+                fill
+                sizes="36px"
+                className="object-contain p-0.5"
+              />
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold">Select Branch</h2>
               <p className="text-xs text-muted-foreground">
-                Choose an Oven Xpress branch near you
+                Choose an Oven Express branch near you
               </p>
             </div>
           </div>

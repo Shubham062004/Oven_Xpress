@@ -3,11 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ThemeToggle } from '@/components/theme-toggle';
 import { RegisterForm } from '@/components/auth/register-form';
 import Link from 'next/link';
-import { UtensilsCrossed } from 'lucide-react';
+import Image from 'next/image';
 
 export const metadata = {
-  title: 'Create Account | Oven Xpress',
-  description: 'Sign up for Oven Xpress to order artisanal pizzas, freshly baked breads, and gourmet treats.',
+  title: 'Create Account',
+  description: 'Sign up for Oven Express to order artisanal pizzas, freshly baked breads, and gourmet treats.',
 };
 
 export default function RegisterPage() {
@@ -28,12 +28,19 @@ export default function RegisterPage() {
         {/* Brand header */}
         <div className="flex flex-col items-center text-center space-y-2">
           <Link href="/" className="group flex items-center gap-2">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-orange-500/20 group-hover:scale-105 transition-transform">
-              <UtensilsCrossed className="size-6" />
+            <div className="relative flex size-14 items-center justify-center rounded-2xl overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border/60 shadow-lg shadow-orange-500/10 group-hover:scale-105 transition-transform p-1">
+              <Image
+                src="/logo.png"
+                alt="Oven Express"
+                fill
+                sizes="56px"
+                className="object-contain p-1"
+                priority
+              />
             </div>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Join Oven Xpress
+            Join Oven Express
           </h1>
           <p className="text-xs text-muted-foreground max-w-xs">
             Create an account to track your orders, save delivery addresses, and unlock member specials.
@@ -63,7 +70,7 @@ export default function RegisterPage() {
 
         {/* Safe notice */}
         <p className="text-center text-[11px] text-muted-foreground">
-          By registering, you agree to Oven Xpress Terms of Service and Privacy Policy.
+          By registering, you agree to Oven Express Terms of Service and Privacy Policy.
         </p>
       </div>
     </div>

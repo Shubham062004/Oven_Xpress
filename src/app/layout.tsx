@@ -20,11 +20,21 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Oven Xpress',
-    template: '%s | Oven Xpress',
+    default: 'Oven Express',
+    template: '%s | Oven Express',
   },
   description:
-    'Multi-branch restaurant management system for operations, staff, inventory, orders, and analytics.',
+    'Oven Express - Artisanal kitchen & multi-branch restaurant management and ordering system.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
