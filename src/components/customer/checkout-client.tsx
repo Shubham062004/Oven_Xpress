@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   MapPin,
-  Phone,
   User,
   CreditCard,
   QrCode,
@@ -14,10 +13,8 @@ import {
   Loader2,
   ArrowRight,
   AlertCircle,
-  Building,
   Home,
   Briefcase,
-  Plus,
   PackageCheck,
 } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
