@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
+import { publishAttendanceUpdated } from '@/lib/realtime/event-bus';
 import {
   shiftSchema,
   updateShiftSchema,
@@ -780,6 +781,20 @@ export async function markAttendance(
     }).catch((e: unknown) => console.error('Failed to create attendance audit log:', e));
 
     revalidatePath('/attendance');
+
+    // Emit real-time attendance update
+    try {
+      publishAttendanceUpdated({
+        branchId: record.branchId,
+        employeeId: record.employeeId,
+        employeeName: `${record.employee.firstName} ${record.employee.lastName}`,
+        type: 'STATUS_CHANGE',
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to emit attendance update:', realtimeErr);
+    }
+
     return { success: true, data: record };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -943,6 +958,20 @@ export async function updateAttendance(
 
     revalidatePath('/attendance');
     revalidatePath(`/attendance/${id}`);
+
+    // Emit real-time attendance update
+    try {
+      publishAttendanceUpdated({
+        branchId: updated.branchId,
+        employeeId: updated.employeeId,
+        employeeName: `${updated.employee.firstName} ${updated.employee.lastName}`,
+        type: 'STATUS_CHANGE',
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to emit attendance update:', realtimeErr);
+    }
+
     return { success: true, data: updated };
   } catch (error) {
     if (isRedirectError(error)) throw error;

@@ -27,6 +27,7 @@ import {
   markAllNotificationsAsReadAction,
 } from '@/lib/notifications/actions';
 import type { NotificationItem, NotificationSeverity } from '@/lib/notifications/types';
+import { useRealtime } from '@/lib/realtime/use-realtime';
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -95,6 +96,13 @@ export function NotificationBell() {
       setIsLoading(false);
     }
   };
+
+  useRealtime({
+    eventTypes: ['notification:new', 'bug_report:created'],
+    onEvent: () => {
+      loadNotifications();
+    },
+  });
 
   useEffect(() => {
     let isMounted = true;

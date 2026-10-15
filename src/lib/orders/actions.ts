@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db/prisma';
 import { invalidateDashboardCaches } from '@/lib/cache/cache-service';
 import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
+import { publishOrderCreated, publishOrderStatusChanged } from '@/lib/realtime/event-bus';
 import type { ActionResult } from '@/lib/auth/types';
 import {
   createOrderSchema,
@@ -822,6 +823,25 @@ export async function createOrder(
         });
 
         await revalidateOrderRoutes();
+
+        // Emit real-time event after transaction commit
+        try {
+          publishOrderCreated({
+            orderId: createdOrder.id,
+            orderNumber: createdOrder.orderNumber,
+            branchId,
+            orderType,
+            status: OrderStatus.CONFIRMED,
+            totalAmount: grandTotal,
+            customerName: customerName || undefined,
+            tableNumber: null,
+            itemCount: validatedItems.length,
+            createdAt: new Date().toISOString(),
+          });
+        } catch (realtimeErr) {
+          console.error('[Realtime] Failed to publish order created event:', realtimeErr);
+        }
+
         return { success: true, data: createdOrder };
       } catch (err) {
         if (
@@ -996,6 +1016,22 @@ export async function updateOrderStatus(
     });
 
     await revalidateOrderRoutes(id);
+
+    // Emit real-time status changed event after transaction commit
+    try {
+      publishOrderStatusChanged({
+        orderId: id,
+        orderNumber: order.orderNumber,
+        branchId: order.branchId,
+        fromStatus: order.status,
+        toStatus: newStatus,
+        orderType: order.orderType,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to publish order status change:', realtimeErr);
+    }
+
     return { success: true, data: { id, status: newStatus } };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -1086,6 +1122,22 @@ export async function cancelOrder(
     });
 
     await revalidateOrderRoutes(order.id);
+
+    // Emit real-time cancellation event after transaction commit
+    try {
+      publishOrderStatusChanged({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        branchId: order.branchId,
+        fromStatus: order.status,
+        toStatus: OrderStatus.CANCELLED,
+        orderType: order.orderType,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to publish order cancellation:', realtimeErr);
+    }
+
     return { success: true, data: { id: order.id } };
   } catch (error) {
     if (isRedirectError(error)) throw error;

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
+import { publishPaymentUpdated } from '@/lib/realtime/event-bus';
 import type { ActionResult } from '@/lib/auth/types';
 import {
   createPaymentSchema,
@@ -276,6 +277,22 @@ export async function recordPayment(
     revalidatePath('/payments');
     revalidatePath('/payments/reconciliation');
 
+    // Emit real-time payment update after transaction commit
+    try {
+      publishPaymentUpdated({
+        paymentId: result.id,
+        orderId: result.orderId,
+        orderNumber: result.order.orderNumber,
+        branchId: result.branchId,
+        amount: result.amount.toNumber(),
+        status: result.status,
+        method: result.method,
+        updatedAt: result.processedAt.toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to emit payment update:', realtimeErr);
+    }
+
     return {
       success: true,
       data: {
@@ -470,6 +487,22 @@ export async function createPaymentRefund(
     const updated = result.updatedPayment;
     const paymentAmt = updated.amount.toNumber();
     const totalRef = result.newTotalRefunded;
+
+    // Emit real-time payment/refund update after transaction commit
+    try {
+      publishPaymentUpdated({
+        paymentId: updated.id,
+        orderId: updated.orderId,
+        orderNumber: updated.order.orderNumber,
+        branchId: updated.branchId,
+        amount: paymentAmt,
+        status: updated.status,
+        method: updated.method,
+        updatedAt: updated.processedAt.toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to emit refund update:', realtimeErr);
+    }
 
     return {
       success: true,

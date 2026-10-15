@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth/guards';
 import { revalidatePath } from 'next/cache';
 import type { OrderType, PaymentMethod } from '@prisma/client';
+import { publishOrderCreated, publishPaymentUpdated } from '@/lib/realtime/event-bus';
 
 export interface CheckoutOrderItem {
   menuItemId: string;
@@ -263,6 +264,37 @@ export async function createCustomerOrderAction(
 
     revalidatePath(`/track/${orderNumber}`);
     revalidatePath('/account/orders');
+
+    // Emit real-time events strictly after transaction commits
+    try {
+      publishOrderCreated({
+        orderId: createdOrder.id,
+        orderNumber: createdOrder.orderNumber,
+        branchId: createdOrder.branchId,
+        orderType: createdOrder.orderType,
+        status: createdOrder.status,
+        totalAmount: Number(createdOrder.totalAmount),
+        customerName: customerName || 'Customer',
+        tableNumber: tableNumber || null,
+        itemCount: validatedOrderItems.length,
+        createdAt: createdOrder.createdAt.toISOString(),
+      });
+
+      if (paymentMethod !== 'CASH') {
+        publishPaymentUpdated({
+          paymentId: paymentNumber,
+          orderId: createdOrder.id,
+          orderNumber: createdOrder.orderNumber,
+          branchId: createdOrder.branchId,
+          amount: Number(createdOrder.totalAmount),
+          status: 'SUCCESS',
+          method: paymentMethod,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to publish order created event:', realtimeErr);
+    }
 
     return {
       success: true,

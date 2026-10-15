@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
+import { useRealtime } from '@/lib/realtime/use-realtime';
 import type { ManagerDashboardData } from '@/lib/reports/manager-dashboard-service';
 
 interface ManagerDashboardClientProps {
@@ -24,6 +26,22 @@ interface ManagerDashboardClientProps {
 }
 
 export function ManagerDashboardClient({ data }: ManagerDashboardClientProps) {
+  const router = useRouter();
+
+  useRealtime({
+    branchId: data.branch.id,
+    eventTypes: [
+      'order:created',
+      'order:status_changed',
+      'payment:updated',
+      'attendance:updated',
+      'inventory:updated',
+    ],
+    onEvent: () => {
+      router.refresh();
+    },
+  });
+
   return (
     <div className="space-y-6">
       {/* 1. Branch Header */}

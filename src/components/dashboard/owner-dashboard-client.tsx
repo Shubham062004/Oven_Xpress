@@ -34,6 +34,7 @@ import {
   exportDashboardSummaryCSV,
 } from '@/lib/reports/dashboard-service';
 import { downloadCSV } from '@/lib/reports/constants';
+import { useRealtime } from '@/lib/realtime/use-realtime';
 
 interface OwnerDashboardClientProps {
   initialData: ExecutiveDashboardData;
@@ -111,6 +112,13 @@ export function OwnerDashboardClient({ initialData }: OwnerDashboardClientProps)
       }
     });
   };
+
+  useRealtime({
+    eventTypes: ['order:created', 'order:status_changed', 'payment:updated'],
+    onEvent: () => {
+      handleRefresh();
+    },
+  });
 
   const handleExportCSV = async () => {
     const res = await exportDashboardSummaryCSV({

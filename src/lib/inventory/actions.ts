@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db/prisma';
 import { getCache, setCache, CACHE_KEYS, invalidateStockCaches } from '@/lib/cache/cache-service';
 import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
+import { publishInventoryUpdated } from '@/lib/realtime/event-bus';
 import {
   openingStockSchema,
   stockReceiptSchema,
@@ -94,9 +95,29 @@ export async function calculateCurrentStock(
   return Math.round(currentStock * 1000) / 1000;
 }
 
-async function revalidateInventory(): Promise<void> {
+async function revalidateInventory(
+  branchId?: string,
+  ingredientId?: string,
+  type: string = 'STOCK_UPDATE',
+  quantity: number = 0
+): Promise<void> {
   await invalidateStockCaches();
   revalidatePath('/inventory');
+  revalidatePath('/manager/inventory');
+
+  if (branchId) {
+    try {
+      publishInventoryUpdated({
+        branchId,
+        ingredientId: ingredientId || 'multi',
+        type,
+        quantity,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('[Realtime] Failed to emit inventory event:', err);
+    }
+  }
 }
 
 /**
@@ -581,7 +602,7 @@ export async function recordOpeningStock(
       return { transactionId: txRecord.id };
     });
 
-    await revalidateInventory();
+    await revalidateInventory(branchId, ingredientId, 'OPENING', quantity);
     return { success: true, data: result };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -670,7 +691,7 @@ export async function recordStockReceipt(
       return { transactionId: txRecord.id };
     });
 
-    await revalidateInventory();
+    await revalidateInventory(branchId, ingredientId, 'RECEIPT', quantity);
     return { success: true, data: result };
   } catch (error) {
     if (isRedirectError(error)) throw error;

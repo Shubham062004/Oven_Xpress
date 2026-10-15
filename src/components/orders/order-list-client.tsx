@@ -31,6 +31,8 @@ import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { getOrders, getOrderStats, updateOrderStatus } from '@/lib/orders/actions';
 import type { OrderListItem, OrderStats } from '@/lib/orders/types';
+import { useRealtime } from '@/lib/realtime/use-realtime';
+import type { OrderCreatedPayload } from '@/lib/realtime/types';
 
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -184,6 +186,21 @@ export function OrderListClient({
     },
     [selectedBranch, selectedType, selectedStatus, search, dateFilter]
   );
+
+  // Subscribe to live order updates
+  useRealtime({
+    branchId: selectedBranch !== 'ALL' ? selectedBranch : userBranchId || undefined,
+    eventTypes: ['order:created', 'order:status_changed', 'payment:updated'],
+    onEvent: (msg) => {
+      if (msg.type === 'order:created') {
+        const payload = msg.payload as OrderCreatedPayload;
+        toast.info(`New Order ${payload.orderNumber} received (₹${payload.totalAmount})`);
+        fetchOrders(pagination.page);
+      } else if (msg.type === 'order:status_changed' || msg.type === 'payment:updated') {
+        fetchOrders(pagination.page);
+      }
+    },
+  });
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

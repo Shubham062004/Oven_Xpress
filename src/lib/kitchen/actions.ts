@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
+import { publishKitchenStatusChanged, publishOrderStatusChanged } from '@/lib/realtime/event-bus';
 import type { ActionResult } from '@/lib/auth/types';
 import type {
   KitchenBoardData,
@@ -492,6 +493,29 @@ export async function startOrderPreparation(
     revalidatePath(`/orders/${order.id}`);
     revalidatePath('/inventory');
 
+    // Emit real-time kitchen status update
+    try {
+      publishKitchenStatusChanged({
+        orderId: result.id,
+        orderNumber: order.orderNumber,
+        branchId: order.branchId,
+        status: OrderStatus.PREPARING,
+        preparedBy: user.name,
+        updatedAt: new Date().toISOString(),
+      });
+      publishOrderStatusChanged({
+        orderId: result.id,
+        orderNumber: order.orderNumber,
+        branchId: order.branchId,
+        fromStatus: OrderStatus.CONFIRMED,
+        toStatus: OrderStatus.PREPARING,
+        orderType: order.orderType,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to emit kitchen start event:', realtimeErr);
+    }
+
     const warnings: string[] = [];
     if (missingRecipeItemNames.length > 0) {
       warnings.push(
@@ -579,6 +603,29 @@ export async function markOrderReady(
     revalidatePath('/orders');
     revalidatePath(`/orders/${order.id}`);
 
+    // Emit real-time kitchen ready update
+    try {
+      publishKitchenStatusChanged({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        branchId: order.branchId,
+        status: OrderStatus.READY,
+        readyAt: new Date().toISOString(),
+        preparedBy: user.name,
+        updatedAt: new Date().toISOString(),
+      });
+      publishOrderStatusChanged({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        branchId: order.branchId,
+        fromStatus: OrderStatus.PREPARING,
+        toStatus: OrderStatus.READY,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to emit kitchen ready event:', realtimeErr);
+    }
+
     return {
       success: true,
       data: { orderId: order.id, status: OrderStatus.READY },
@@ -662,6 +709,28 @@ export async function completeKitchenOrder(
     revalidatePath('/kitchen');
     revalidatePath('/orders');
     revalidatePath(`/orders/${order.id}`);
+
+    // Emit real-time kitchen completed update
+    try {
+      publishKitchenStatusChanged({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        branchId: order.branchId,
+        status: OrderStatus.COMPLETED,
+        updatedAt: new Date().toISOString(),
+      });
+      publishOrderStatusChanged({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        branchId: order.branchId,
+        fromStatus: OrderStatus.READY,
+        toStatus: OrderStatus.COMPLETED,
+        orderType: order.orderType,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to emit kitchen completed event:', realtimeErr);
+    }
 
     return {
       success: true,

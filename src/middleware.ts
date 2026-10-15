@@ -30,6 +30,7 @@ const CUSTOMER_PUBLIC_PATHS = [
   '/track',
   '/report-bug',
   '/api/bug-reports',
+  '/api/realtime',
 ];
 
 // Customer-facing paths that require CUSTOMER (or staff) authentication
@@ -330,7 +331,7 @@ export function middleware(request: NextRequest) {
     );
 
     // 6. If user is unauthenticated and attempting to access a protected API route
-    if (!sessionCookie && isApiPath) {
+    if (!sessionCookie && isApiPath && !isCustomerPublicPath) {
       return NextResponse.json(
         {
           success: false,

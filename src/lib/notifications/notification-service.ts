@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db/prisma';
 import { Prisma } from '@prisma/client';
 import { resolveEligibleRecipients } from './recipient-resolver';
+import { publishNotification } from '@/lib/realtime/event-bus';
 import type {
   NotificationItem,
   NotificationListResponse,
@@ -111,6 +112,21 @@ export async function createNotification(input: {
       },
     },
   });
+
+  // Emit real-time notification to user
+  try {
+    publishNotification({
+      id: notification.id,
+      title: notification.title,
+      message: notification.message,
+      type: notification.type,
+      link: notification.actionUrl,
+      targetUserId: notification.recipientUserId,
+      createdAt: notification.createdAt.toISOString(),
+    });
+  } catch (realtimeErr) {
+    console.error('[Realtime] Failed to emit notification event:', realtimeErr);
+  }
 
   return mapNotificationToItem(notification);
 }

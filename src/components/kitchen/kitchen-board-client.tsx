@@ -28,6 +28,7 @@ import { OrderType } from '@prisma/client';
 
 import { useAuth } from '@/providers/auth-provider';
 import { hasPermission } from '@/lib/permissions/check';
+import { useRealtime } from '@/lib/realtime/use-realtime';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
 import { logoutAction } from '@/lib/auth/actions';
 import {
@@ -147,6 +148,15 @@ export function KitchenBoardClient({
     },
     [selectedBranch, orderTypeFilter]
   );
+
+  // Subscribe to live kitchen events
+  useRealtime({
+    branchId: selectedBranch !== 'ALL' ? selectedBranch : userBranchId || undefined,
+    eventTypes: ['order:created', 'order:status_changed', 'kitchen:status_changed'],
+    onEvent: () => {
+      fetchBoard();
+    },
+  });
 
   // Auto-refresh countdown loop
   useEffect(() => {

@@ -8,6 +8,7 @@ import {
 import { checkRateLimit } from '@/lib/security/rate-limit';
 import { saveBugReportScreenshot } from '@/lib/storage/bug-reports';
 import { createNotification } from '@/lib/notifications/notification-service';
+import { publishBugReport } from '@/lib/realtime/event-bus';
 import {
   createBugReportSchema,
   updateBugReportStatusSchema,
@@ -210,6 +211,19 @@ export async function createBugReport(
         actionUrl: `/owner/bug-reports/${created.id}`,
         dedupeKey: `bug-report:${created.id}:${owner.id}`,
       });
+    }
+
+    // Emit real-time bug report event strictly to the owner channel
+    try {
+      publishBugReport({
+        reportId: created.id,
+        reportNumber: created.reportNumber,
+        title: created.title,
+        category: created.category,
+        createdAt: created.createdAt.toISOString(),
+      });
+    } catch (realtimeErr) {
+      console.error('[Realtime] Failed to emit owner bug report event:', realtimeErr);
     }
   } catch (notifyErr) {
     console.error('[BugReport] Failed to dispatch owner notifications:', notifyErr);
