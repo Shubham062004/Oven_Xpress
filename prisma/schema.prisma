@@ -654,6 +654,7 @@ model Order {
   completedBy        String?
   inventoryConsumed  Boolean          @default(false)
   inventoryConsumedAt DateTime?
+  trackingTokenHash  String?
   items              OrderItem[]
   auditLogs          OrderAuditLog[]
   payments           Payment[]
@@ -664,6 +665,7 @@ model Order {
 
   @@index([branchId])
   @@index([orderNumber])
+  @@index([trackingTokenHash])
   @@index([status])
   @@index([orderType])
   @@index([createdAt])

@@ -33,8 +33,8 @@ export default async function CustomerLayout({
         <MobileBottomNav />
 
         {/* Footer */}
-        <footer className="border-t border-border/60 bg-muted/20 py-10 px-4 sm:px-6 lg:px-8 hidden md:block">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-xs">
+        <footer className="border-t border-border/60 bg-muted/20 pt-8 sm:pt-10 pb-28 md:pb-10 px-4 sm:px-6 lg:px-8 block">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-xs">
             {/* Brand */}
             <div className="space-y-3">
               <div className="flex items-center gap-2.5">

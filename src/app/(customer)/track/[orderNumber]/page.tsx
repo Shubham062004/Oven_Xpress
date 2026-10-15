@@ -7,6 +7,7 @@ import { buttonVariants } from '@/components/ui/button';
 
 interface TrackOrderPageProps {
   params: Promise<{ orderNumber: string }>;
+  searchParams?: Promise<{ token?: string }>;
 }
 
 export async function generateMetadata({ params }: TrackOrderPageProps): Promise<Metadata> {
@@ -14,12 +15,15 @@ export async function generateMetadata({ params }: TrackOrderPageProps): Promise
   return {
     title: `Track Order ${orderNumber}`,
     description: `Live tracking for order ${orderNumber} in Oven Express.`,
+    referrer: 'no-referrer',
   };
 }
 
-export default async function TrackOrderPage({ params }: TrackOrderPageProps) {
+export default async function TrackOrderPage({ params, searchParams }: TrackOrderPageProps) {
   const { orderNumber } = await params;
-  const order = await getCustomerOrderDetails(orderNumber);
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const token = resolvedSearchParams?.token;
+  const order = await getCustomerOrderDetails(orderNumber, token);
 
   if (!order) {
     return (
@@ -41,5 +45,5 @@ export default async function TrackOrderPage({ params }: TrackOrderPageProps) {
     );
   }
 
-  return <TrackOrderClient initialOrder={order} />;
+  return <TrackOrderClient initialOrder={order} token={token} />;
 }

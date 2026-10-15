@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth/guards';
 import { revalidatePath } from 'next/cache';
 import type { OrderType, PaymentMethod } from '@prisma/client';
 import { publishOrderCreated, publishPaymentUpdated } from '@/lib/realtime/event-bus';
+import { generateTrackingToken, authorizeOrderAccess } from '@/lib/customer/tracking-token';
 
 export interface CheckoutOrderItem {
   menuItemId: string;
@@ -29,6 +30,8 @@ export interface CheckoutResult {
   error?: string;
   orderNumber?: string;
   orderId?: string;
+  trackingToken?: string;
+  trackingUrl?: string;
 }
 
 export async function createCustomerOrderAction(
@@ -153,38 +156,56 @@ export async function createCustomerOrderAction(
     let customerId: string | null = null;
 
     if (currentUser) {
-      // Find or link customer
-      let customer = await prisma.customer.findFirst({
-        where: {
-          OR: [{ userId: currentUser.id }, { phone: customerPhone }],
-        },
+      // Find customer strictly tied to authenticated user to avoid unsafe automatic account linking
+      let customer = await prisma.customer.findUnique({
+        where: { userId: currentUser.id },
       });
 
       if (!customer) {
-        customer = await prisma.customer.create({
-          data: {
-            userId: currentUser.id,
-            name: customerName,
-            phone: customerPhone,
-            email: currentUser.email,
-            address: deliveryAddress || null,
-            status: 'ACTIVE',
-          },
+        // Check if an unlinked guest customer record with this phone exists
+        const existingByPhone = await prisma.customer.findUnique({
+          where: { phone: customerPhone },
         });
-      } else if (!customer.userId) {
-        await prisma.customer.update({
-          where: { id: customer.id },
-          data: { userId: currentUser.id },
-        });
+
+        if (existingByPhone && !existingByPhone.userId) {
+          customer = await prisma.customer.update({
+            where: { id: existingByPhone.id },
+            data: {
+              userId: currentUser.id,
+              name: customerName,
+              email: currentUser.email,
+            },
+          });
+        } else if (!existingByPhone) {
+          customer = await prisma.customer.create({
+            data: {
+              userId: currentUser.id,
+              name: customerName,
+              phone: customerPhone,
+              email: currentUser.email,
+              address: deliveryAddress || null,
+              status: 'ACTIVE',
+            },
+          });
+        }
       }
-      customerId = customer.id;
+      customerId = customer?.id || null;
     } else {
-      // Guest or unlinked customer
-      let customer = await prisma.customer.findUnique({
+      // Guest customer: look up existing customer by phone if any
+      const existingCustomer = await prisma.customer.findUnique({
         where: { phone: customerPhone },
       });
-      if (!customer) {
-        customer = await prisma.customer.create({
+
+      if (existingCustomer) {
+        // Only associate if it is a pure guest record (not linked to an account)
+        if (!existingCustomer.userId) {
+          customerId = existingCustomer.id;
+        } else {
+          // Do not link guest order to a registered customer's account to prevent account contamination.
+          customerId = null;
+        }
+      } else {
+        const newCustomer = await prisma.customer.create({
           data: {
             name: customerName,
             phone: customerPhone,
@@ -192,15 +213,16 @@ export async function createCustomerOrderAction(
             status: 'ACTIVE',
           },
         });
+        customerId = newCustomer.id;
       }
-      customerId = customer.id;
     }
 
-    // 6. Generate unique orderNumber and paymentNumber
+    // 6. Generate unique orderNumber, paymentNumber, and cryptographically secure tracking token
     const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const orderNumber = `OX-${datePrefix}-${randomSuffix}`;
     const paymentNumber = `PAY-${datePrefix}-${randomSuffix}`;
+    const { token: trackingToken, tokenHash: trackingTokenHash } = generateTrackingToken();
 
     // 7. Atomic transaction to create order, order items, audit log, and payment
     const createdOrder = await prisma.$transaction(async (tx) => {
@@ -208,6 +230,7 @@ export async function createCustomerOrderAction(
       const order = await tx.order.create({
         data: {
           orderNumber,
+          trackingTokenHash,
           branchId,
           orderType: orderType as OrderType,
           status: 'CONFIRMED',
@@ -262,8 +285,12 @@ export async function createCustomerOrderAction(
       return order;
     });
 
-    revalidatePath(`/track/${orderNumber}`);
-    revalidatePath('/account/orders');
+    try {
+      revalidatePath(`/track/${orderNumber}`);
+      revalidatePath('/account/orders');
+    } catch {
+      // Graceful fallback when invoked outside a Next.js request context (e.g. CLI, tests)
+    }
 
     // Emit real-time events strictly after transaction commits
     try {
@@ -300,6 +327,8 @@ export async function createCustomerOrderAction(
       success: true,
       orderNumber: createdOrder.orderNumber,
       orderId: createdOrder.id,
+      trackingToken,
+      trackingUrl: `/track/${createdOrder.orderNumber}?token=${trackingToken}`,
     };
   } catch (error) {
     console.error('Customer checkout error:', error);
@@ -382,7 +411,11 @@ export async function getCustomerOrdersAction() {
   }));
 }
 
-export async function getCustomerOrderDetails(orderNumber: string) {
+export async function getCustomerOrderDetails(orderNumber: string, token?: string) {
+  if (!orderNumber || typeof orderNumber !== 'string') {
+    return null;
+  }
+
   const order = await prisma.order.findUnique({
     where: { orderNumber },
     include: {
@@ -415,6 +448,16 @@ export async function getCustomerOrderDetails(orderNumber: string) {
   });
 
   if (!order) return null;
+
+  // Strict server-side authorization:
+  // Requires Executive role, branch staff assignment, owning authenticated customer,
+  // or a cryptographically valid guest tracking token matching the stored token hash.
+  const currentUser = await getCurrentUser();
+  const auth = await authorizeOrderAccess(order, currentUser, token);
+  if (!auth.authorized) {
+    // Fail closed: Return null (consistent 404 response without leaking existence or sensitive PII)
+    return null;
+  }
 
   return {
     id: order.id,

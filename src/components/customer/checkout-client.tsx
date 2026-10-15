@@ -18,6 +18,7 @@ import {
   Home,
   Briefcase,
   Plus,
+  PackageCheck,
 } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
 import { createCustomerOrderAction } from '@/lib/customer/order-actions';
@@ -140,7 +141,12 @@ export function CheckoutClient({
 
       if (result.success && result.orderNumber) {
         clearCart();
-        router.push(`/track/${result.orderNumber}`);
+        const targetUrl =
+          result.trackingUrl ||
+          (result.trackingToken
+            ? `/track/${result.orderNumber}?token=${result.trackingToken}`
+            : `/track/${result.orderNumber}`);
+        router.push(targetUrl);
       } else {
         setErrorMessage(result.error || 'Failed to place order. Please try again.');
         setIsSubmitting(false);
@@ -297,6 +303,49 @@ export function CheckoutClient({
                 <input
                   type="text"
                   placeholder="e.g. Ring the bell twice, leave at door, less spicy"
+                  value={deliveryNotes}
+                  onChange={(e) => setDeliveryNotes(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-muted/40 border border-border/80 rounded-xl focus:outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Express Pickup Details (for TAKEAWAY mode) */}
+          {orderType === 'TAKEAWAY' && (
+            <div className="bg-card rounded-2xl border border-primary/30 p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <PackageCheck className="size-4 text-primary" />
+                  <span>Express Counter Pickup</span>
+                </h2>
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                  ZERO QUEUE
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/70 space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-foreground">
+                  <MapPin className="size-3.5 text-primary shrink-0" />
+                  <span>Pickup Location: {branch?.name || 'Selected Kitchen'}</span>
+                </div>
+                {branch?.address && (
+                  <p className="text-muted-foreground pl-5 text-[11px]">
+                    {branch.address}, {branch.city}
+                  </p>
+                )}
+                <p className="text-muted-foreground pl-5 text-[11px] pt-1">
+                  When your live order status reaches <strong className="text-foreground">READY</strong>, walk in directly to the Express Pickup counter to collect your fresh box.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Estimated Arrival / Kitchen Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Arriving in 15 mins, packing napkins separately"
                   value={deliveryNotes}
                   onChange={(e) => setDeliveryNotes(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-muted/40 border border-border/80 rounded-xl focus:outline-none focus:border-primary"

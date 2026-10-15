@@ -36,6 +36,7 @@ type TrackOrderData = NonNullable<Awaited<ReturnType<typeof getCustomerOrderDeta
 
 interface TrackOrderClientProps {
   initialOrder: TrackOrderData;
+  token?: string;
 }
 
 const STEPS = [
@@ -62,7 +63,7 @@ function getStepIndex(status: string): number {
   }
 }
 
-export function TrackOrderClient({ initialOrder }: TrackOrderClientProps) {
+export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps) {
   const [order, setOrder] = useState<TrackOrderData>(initialOrder);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -74,7 +75,7 @@ export function TrackOrderClient({ initialOrder }: TrackOrderClientProps) {
   const refreshStatus = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const fresh = await getCustomerOrderDetails(order.orderNumber);
+      const fresh = await getCustomerOrderDetails(order.orderNumber, token);
       if (fresh) {
         setOrder(fresh);
         setLastUpdated(new Date());
@@ -84,11 +85,12 @@ export function TrackOrderClient({ initialOrder }: TrackOrderClientProps) {
     } finally {
       setIsRefreshing(false);
     }
-  }, [order.orderNumber]);
+  }, [order.orderNumber, token]);
 
   // Hook into Real-time SSE stream
   const { isConnected } = useRealtime({
     orderNumber: order.orderNumber,
+    token,
     eventTypes: ['order:status_changed', 'kitchen:status_changed', 'payment:updated'],
     onEvent: (msg) => {
       if (msg.type === 'order:status_changed') {
@@ -182,7 +184,7 @@ export function TrackOrderClient({ initialOrder }: TrackOrderClientProps) {
                   Order Tracking
                 </span>
                 <span className="text-muted-foreground">•</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground" suppressHydrationWarning>
                   Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
               </div>

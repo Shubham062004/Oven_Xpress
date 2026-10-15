@@ -37,17 +37,46 @@ export interface BranchMenuData {
   categories: PublicMenuCategory[];
 }
 
-// Fallback high-quality curated images for categories/items
-const ITEM_IMAGE_MAP: Record<string, string> = {
+// High-quality, verified local images mapping directly to real menu items
+const ITEM_SPECIFIC_IMAGE_MAP: Record<string, string> = {
+  'margherita pizza': '/images/hero-pizza.jpg',
+  'pepperoni feast pizza': '/images/pepperoni-pizza.jpg',
+  'classic cheeseburger': '/images/classic-cheeseburger.jpg',
+  'crispy french fries': '/images/crispy-french-fries.jpg',
+  'caffe latte': '/images/caffe-latte.jpg',
+  'warm fudge brownie with ice cream': '/images/fudge-brownie.jpg',
+  'garlic bread': '/images/garlic-breads.jpg',
+};
+
+const CATEGORY_IMAGE_MAP: Record<string, string> = {
   pizzas: '/images/hero-pizza.jpg',
   pizza: '/images/hero-pizza.jpg',
   breads: '/images/garlic-breads.jpg',
   bread: '/images/garlic-breads.jpg',
-  burgers: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80',
-  'sides & appetizers': '/images/garlic-breads.jpg',
-  beverages: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&auto=format&fit=crop&q=80',
-  desserts: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80',
+  burgers: '/images/classic-cheeseburger.jpg',
+  burger: '/images/classic-cheeseburger.jpg',
+  'sides & appetizers': '/images/crispy-french-fries.jpg',
+  sides: '/images/crispy-french-fries.jpg',
+  beverages: '/images/caffe-latte.jpg',
+  desserts: '/images/fudge-brownie.jpg',
 };
+
+export function getProductImage(
+  itemName: string,
+  categoryName: string,
+  customImageUrl?: string | null
+): string {
+  if (customImageUrl && customImageUrl.trim().length > 0) return customImageUrl;
+  const nameKey = itemName.toLowerCase().trim();
+  if (ITEM_SPECIFIC_IMAGE_MAP[nameKey]) return ITEM_SPECIFIC_IMAGE_MAP[nameKey];
+
+  for (const [key, img] of Object.entries(ITEM_SPECIFIC_IMAGE_MAP)) {
+    if (nameKey.includes(key)) return img;
+  }
+
+  const catKey = categoryName.toLowerCase().trim();
+  return CATEGORY_IMAGE_MAP[catKey] || '/images/hero-pizza.jpg';
+}
 
 export async function getPublicBranchMenu(branchSlug: string): Promise<BranchMenuData | null> {
   const branch = await getPublicBranchBySlug(branchSlug);
@@ -58,7 +87,15 @@ export async function getPublicBranchMenu(branchSlug: string): Promise<BranchMen
     orderBy: { sortOrder: 'asc' },
     include: {
       items: {
-        where: { status: 'ACTIVE' },
+        where: {
+          status: 'ACTIVE',
+          NOT: [
+            { name: { contains: 'E2E', mode: 'insensitive' } },
+            { name: { contains: 'Test', mode: 'insensitive' } },
+            { name: { contains: 'CA', mode: 'insensitive' } },
+            { name: { contains: 'CB', mode: 'insensitive' } },
+          ],
+        },
         include: {
           branchAvailability: {
             where: { branchId: branch.id },
@@ -78,8 +115,7 @@ export async function getPublicBranchMenu(branchSlug: string): Promise<BranchMen
           ? Number(branchConfig.price)
           : basePrice;
 
-        const defaultCategoryImg =
-          ITEM_IMAGE_MAP[category.name.toLowerCase()] || '/images/hero-pizza.jpg';
+        const imageUrl = getProductImage(item.name, category.name, item.imageUrl);
 
         return {
           id: item.id,
@@ -87,7 +123,7 @@ export async function getPublicBranchMenu(branchSlug: string): Promise<BranchMen
           description: item.description,
           price: finalPrice,
           originalPrice: finalPrice !== basePrice ? basePrice : undefined,
-          imageUrl: item.imageUrl || defaultCategoryImg,
+          imageUrl,
           categoryId: category.id,
           categoryName: category.name,
           isAvailable,
@@ -123,26 +159,33 @@ export async function getPublicBranchMenu(branchSlug: string): Promise<BranchMen
 
 export async function getFeaturedMenuHighlights(): Promise<PublicMenuItem[]> {
   const items = await prisma.menuItem.findMany({
-    where: { status: 'ACTIVE' },
-    take: 6,
+    where: {
+      status: 'ACTIVE',
+      NOT: [
+        { name: { contains: 'E2E', mode: 'insensitive' } },
+        { name: { contains: 'Test', mode: 'insensitive' } },
+        { name: { contains: 'CA', mode: 'insensitive' } },
+        { name: { contains: 'CB', mode: 'insensitive' } },
+      ],
+    },
     include: {
       category: {
         select: { name: true },
       },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: 'asc' },
+    take: 6,
   });
 
   return items.map((item) => {
-    const defaultCategoryImg =
-      ITEM_IMAGE_MAP[item.category.name.toLowerCase()] || '/images/hero-pizza.jpg';
+    const imageUrl = getProductImage(item.name, item.category.name, item.imageUrl);
 
     return {
       id: item.id,
       name: item.name,
       description: item.description,
       price: Number(item.price),
-      imageUrl: item.imageUrl || defaultCategoryImg,
+      imageUrl,
       categoryId: item.categoryId,
       categoryName: item.category.name,
       isAvailable: true,

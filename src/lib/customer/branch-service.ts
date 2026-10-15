@@ -19,13 +19,12 @@ export interface PublicBranch {
 }
 
 export function isBranchCurrentlyOpen(openingTime: string | null, closingTime: string | null): boolean {
-  if (!openingTime || !closingTime) return true; // Default to open if not specified
+  if (!openingTime || !closingTime) return false;
   try {
     const now = new Date();
-    // Use Indian Standard Time or local hour/minute
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
-    const currentTotalMinutes = currentHours * 60 + currentMinutes;
+    // Indian Standard Time (UTC+5:30) for accurate operational branch status
+    const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    const istMinutes = (utcMinutes + 330) % 1440;
 
     const [openH, openM] = openingTime.split(':').map(Number);
     const [closeH, closeM] = closingTime.split(':').map(Number);
@@ -34,13 +33,13 @@ export function isBranchCurrentlyOpen(openingTime: string | null, closingTime: s
     const closeTotal = closeH * 60 + (closeM || 0);
 
     if (closeTotal > openTotal) {
-      return currentTotalMinutes >= openTotal && currentTotalMinutes <= closeTotal;
+      return istMinutes >= openTotal && istMinutes <= closeTotal;
     } else {
-      // Overnight (e.g. 18:00 to 02:00)
-      return currentTotalMinutes >= openTotal || currentTotalMinutes <= closeTotal;
+      // Overnight operations (e.g. 11:00 to 01:00)
+      return istMinutes >= openTotal || istMinutes <= closeTotal;
     }
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -48,6 +47,13 @@ export async function getPublicBranches(): Promise<PublicBranch[]> {
   const branches = await prisma.branch.findMany({
     where: {
       status: 'ACTIVE',
+      NOT: [
+        { name: { contains: 'Test', mode: 'insensitive' } },
+        { name: { contains: 'E2E', mode: 'insensitive' } },
+        { code: { startsWith: 'E2E' } },
+        { code: { startsWith: 'CA' } },
+        { code: { startsWith: 'CB' } },
+      ],
     },
     orderBy: {
       name: 'asc',

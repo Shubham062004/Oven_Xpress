@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { validateSession } from '@/lib/auth/session';
 import { realtimeBus } from '@/lib/realtime/event-bus';
+import { authorizeOrderAccess } from '@/lib/customer/tracking-token';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,12 +15,13 @@ export const runtime = 'nodejs';
  * - OWNER / ADMIN: authorized for 'owner', 'all-branches', and specific branch channels.
  * - BRANCH_MANAGER / STAFF: authorized strictly for their assigned branch and personal user channel.
  * - CUSTOMER: authorized strictly for their personal user channel and their verified orders.
- * - GUEST TRACKING: authorized strictly for the single orderNumber requested if verified.
+ * - GUEST TRACKING: authorized strictly for the single orderNumber requested if verified with tracking token.
  */
 export async function GET(request: NextRequest) {
   const { user } = await validateSession();
   const searchParams = request.nextUrl.searchParams;
   const orderNumber = searchParams.get('orderNumber');
+  const token = searchParams.get('token');
   const requestedBranch = searchParams.get('branchId');
 
   const channels: string[] = [];
@@ -49,34 +51,43 @@ export async function GET(request: NextRequest) {
     if (orderNumber) {
       const order = await prisma.order.findUnique({
         where: { orderNumber },
-        select: { id: true, branchId: true, customerId: true, customerPhone: true },
+        select: {
+          id: true,
+          orderNumber: true,
+          branchId: true,
+          customerId: true,
+          createdBy: true,
+          trackingTokenHash: true,
+        },
       });
 
       if (order) {
-        const isAuthorizedStaff =
-          roleUpper === 'OWNER' ||
-          roleUpper === 'ADMIN' ||
-          (user.branchId && user.branchId === order.branchId);
-
-        const isOrderCustomer =
-          order.customerId === user.id ||
-          (user.phone && order.customerPhone === user.phone);
-
-        if (isAuthorizedStaff || isOrderCustomer) {
+        const auth = await authorizeOrderAccess(order, user, token);
+        if (auth.authorized) {
           channels.push(`order:${orderNumber}`);
         }
       }
     }
   } else if (orderNumber) {
     // 5. Guest customer order tracking
-    // Verify the order actually exists before granting the channel
+    // Verify cryptographically secure tracking token before granting channel
     const order = await prisma.order.findUnique({
       where: { orderNumber },
-      select: { id: true },
+      select: {
+        id: true,
+        orderNumber: true,
+        branchId: true,
+        customerId: true,
+        createdBy: true,
+        trackingTokenHash: true,
+      },
     });
 
     if (order) {
-      channels.push(`order:${orderNumber}`);
+      const auth = await authorizeOrderAccess(order, null, token);
+      if (auth.authorized) {
+        channels.push(`order:${orderNumber}`);
+      }
     }
   }
 

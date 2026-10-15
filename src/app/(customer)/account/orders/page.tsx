@@ -104,7 +104,7 @@ export default async function CustomerOrdersPage() {
                   </div>
 
                   <Link
-                    href={`/orders/${order.orderNumber}`}
+                    href={`/track/${order.orderNumber}`}
                     className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground font-bold text-xs transition-colors"
                   >
                     <span>Track Order</span>

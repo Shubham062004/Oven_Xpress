@@ -71,7 +71,7 @@ export function CustomerHeader({ branches, user }: CustomerHeaderProps) {
               <button
                 type="button"
                 onClick={() => setIsBranchModalOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-muted/60 hover:bg-muted text-xs font-medium border border-border/60 transition-colors max-w-[170px] sm:max-w-xs truncate"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-muted/60 hover:bg-muted text-xs font-medium border border-border/60 transition-colors max-w-[110px] xs:max-w-[170px] sm:max-w-xs truncate"
               >
                 <MapPin className="size-3.5 text-primary shrink-0" />
                 <span className="truncate text-foreground">

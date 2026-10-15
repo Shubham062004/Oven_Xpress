@@ -587,7 +587,11 @@ export function middleware(request: NextRequest) {
     // Defense-in-depth security headers
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'DENY');
-    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    if (pathname.startsWith('/track')) {
+      response.headers.set('Referrer-Policy', 'no-referrer');
+    } else {
+      response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    }
     if (isProduction && !isLocalhost && Boolean(process.env.VERCEL)) {
       response.headers.set(
         'Strict-Transport-Security',

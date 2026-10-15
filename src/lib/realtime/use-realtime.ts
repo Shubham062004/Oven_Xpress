@@ -5,6 +5,7 @@ import type { RealtimeEventType, RealtimeMessage } from './types';
 
 export interface UseRealtimeOptions {
   orderNumber?: string;
+  token?: string;
   branchId?: string;
   enabled?: boolean;
   onEvent?: (message: RealtimeMessage) => void;
@@ -22,6 +23,7 @@ export interface UseRealtimeOptions {
  */
 export function useRealtime({
   orderNumber,
+  token,
   branchId,
   enabled = true,
   onEvent,
@@ -30,7 +32,10 @@ export function useRealtime({
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   useEffect(() => {
     if (!enabled) {
@@ -51,6 +56,7 @@ export function useRealtime({
 
       const params = new URLSearchParams();
       if (orderNumber) params.set('orderNumber', orderNumber);
+      if (token) params.set('token', token);
       if (branchId) params.set('branchId', branchId);
 
       const qs = params.toString();
@@ -125,7 +131,7 @@ export function useRealtime({
       }
       setIsConnected(false);
     };
-  }, [enabled, orderNumber, branchId, eventTypes]);
+  }, [enabled, orderNumber, token, branchId, eventTypes]);
 
   return { isConnected };
 }
