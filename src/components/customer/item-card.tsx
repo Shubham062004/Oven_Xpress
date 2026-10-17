@@ -2,8 +2,9 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Plus, Minus, Clock, Sparkles } from 'lucide-react';
+import { Plus, Minus, Clock } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
+import { WishlistButton } from './wishlist-button';
 import type { PublicMenuItem } from '@/lib/customer/menu-service';
 
 interface ItemCardProps {
@@ -36,13 +37,14 @@ export function ItemCard({ item }: ItemCardProps) {
   return (
     <div className="group relative bg-card rounded-2xl border border-border/70 hover:border-border overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
       {/* Image container */}
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
+      <div className="relative aspect-16/10 w-full overflow-hidden bg-muted">
         {item.imageUrl ? (
-          <img
+          <Image
             src={item.imageUrl}
             alt={item.name}
-            className="size-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className="size-full flex items-center justify-center bg-muted/60 text-muted-foreground text-xs">
@@ -51,7 +53,7 @@ export function ItemCard({ item }: ItemCardProps) {
         )}
 
         {/* Veg / Non-Veg Badge */}
-        <div className="absolute top-2.5 left-2.5 bg-background/90 backdrop-blur-xs p-1 rounded-md shadow-xs">
+        <div className="absolute top-2.5 left-2.5 bg-background/90 backdrop-blur-xs p-1 rounded-md shadow-xs z-10">
           <div
             className={`size-3 rounded-xs border-2 flex items-center justify-center ${
               isVeg ? 'border-emerald-600' : 'border-rose-600'
@@ -65,9 +67,16 @@ export function ItemCard({ item }: ItemCardProps) {
           </div>
         </div>
 
+        {/* Wishlist Heart Button */}
+        <WishlistButton
+          menuItemId={item.id}
+          size="sm"
+          className="absolute top-2.5 right-2.5 z-10"
+        />
+
         {/* Prep time badge */}
         {item.prepTimeMinutes > 0 && (
-          <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+          <div className="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-xs text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
             <Clock className="size-2.5" />
             <span>{item.prepTimeMinutes}m</span>
           </div>

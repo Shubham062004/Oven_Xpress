@@ -30,6 +30,7 @@ const CUSTOMER_PUBLIC_PATHS = [
   '/cart',
   '/track',
   '/report-bug',
+  '/account/wishlist',
   '/api/bug-reports',
   '/api/realtime',
   '/api/auth',

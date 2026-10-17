@@ -29,6 +29,7 @@ model User {
   auditLogs               AuditLog[]
   preference              UserPreference?
   bugReports              BugReport[]
+  wishlist                CustomerWishlist[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -326,6 +327,7 @@ model MenuItem {
   recipeIngredients      RecipeIngredient[]
   orderItems             OrderItem[]
   reviews                Review[]
+  wishlistedBy           CustomerWishlist[]
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
@@ -347,6 +349,19 @@ model BranchMenuItem {
 
   @@unique([branchId, menuItemId])
   @@index([branchId])
+  @@index([menuItemId])
+}
+
+model CustomerWishlist {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, menuItemId])
+  @@index([userId])
   @@index([menuItemId])
 }
 

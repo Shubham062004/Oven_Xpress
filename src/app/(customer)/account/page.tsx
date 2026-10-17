@@ -14,6 +14,8 @@ import {
   Briefcase,
   ShoppingBag,
   Bug,
+  Edit3,
+  Heart,
 } from 'lucide-react';
 import { logoutAction } from '@/lib/auth/actions';
 import type { Metadata } from 'next';
@@ -107,16 +109,35 @@ export default async function CustomerAccountPage() {
           </div>
         </div>
 
-        {/* Logout Form */}
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+        {/* Account Header Actions */}
+        <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
+          <Link
+            href="/account/profile"
+            className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-xs hover:opacity-95 transition-opacity"
           >
-            <LogOut className="size-3.5" />
-            <span>Sign Out</span>
-          </button>
-        </form>
+            <Edit3 className="size-3.5" />
+            <span>Profile & Settings</span>
+          </Link>
+
+          <Link
+            href="/account/wishlist"
+            className="px-3.5 py-2 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <Heart className="size-3.5 text-amber-500 fill-amber-500/20" />
+            <span>Wishlist</span>
+          </Link>
+
+          {/* Logout Form */}
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="px-3.5 py-2 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <LogOut className="size-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </form>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">

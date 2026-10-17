@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { getPublicBranches } from '@/lib/customer/branch-service';
 import { getCurrentUser } from '@/lib/auth/guards';
 import { CartProvider } from '@/context/cart-context';
+import { WishlistProvider } from '@/context/wishlist-context';
 import { CustomerHeader } from '@/components/customer/customer-header';
 import { FloatingCartBar } from '@/components/customer/floating-cart-bar';
 import { MobileBottomNav } from '@/components/customer/mobile-bottom-nav';
@@ -19,7 +20,8 @@ export default async function CustomerLayout({
 
   return (
     <CartProvider>
-      <div className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
+      <WishlistProvider>
+        <div className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
         {/* Sticky Storefront Header */}
         <CustomerHeader branches={branches} user={user} />
 
@@ -145,6 +147,7 @@ export default async function CustomerLayout({
           </div>
         </footer>
       </div>
+      </WishlistProvider>
     </CartProvider>
   );
 }

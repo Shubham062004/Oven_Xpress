@@ -9,8 +9,10 @@ import {
   ChevronDown,
   User,
   Search,
+  Heart,
 } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
+import { useWishlist } from '@/context/wishlist-context';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { BranchSelectorModal } from './branch-selector-modal';
 import type { PublicBranch } from '@/lib/customer/branch-service';
@@ -28,6 +30,7 @@ interface CustomerHeaderProps {
 
 export function CustomerHeader({ branches, user }: CustomerHeaderProps) {
   const { branch, itemCount, orderType, setOrderType } = useCart();
+  const { wishlistCount } = useWishlist();
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
 
   // If no branch selected yet, default to first active branch
@@ -122,6 +125,20 @@ export function CustomerHeader({ branches, user }: CustomerHeaderProps) {
               )}
 
               <ThemeToggle />
+
+              {/* Wishlist Button */}
+              <Link
+                href="/account/wishlist"
+                className="relative flex items-center justify-center size-9 sm:size-10 rounded-xl bg-card hover:bg-muted/80 text-muted-foreground hover:text-amber-500 border border-border/70 hover:border-amber-500/30 transition-all shadow-xs"
+                aria-label="View Wishlist"
+              >
+                <Heart className="size-4 sm:size-5" />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-amber-500 text-white font-bold text-[10px] flex items-center justify-center shadow-xs animate-in zoom-in-75">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
 
               {/* Cart Button */}
               <Link
