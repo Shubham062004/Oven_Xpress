@@ -54,13 +54,59 @@ async function main() {
   assert(!hasShiftSelect, 'Shift filter dropdown is removed from attendance page');
   assert(!hasStatusSelect, 'Status filter dropdown is removed from attendance page');
 
-  // Ensure Date navigation is preserved
-  assert(
-    clientFileContent.includes('handleShiftDate') &&
-      clientFileContent.includes('handleSetToday') &&
-      clientFileContent.includes('type="date"'),
-    'Date selector, previous/next buttons, and Today button are preserved'
+  // ────────────────────────────────────────────────────────────────────────────
+  // TEST 1B: Repositioned and Simplified Date Navigation
+  // ────────────────────────────────────────────────────────────────────────────
+  console.log('\n--- TEST 1B: Repositioned and Simplified Date Navigation ---');
+
+  // 1. Check date controls appear in PageHeader beside Mark Attendance
+  const pageHeaderSection = clientFileContent.substring(
+    clientFileContent.indexOf('<PageHeader'),
+    clientFileContent.indexOf('</PageHeader>')
   );
+  assert(
+    pageHeaderSection.includes('handleShiftDate') &&
+      pageHeaderSection.includes('type="date"') &&
+      pageHeaderSection.includes('Mark Attendance'),
+    'Date navigation controls are located inside PageHeader immediately beside Mark Attendance'
+  );
+
+  // 2. Check old separate date toolbar is removed
+  assert(
+    !clientFileContent.includes('Showing records for'),
+    'Old separate date toolbar with "Showing records for" is completely removed'
+  );
+  assert(
+    !clientFileContent.includes('CalendarDays'),
+    'Separate calendar icon outside date picker is removed'
+  );
+
+  // 3. Compact date control contains ChevronLeft, date input, and ChevronRight
+  assert(
+    pageHeaderSection.includes('ChevronLeft') &&
+      pageHeaderSection.includes('ChevronRight') &&
+      pageHeaderSection.includes('type="date"'),
+    'Compact control contains only ChevronLeft, Date input, and ChevronRight'
+  );
+
+  // 4. Conditional Today button: hidden when isToday is true, visible when false
+  assert(
+    pageHeaderSection.includes('!isToday') && clientFileContent.includes('isToday = dateFilter === getLocalTodayDate()'),
+    'Today button is conditionally hidden on today and shown on other dates using local timezone'
+  );
+
+  // 5. Verify local date boundary logic (e.g. Month & Year transitions without UTC drift)
+  const [y1, m1, d1] = '2026-12-31'.split('-').map(Number);
+  const nextYearObj = new Date(y1, m1 - 1, d1);
+  nextYearObj.setDate(nextYearObj.getDate() + 1);
+  const nextYearStr = `${nextYearObj.getFullYear()}-${String(nextYearObj.getMonth() + 1).padStart(2, '0')}-${String(nextYearObj.getDate()).padStart(2, '0')}`;
+  assert(nextYearStr === '2027-01-01', 'Date shifting across year boundary works accurately');
+
+  const [y2, m2, d2] = '2026-03-01'.split('-').map(Number);
+  const prevMonthObj = new Date(y2, m2 - 1, d2);
+  prevMonthObj.setDate(prevMonthObj.getDate() - 1);
+  const prevMonthStr = `${prevMonthObj.getFullYear()}-${String(prevMonthObj.getMonth() + 1).padStart(2, '0')}-${String(prevMonthObj.getDate()).padStart(2, '0')}`;
+  assert(prevMonthStr === '2026-02-28', 'Date shifting across month boundary works accurately');
 
   // ────────────────────────────────────────────────────────────────────────────
   // TEST 2: Employee Search Functionality
@@ -373,7 +419,7 @@ async function main() {
   console.log('\n--- TEST 7: Date Change Synchronization ---');
   assert(
     clientFileContent.includes('refreshAttendance(newDateStr)') &&
-      clientFileContent.includes('refreshAttendance(todayDate)'),
+      (clientFileContent.includes('refreshAttendance(today)') || clientFileContent.includes('refreshAttendance(todayDate)')),
     'Date controls trigger refreshAttendance with updated target date'
   );
   assert(

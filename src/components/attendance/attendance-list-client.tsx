@@ -14,7 +14,6 @@ import {
   Search,
   Users,
   LogOut,
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
   ArrowUp,
@@ -89,6 +88,14 @@ function formatTimeDisplay(date: Date | string | null): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
+function getLocalTodayDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatDateDisplay(dateStr: string): string {
   if (!dateStr) return '';
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -142,8 +149,10 @@ export function AttendanceListClient({
   const [shifts] = useState<ShiftItem[]>(initialShifts);
 
   // Date and Search State
-  const [dateFilter, setDateFilter] = useState<string>(todayDate);
+  const [dateFilter, setDateFilter] = useState<string>(todayDate || getLocalTodayDate());
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const isToday = dateFilter === getLocalTodayDate();
 
   // Sorting State
   const [sortColumn, setSortColumn] = useState<AttendanceSortColumn>('employee');
@@ -203,14 +212,18 @@ export function AttendanceListClient({
     const [y, m, d] = dateFilter.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
     dateObj.setDate(dateObj.getDate() + days);
-    const newDateStr = dateObj.toISOString().split('T')[0];
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const newDateStr = `${year}-${month}-${day}`;
     setDateFilter(newDateStr);
     refreshAttendance(newDateStr);
   };
 
   const handleSetToday = () => {
-    setDateFilter(todayDate);
-    refreshAttendance(todayDate);
+    const today = getLocalTodayDate();
+    setDateFilter(today);
+    refreshAttendance(today);
   };
 
   // Quick Check Out Action
@@ -367,59 +380,39 @@ export function AttendanceListClient({
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Page Header with Date Navigation on the Right */}
       <PageHeader
         title="Attendance"
         description="Monitor employee attendance across restaurant branches."
       >
-        {canCreateAttendance && (
-          <Button
-            onClick={() => {
-              setSelectedAttendance(null);
-              setAttendanceDialogOpen(true);
-            }}
-            size="sm"
-          >
-            <Plus className="mr-1.5 size-4" />
-            Mark Attendance
-          </Button>
-        )}
-      </PageHeader>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Conditional Today Button: hidden when dateFilter is today */}
+          {!isToday && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSetToday}
+              disabled={isPending}
+              className="h-8 px-2.5 text-xs font-medium cursor-pointer"
+            >
+              Today
+            </Button>
+          )}
 
-      {/* Date Selector Navigation Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3 shadow-xs">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="size-8 p-0"
-            onClick={() => handleShiftDate(-1)}
-            title="Previous Day"
-            disabled={isPending}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button
-            variant={dateFilter === todayDate ? 'default' : 'outline'}
-            size="sm"
-            onClick={handleSetToday}
-            disabled={isPending}
-          >
-            Today
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="size-8 p-0"
-            onClick={() => handleShiftDate(1)}
-            title="Next Day"
-            disabled={isPending}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
+          {/* Compact Date Navigation Control (Previous, Date Picker, Next) */}
+          <div className="flex items-center rounded-lg border border-border/60 bg-card shadow-xs">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="size-8 p-0 rounded-r-none hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+              onClick={() => handleShiftDate(-1)}
+              title="Previous Day"
+              aria-label="Previous day"
+              disabled={isPending}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
 
-          <div className="flex items-center gap-2 pl-2">
-            <CalendarDays className="size-4 text-muted-foreground hidden sm:block" />
             <Input
               type="date"
               value={dateFilter}
@@ -429,19 +422,40 @@ export function AttendanceListClient({
                   refreshAttendance(e.target.value);
                 }
               }}
-              className="h-8 w-36 text-xs sm:w-40 sm:text-sm"
+              className="h-8 w-32 sm:w-34 rounded-none border-x border-y-0 border-border/40 bg-transparent px-2 text-xs font-medium focus-visible:ring-0 dark:bg-transparent cursor-pointer scheme-dark"
               disabled={isPending}
+              aria-label="Attendance date"
             />
-            <span className="text-xs font-medium text-muted-foreground hidden md:inline">
-              ({formatDateDisplay(dateFilter)})
-            </span>
-          </div>
-        </div>
 
-        <div className="text-xs text-muted-foreground">
-          Showing records for <strong className="text-foreground">{formatDateDisplay(dateFilter)}</strong>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="size-8 p-0 rounded-l-none hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+              onClick={() => handleShiftDate(1)}
+              title="Next Day"
+              aria-label="Next day"
+              disabled={isPending}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+
+          {/* Mark Attendance Action Button */}
+          {canCreateAttendance && (
+            <Button
+              onClick={() => {
+                setSelectedAttendance(null);
+                setAttendanceDialogOpen(true);
+              }}
+              size="sm"
+              className="h-8 gap-1.5 shadow-sm text-xs cursor-pointer"
+            >
+              <Plus className="size-4" />
+              Mark Attendance
+            </Button>
+          )}
         </div>
-      </div>
+      </PageHeader>
 
       {/* Clickable Attendance KPI Summary Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
