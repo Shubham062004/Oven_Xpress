@@ -13,7 +13,7 @@ import { logTrafficAnomaly } from '@/lib/security/security-logger';
 
 const SESSION_COOKIE_NAME = 'ox_session';
 
-// Paths that unauthenticated users can access (auth forms)
+// Paths that unauthenticated users can access (auth forms and OAuth endpoints)
 const PUBLIC_PATHS = [
   '/login',
   '/unauthorized',
@@ -21,6 +21,7 @@ const PUBLIC_PATHS = [
   '/reset-password',
   '/verify-email',
   '/register',
+  '/api/auth',
 ];
 
 // Customer-facing public paths — accessible without any authentication
@@ -31,6 +32,7 @@ const CUSTOMER_PUBLIC_PATHS = [
   '/report-bug',
   '/api/bug-reports',
   '/api/realtime',
+  '/api/auth',
 ];
 
 // Customer-facing paths that require CUSTOMER (or staff) authentication
