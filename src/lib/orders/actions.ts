@@ -900,15 +900,147 @@ export async function updateOrder(
       };
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id },
-      data: {
-        ...(parsed.data.customerName !== undefined && { customerName: parsed.data.customerName || null }),
-        ...(parsed.data.customerPhone !== undefined && { customerPhone: parsed.data.customerPhone || null }),
-        ...(parsed.data.deliveryAddress !== undefined && { deliveryAddress: parsed.data.deliveryAddress || null }),
-        ...(parsed.data.deliveryNotes !== undefined && { deliveryNotes: parsed.data.deliveryNotes || null }),
-        ...(parsed.data.notes !== undefined && { notes: parsed.data.notes || null }),
+    // Verify payment constraints
+    const existingPayment = await prisma.payment.findFirst({
+      where: {
+        orderId: id,
+        status: { in: [PaymentStatus.SUCCESS, PaymentStatus.PARTIALLY_REFUNDED] },
       },
+    });
+    if (
+      existingPayment &&
+      (parsed.data.items !== undefined ||
+        parsed.data.discountAmount !== undefined ||
+        parsed.data.deliveryCharge !== undefined)
+    ) {
+      return {
+        success: false,
+        error: 'Cannot modify items or charges on an order with recorded payments.',
+      };
+    }
+
+    let calculatedSubtotal = order.subtotal.toNumber();
+    let validatedItems: {
+      menuItemId: string;
+      itemName: string;
+      quantity: number;
+      unitPrice: Prisma.Decimal;
+      discountAmount: Prisma.Decimal;
+      totalPrice: Prisma.Decimal;
+      notes: string | null;
+    }[] | null = null;
+
+    if (parsed.data.items && parsed.data.items.length > 0) {
+      const menuItemIds = parsed.data.items.map((i) => i.menuItemId);
+      const dbMenuItems = await prisma.menuItem.findMany({
+        where: {
+          id: { in: menuItemIds },
+          status: 'ACTIVE',
+        },
+        include: {
+          branchAvailability: {
+            where: { branchId: order.branchId },
+            select: { price: true, isAvailable: true },
+          },
+        },
+      });
+
+      if (dbMenuItems.length !== menuItemIds.length) {
+        return { success: false, error: 'One or more selected menu items are invalid or inactive' };
+      }
+
+      type DbMenuItemType = Prisma.MenuItemGetPayload<{
+        include: {
+          branchAvailability: { select: { price: true; isAvailable: true } };
+        };
+      }>;
+
+      const menuItemMap = new Map<string, DbMenuItemType>(
+        (dbMenuItems as DbMenuItemType[]).map((m) => [m.id, m])
+      );
+
+      calculatedSubtotal = 0;
+      validatedItems = [];
+
+      for (const item of parsed.data.items) {
+        const dbItem = menuItemMap.get(item.menuItemId);
+        if (!dbItem) {
+          return { success: false, error: `Menu item not found: ${item.menuItemId}` };
+        }
+
+        const branchOverride = dbItem.branchAvailability[0];
+        if (branchOverride && !branchOverride.isAvailable) {
+          return {
+            success: false,
+            error: `Menu item "${dbItem.name}" is marked unavailable at this branch`,
+          };
+        }
+
+        const unitPriceNumber = branchOverride?.price
+          ? branchOverride.price.toNumber()
+          : dbItem.price.toNumber();
+
+        const itemDiscount = Math.min(item.discountAmount, unitPriceNumber * item.quantity);
+        const lineTotalNumber = Math.max(0, unitPriceNumber * item.quantity - itemDiscount);
+
+        calculatedSubtotal += lineTotalNumber;
+
+        validatedItems.push({
+          menuItemId: dbItem.id,
+          itemName: dbItem.name,
+          quantity: item.quantity,
+          unitPrice: new Prisma.Decimal(unitPriceNumber.toFixed(2)),
+          discountAmount: new Prisma.Decimal(itemDiscount.toFixed(2)),
+          totalPrice: new Prisma.Decimal(lineTotalNumber.toFixed(2)),
+          notes: item.notes || null,
+        });
+      }
+    }
+
+    // Server-side financial calculations
+    const calculatedTax = Math.round(calculatedSubtotal * 0.05 * 100) / 100;
+    const discountAmount =
+      parsed.data.discountAmount !== undefined
+        ? parsed.data.discountAmount
+        : order.discountAmount.toNumber();
+    const orderDiscount = Math.min(discountAmount, calculatedSubtotal);
+    const deliveryCharge =
+      order.orderType === OrderType.DELIVERY
+        ? (parsed.data.deliveryCharge !== undefined
+            ? parsed.data.deliveryCharge
+            : order.deliveryCharge.toNumber())
+        : 0;
+    const grandTotal = Math.max(
+      0,
+      calculatedSubtotal - orderDiscount + calculatedTax + deliveryCharge
+    );
+
+    const updatedOrder = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      if (validatedItems) {
+        await tx.orderItem.deleteMany({ where: { orderId: id } });
+        await tx.orderItem.createMany({
+          data: validatedItems.map((item) => ({
+            ...item,
+            orderId: id,
+          })),
+        });
+      }
+
+      return tx.order.update({
+        where: { id },
+        data: {
+          ...(parsed.data.customerName !== undefined && { customerName: parsed.data.customerName || null }),
+          ...(parsed.data.customerPhone !== undefined && { customerPhone: parsed.data.customerPhone || null }),
+          ...(parsed.data.deliveryAddress !== undefined && { deliveryAddress: parsed.data.deliveryAddress || null }),
+          ...(parsed.data.deliveryNotes !== undefined && { deliveryNotes: parsed.data.deliveryNotes || null }),
+          ...(parsed.data.notes !== undefined && { notes: parsed.data.notes || null }),
+          subtotal: new Prisma.Decimal(calculatedSubtotal.toFixed(2)),
+          taxAmount: new Prisma.Decimal(calculatedTax.toFixed(2)),
+          discountAmount: new Prisma.Decimal(orderDiscount.toFixed(2)),
+          deliveryCharge: new Prisma.Decimal(deliveryCharge.toFixed(2)),
+          totalAmount: new Prisma.Decimal(grandTotal.toFixed(2)),
+        },
+      });
     });
 
     await createAuditLog({
@@ -917,13 +1049,14 @@ export async function updateOrder(
       action: AUDIT_ACTIONS.ORDER_UPDATE,
       entityType: AUDIT_ENTITY_TYPES.ORDER,
       entityId: order.id,
-      description: `Updated details for order ${order.orderNumber}`,
+      description: `Updated details and recalculations for order ${order.orderNumber}`,
       beforeData: {
         customerName: order.customerName,
         customerPhone: order.customerPhone,
         deliveryAddress: order.deliveryAddress,
         deliveryNotes: order.deliveryNotes,
         notes: order.notes,
+        totalAmount: order.totalAmount.toNumber(),
       },
       afterData: {
         customerName: updatedOrder.customerName,
@@ -931,6 +1064,7 @@ export async function updateOrder(
         deliveryAddress: updatedOrder.deliveryAddress,
         deliveryNotes: updatedOrder.deliveryNotes,
         notes: updatedOrder.notes,
+        totalAmount: updatedOrder.totalAmount.toNumber(),
       },
     }).catch((e: unknown) => console.error('Failed to create order update audit log:', e));
 

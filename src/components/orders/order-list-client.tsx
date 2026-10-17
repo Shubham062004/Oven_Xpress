@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useCallback, useRef, useTransition } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ShoppingCart,
   Plus,
   Search,
-  MoreHorizontal,
   Eye,
   Utensils,
-  Ban,
   Building2,
   Clock,
   User,
@@ -22,6 +20,13 @@ import {
   ChefHat,
   ChevronLeft,
   ChevronRight,
+  Pencil,
+  Trash2,
+  Filter,
+  Check,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderType, OrderStatus } from '@prisma/client';
@@ -29,7 +34,7 @@ import { OrderType, OrderStatus } from '@prisma/client';
 import { useAuth } from '@/providers/auth-provider';
 import { hasPermission } from '@/lib/permissions/check';
 import { PERMISSIONS } from '@/lib/permissions/definitions';
-import { getOrders, getOrderStats, updateOrderStatus } from '@/lib/orders/actions';
+import { getOrders, getOrderStats } from '@/lib/orders/actions';
 import type { OrderListItem, OrderStats } from '@/lib/orders/types';
 import { useRealtime } from '@/lib/realtime/use-realtime';
 import type { OrderCreatedPayload } from '@/lib/realtime/types';
@@ -58,18 +63,45 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { OrderCancelDialog } from '@/components/orders/order-cancel-dialog';
+import { OrderEditDialog } from '@/components/orders/order-edit-dialog';
 import { TableManagementDialog } from '@/components/orders/table-management-dialog';
+
+// ─── Types & Sorting ────────────────────────────────────────────────────────
+
+type OrderSortColumn =
+  | 'orderNumber'
+  | 'type'
+  | 'customer'
+  | 'branch'
+  | 'items'
+  | 'total'
+  | 'status';
+
+type SortDirection = 'asc' | 'desc';
+
+function SortIndicator({
+  column,
+  currentColumn,
+  direction,
+}: {
+  column: OrderSortColumn;
+  currentColumn: OrderSortColumn | null;
+  direction: SortDirection;
+}) {
+  if (currentColumn !== column) {
+    return <ArrowUpDown className="size-3.5 text-muted-foreground/30 shrink-0" />;
+  }
+  return direction === 'asc' ? (
+    <ArrowUp className="size-3.5 text-primary shrink-0" />
+  ) : (
+    <ArrowDown className="size-3.5 text-primary shrink-0" />
+  );
+}
 
 interface BranchOption {
   id: string;
@@ -99,11 +131,9 @@ export function OrderListClient({
 }: OrderListClientProps) {
   const router = useRouter();
   const user = useAuth();
-  const [, startTransition] = useTransition();
 
   const canCreate = hasPermission(user, PERMISSIONS.ORDER_CREATE);
   const canUpdate = hasPermission(user, PERMISSIONS.ORDER_UPDATE);
-  const canChangeStatus = hasPermission(user, PERMISSIONS.ORDER_STATUS);
   const canCancel = hasPermission(user, PERMISSIONS.ORDER_CANCEL);
   const canManageTables = hasPermission(user, PERMISSIONS.TABLE_READ);
 
@@ -119,12 +149,21 @@ export function OrderListClient({
   const [dateFilter, setDateFilter] = useState<'today' | 'all'>('today');
   const [search, setSearch] = useState<string>('');
 
+  // Sorting State
+  const [sortColumn, setSortColumn] = useState<OrderSortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
   // Dialog states
   const [cancelDialogOrder, setCancelDialogOrder] = useState<{
     id: string;
     orderNumber: string;
   } | null>(null);
+  const [editDialogOrder, setEditDialogOrder] = useState<{
+    id: string;
+    orderNumber: string;
+  } | null>(null);
   const [isTablesOpen, setIsTablesOpen] = useState(false);
+
   const activeBranchIdForTables =
     selectedBranch !== 'ALL' ? selectedBranch : userBranchId || (branches.length > 0 ? branches[0].id : '');
   const activeBranchNameForTables =
@@ -235,17 +274,96 @@ export function OrderListClient({
     fetchOrders(1, { date: val });
   };
 
-  const handleQuickStatus = (orderId: string, nextStatus: OrderStatus) => {
-    startTransition(async () => {
-      const res = await updateOrderStatus(orderId, nextStatus);
-      if (res.success) {
-        toast.success(`Order moved to ${nextStatus}`);
-        fetchOrders(pagination.page);
-      } else {
-        toast.error(res.error || 'Failed to update order status');
-      }
-    });
+  // Sorting Handler
+  const handleSort = (column: OrderSortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
   };
+
+  // Row Action Handlers
+  const handleEditOrder = (ord: OrderListItem) => {
+    if (ord.status !== OrderStatus.PENDING) {
+      toast.error(
+        `Cannot edit order ${ord.orderNumber}. Only PENDING orders can be edited (current status: ${ord.status}).`
+      );
+      return;
+    }
+    setEditDialogOrder({ id: ord.id, orderNumber: ord.orderNumber });
+  };
+
+  const handleDeleteOrder = (ord: OrderListItem) => {
+    if (
+      ord.status === OrderStatus.COMPLETED ||
+      ord.status === OrderStatus.CANCELLED ||
+      ord.status === OrderStatus.REFUNDED
+    ) {
+      toast.error(
+        `Order ${ord.orderNumber} is ${ord.status.toLowerCase()} and cannot be cancelled or deleted.`
+      );
+      return;
+    }
+    setCancelDialogOrder({ id: ord.id, orderNumber: ord.orderNumber });
+  };
+
+  // Memoized Sorted Orders
+  const sortedOrders = useMemo(() => {
+    if (!sortColumn) return orders;
+    const list = [...orders];
+    return list.sort((a, b) => {
+      let comparison = 0;
+      switch (sortColumn) {
+        case 'orderNumber': {
+          comparison = a.orderNumber.localeCompare(b.orderNumber);
+          break;
+        }
+        case 'type': {
+          const typeA = `${a.orderType} ${a.tableNumber || ''}`.trim();
+          const typeB = `${b.orderType} ${b.tableNumber || ''}`.trim();
+          comparison = typeA.localeCompare(typeB);
+          break;
+        }
+        case 'customer': {
+          const nameA = (a.customerName || '').trim().toLowerCase();
+          const nameB = (b.customerName || '').trim().toLowerCase();
+          comparison = nameA.localeCompare(nameB);
+          break;
+        }
+        case 'branch': {
+          const branchA = a.branchName.trim().toLowerCase();
+          const branchB = b.branchName.trim().toLowerCase();
+          comparison = branchA.localeCompare(branchB);
+          break;
+        }
+        case 'items': {
+          comparison = a.itemCount - b.itemCount;
+          break;
+        }
+        case 'total': {
+          comparison = a.totalAmount - b.totalAmount;
+          break;
+        }
+        case 'status': {
+          comparison = a.status.localeCompare(b.status);
+          break;
+        }
+      }
+
+      if (comparison === 0) {
+        comparison = b.createdAt.localeCompare(a.createdAt);
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [orders, sortColumn, sortDirection]);
+
+  const hasActiveFilters =
+    selectedBranch !== (userBranchId || 'ALL') ||
+    selectedType !== 'ALL' ||
+    selectedStatus !== 'ALL';
 
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
@@ -439,26 +557,26 @@ export function OrderListClient({
         </Card>
       </div>
 
-      {/* Filters Bar */}
+      {/* Search & Date Controls Bar (Three dropdowns removed, space cleaned up) */}
       <Card className="border-border/60 shadow-xs">
-        <CardContent className="p-3 sm:p-4 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <div className="relative flex-1 w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 placeholder="Search by order #, customer name, or phone..."
                 value={search}
                 onChange={handleSearchChange}
-                className="pl-9 text-sm"
+                className="pl-9 text-sm w-full"
               />
             </div>
 
             {/* Date filter toggle */}
-            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/50 shrink-0">
+            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/50 shrink-0 w-full sm:w-auto justify-center">
               <button
                 type="button"
                 onClick={() => handleDateFilter('today')}
-                className={`px-3 py-1.5 min-h-9 text-xs font-medium rounded-md transition-all ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 min-h-9 text-xs font-medium rounded-md transition-all cursor-pointer ${
                   dateFilter === 'today'
                     ? 'bg-background shadow-xs text-foreground font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
@@ -469,7 +587,7 @@ export function OrderListClient({
               <button
                 type="button"
                 onClick={() => handleDateFilter('all')}
-                className={`px-3 py-1.5 min-h-9 text-xs font-medium rounded-md transition-all ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 min-h-9 text-xs font-medium rounded-md transition-all cursor-pointer ${
                   dateFilter === 'all'
                     ? 'bg-background shadow-xs text-foreground font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
@@ -480,54 +598,49 @@ export function OrderListClient({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/40">
-            {/* Branch Filter (hidden if manager locked) */}
-            {branches.length > 1 && !userBranchId && (
-              <Select value={selectedBranch} onValueChange={(val) => { if (val) handleBranchFilter(val); }}>
-                <SelectTrigger className="w-full sm:w-45 h-9 sm:h-8 text-xs">
-                  <SelectValue placeholder="All Branches" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Branches</SelectItem>
-                  {branches.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name} ({b.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {/* Order Type Filter */}
-            <Select value={selectedType} onValueChange={(val) => { if (val) handleTypeFilter(val); }}>
-              <SelectTrigger className="w-full sm:w-35 h-9 sm:h-8 text-xs">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Types</SelectItem>
-                <SelectItem value={OrderType.DINE_IN}>Dine-in</SelectItem>
-                <SelectItem value={OrderType.TAKEAWAY}>Takeaway</SelectItem>
-                <SelectItem value={OrderType.DELIVERY}>Delivery</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Order Status Filter */}
-            <Select value={selectedStatus} onValueChange={(val) => { if (val) handleStatusFilter(val); }}>
-              <SelectTrigger className="w-full sm:w-37.5 h-9 sm:h-8 text-xs">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value={OrderStatus.PENDING}>Pending</SelectItem>
-                <SelectItem value={OrderStatus.CONFIRMED}>Confirmed</SelectItem>
-                <SelectItem value={OrderStatus.PREPARING}>Preparing</SelectItem>
-                <SelectItem value={OrderStatus.READY}>Ready</SelectItem>
-                <SelectItem value={OrderStatus.COMPLETED}>Completed</SelectItem>
-                <SelectItem value={OrderStatus.CANCELLED}>Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {(selectedBranch !== 'ALL' || selectedType !== 'ALL' || selectedStatus !== 'ALL' || search || dateFilter !== 'today') && (
+          {/* Active filter summary pill bar (visible when column filters applied) */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2 pt-2.5 mt-2.5 border-t border-border/40 text-xs">
+              <span className="text-muted-foreground text-[11px] font-medium">Active filters:</span>
+              {selectedType !== 'ALL' && (
+                <Badge variant="secondary" className="gap-1 text-[11px] font-normal">
+                  Type: {selectedType}
+                  <button
+                    type="button"
+                    onClick={() => handleTypeFilter('ALL')}
+                    className="hover:text-foreground ml-0.5 cursor-pointer"
+                    aria-label="Clear type filter"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              )}
+              {selectedBranch !== (userBranchId || 'ALL') && (
+                <Badge variant="secondary" className="gap-1 text-[11px] font-normal">
+                  Branch: {branches.find((b) => b.id === selectedBranch)?.name || selectedBranch}
+                  <button
+                    type="button"
+                    onClick={() => handleBranchFilter('ALL')}
+                    className="hover:text-foreground ml-0.5 cursor-pointer"
+                    aria-label="Clear branch filter"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              )}
+              {selectedStatus !== 'ALL' && (
+                <Badge variant="secondary" className="gap-1 text-[11px] font-normal">
+                  Status: {selectedStatus}
+                  <button
+                    type="button"
+                    onClick={() => handleStatusFilter('ALL')}
+                    className="hover:text-foreground ml-0.5 cursor-pointer"
+                    aria-label="Clear status filter"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -535,15 +648,14 @@ export function OrderListClient({
                   setSelectedBranch(userBranchId || 'ALL');
                   setSelectedType('ALL');
                   setSelectedStatus('ALL');
-                  setDateFilter('today');
-                  setSearch('');
+                  fetchOrders(1, { branch: userBranchId || 'ALL', type: 'ALL', status: 'ALL' });
                 }}
-                className="h-9 sm:h-8 px-2 text-xs text-muted-foreground hover:text-foreground ml-auto"
+                className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground ml-auto cursor-pointer"
               >
-                Reset Filters
+                Reset All Filters
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -552,15 +664,15 @@ export function OrderListClient({
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6">
-              <TableSkeleton columns={7} rows={6} />
+              <TableSkeleton columns={8} rows={6} />
             </div>
-          ) : orders.length === 0 ? (
+          ) : sortedOrders.length === 0 ? (
             <div className="p-8">
               <EmptyState
                 icon={ShoppingCart}
                 title="No orders found"
                 description={
-                  search || selectedStatus !== 'ALL' || selectedType !== 'ALL'
+                  search || selectedStatus !== 'ALL' || selectedType !== 'ALL' || selectedBranch !== 'ALL'
                     ? 'No orders match your filter criteria. Try adjusting or clearing filters.'
                     : dateFilter === 'today'
                     ? 'No orders have been recorded today yet.'
@@ -578,23 +690,323 @@ export function OrderListClient({
             </div>
           ) : (
             <>
-              {/* Desktop Table */}
+              {/* Desktop Table with Sortable & Filterable Headers */}
               <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-35">Order #</TableHead>
-                      <TableHead>Type & Seating</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Branch</TableHead>
-                      <TableHead className="text-center">Items</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right w-20">Actions</TableHead>
+                      {/* Order # (Sortable) */}
+                      <TableHead className="w-36">
+                        <button
+                          type="button"
+                          onClick={() => handleSort('orderNumber')}
+                          className="flex items-center gap-1.5 hover:text-foreground font-medium text-xs transition-colors cursor-pointer select-none group text-left"
+                          aria-label={`Sort by Order number, currently ${sortColumn === 'orderNumber' ? sortDirection : 'none'}`}
+                        >
+                          <span>Order #</span>
+                          <SortIndicator
+                            column="orderNumber"
+                            currentColumn={sortColumn}
+                            direction={sortDirection}
+                          />
+                        </button>
+                      </TableHead>
+
+                      {/* Type & Seating (Sortable + Filter) */}
+                      <TableHead>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleSort('type')}
+                            className="flex items-center gap-1.5 hover:text-foreground font-medium text-xs transition-colors cursor-pointer select-none group text-left"
+                            aria-label={`Sort by Type, currently ${sortColumn === 'type' ? sortDirection : 'none'}`}
+                          >
+                            <span>Type & Seating</span>
+                            <SortIndicator
+                              column="type"
+                              currentColumn={sortColumn}
+                              direction={sortDirection}
+                            />
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`p-1 rounded transition-colors cursor-pointer ${
+                                    selectedType !== 'ALL'
+                                      ? 'text-primary bg-primary/15 hover:bg-primary/20 ring-1 ring-primary/40'
+                                      : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted'
+                                  }`}
+                                  title="Filter by Order Type"
+                                  aria-label="Filter by Order Type"
+                                >
+                                  <Filter className="size-3.5" />
+                                </button>
+                              }
+                            />
+                            <DropdownMenuContent align="start" className="w-40 z-50">
+                              <DropdownMenuLabel className="text-xs">Order Type</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleTypeFilter('ALL')}
+                                className={`text-xs flex items-center justify-between cursor-pointer ${
+                                  selectedType === 'ALL' ? 'font-semibold text-primary' : ''
+                                }`}
+                              >
+                                <span>All Types</span>
+                                {selectedType === 'ALL' && <Check className="size-3.5 text-primary" />}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleTypeFilter(OrderType.DINE_IN)}
+                                className={`text-xs flex items-center justify-between cursor-pointer ${
+                                  selectedType === OrderType.DINE_IN ? 'font-semibold text-primary' : ''
+                                }`}
+                              >
+                                <span>Dine-in</span>
+                                {selectedType === OrderType.DINE_IN && <Check className="size-3.5 text-primary" />}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleTypeFilter(OrderType.TAKEAWAY)}
+                                className={`text-xs flex items-center justify-between cursor-pointer ${
+                                  selectedType === OrderType.TAKEAWAY ? 'font-semibold text-primary' : ''
+                                }`}
+                              >
+                                <span>Takeaway</span>
+                                {selectedType === OrderType.TAKEAWAY && <Check className="size-3.5 text-primary" />}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleTypeFilter(OrderType.DELIVERY)}
+                                className={`text-xs flex items-center justify-between cursor-pointer ${
+                                  selectedType === OrderType.DELIVERY ? 'font-semibold text-primary' : ''
+                                }`}
+                              >
+                                <span>Delivery</span>
+                                {selectedType === OrderType.DELIVERY && <Check className="size-3.5 text-primary" />}
+                              </DropdownMenuItem>
+                              {selectedType !== 'ALL' && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleTypeFilter('ALL')}
+                                    className="text-xs text-muted-foreground justify-center cursor-pointer"
+                                  >
+                                    Clear filter
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableHead>
+
+                      {/* Customer (Sortable) */}
+                      <TableHead>
+                        <button
+                          type="button"
+                          onClick={() => handleSort('customer')}
+                          className="flex items-center gap-1.5 hover:text-foreground font-medium text-xs transition-colors cursor-pointer select-none group text-left"
+                          aria-label={`Sort by Customer, currently ${sortColumn === 'customer' ? sortDirection : 'none'}`}
+                        >
+                          <span>Customer</span>
+                          <SortIndicator
+                            column="customer"
+                            currentColumn={sortColumn}
+                            direction={sortDirection}
+                          />
+                        </button>
+                      </TableHead>
+
+                      {/* Branch (Sortable + Filter) */}
+                      <TableHead>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleSort('branch')}
+                            className="flex items-center gap-1.5 hover:text-foreground font-medium text-xs transition-colors cursor-pointer select-none group text-left"
+                            aria-label={`Sort by Branch, currently ${sortColumn === 'branch' ? sortDirection : 'none'}`}
+                          >
+                            <span>Branch</span>
+                            <SortIndicator
+                              column="branch"
+                              currentColumn={sortColumn}
+                              direction={sortDirection}
+                            />
+                          </button>
+                          {branches.length > 1 && !userBranchId && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <button
+                                    type="button"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`p-1 rounded transition-colors cursor-pointer ${
+                                      selectedBranch !== 'ALL'
+                                        ? 'text-primary bg-primary/15 hover:bg-primary/20 ring-1 ring-primary/40'
+                                        : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted'
+                                    }`}
+                                    title="Filter by Branch"
+                                    aria-label="Filter by Branch"
+                                  >
+                                    <Filter className="size-3.5" />
+                                  </button>
+                                }
+                              />
+                              <DropdownMenuContent align="start" className="w-52 z-50">
+                                <DropdownMenuLabel className="text-xs">Filter by Branch</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleBranchFilter('ALL')}
+                                  className={`text-xs flex items-center justify-between cursor-pointer ${
+                                    selectedBranch === 'ALL' ? 'font-semibold text-primary' : ''
+                                  }`}
+                                >
+                                  <span>All Branches</span>
+                                  {selectedBranch === 'ALL' && <Check className="size-3.5 text-primary" />}
+                                </DropdownMenuItem>
+                                {branches.map((b) => (
+                                  <DropdownMenuItem
+                                    key={b.id}
+                                    onClick={() => handleBranchFilter(b.id)}
+                                    className={`text-xs flex items-center justify-between cursor-pointer ${
+                                      selectedBranch === b.id ? 'font-semibold text-primary' : ''
+                                    }`}
+                                  >
+                                    <span className="truncate">{b.name} ({b.code})</span>
+                                    {selectedBranch === b.id && <Check className="size-3.5 text-primary shrink-0" />}
+                                  </DropdownMenuItem>
+                                ))}
+                                {selectedBranch !== 'ALL' && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleBranchFilter('ALL')}
+                                      className="text-xs text-muted-foreground justify-center cursor-pointer"
+                                    >
+                                      Clear filter
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      </TableHead>
+
+                      {/* Items (Sortable) */}
+                      <TableHead className="text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleSort('items')}
+                          className="inline-flex items-center gap-1.5 hover:text-foreground font-medium text-xs transition-colors cursor-pointer select-none group"
+                          aria-label={`Sort by Items count, currently ${sortColumn === 'items' ? sortDirection : 'none'}`}
+                        >
+                          <span>Items</span>
+                          <SortIndicator
+                            column="items"
+                            currentColumn={sortColumn}
+                            direction={sortDirection}
+                          />
+                        </button>
+                      </TableHead>
+
+                      {/* Total (Sortable) */}
+                      <TableHead className="text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleSort('total')}
+                          className="inline-flex items-center gap-1.5 hover:text-foreground font-medium text-xs transition-colors cursor-pointer select-none group ml-auto"
+                          aria-label={`Sort by Total amount, currently ${sortColumn === 'total' ? sortDirection : 'none'}`}
+                        >
+                          <span>Total</span>
+                          <SortIndicator
+                            column="total"
+                            currentColumn={sortColumn}
+                            direction={sortDirection}
+                          />
+                        </button>
+                      </TableHead>
+
+                      {/* Status (Sortable + Filter) */}
+                      <TableHead>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleSort('status')}
+                            className="flex items-center gap-1.5 hover:text-foreground font-medium text-xs transition-colors cursor-pointer select-none group text-left"
+                            aria-label={`Sort by Status, currently ${sortColumn === 'status' ? sortDirection : 'none'}`}
+                          >
+                            <span>Status</span>
+                            <SortIndicator
+                              column="status"
+                              currentColumn={sortColumn}
+                              direction={sortDirection}
+                            />
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`p-1 rounded transition-colors cursor-pointer ${
+                                    selectedStatus !== 'ALL'
+                                      ? 'text-primary bg-primary/15 hover:bg-primary/20 ring-1 ring-primary/40'
+                                      : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted'
+                                  }`}
+                                  title="Filter by Status"
+                                  aria-label="Filter by Status"
+                                >
+                                  <Filter className="size-3.5" />
+                                </button>
+                              }
+                            />
+                            <DropdownMenuContent align="end" className="w-44 z-50">
+                              <DropdownMenuLabel className="text-xs">Order Status</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {[
+                                { label: 'All Statuses', value: 'ALL' },
+                                { label: 'Pending', value: OrderStatus.PENDING },
+                                { label: 'Confirmed', value: OrderStatus.CONFIRMED },
+                                { label: 'Preparing', value: OrderStatus.PREPARING },
+                                { label: 'Ready', value: OrderStatus.READY },
+                                { label: 'Completed', value: OrderStatus.COMPLETED },
+                                { label: 'Cancelled', value: OrderStatus.CANCELLED },
+                              ].map((item) => (
+                                <DropdownMenuItem
+                                  key={item.value}
+                                  onClick={() => handleStatusFilter(item.value)}
+                                  className={`text-xs flex items-center justify-between cursor-pointer ${
+                                    selectedStatus === item.value ? 'font-semibold text-primary' : ''
+                                  }`}
+                                >
+                                  <span>{item.label}</span>
+                                  {selectedStatus === item.value && <Check className="size-3.5 text-primary" />}
+                                </DropdownMenuItem>
+                              ))}
+                              {selectedStatus !== 'ALL' && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatusFilter('ALL')}
+                                    className="text-xs text-muted-foreground justify-center cursor-pointer"
+                                  >
+                                    Clear filter
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableHead>
+
+                      {/* Directly Visible Icon Actions Column */}
+                      <TableHead className="text-right w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.map((ord) => (
+                    {sortedOrders.map((ord) => (
                       <TableRow key={ord.id} className="hover:bg-muted/40 transition-colors">
                         <TableCell className="font-semibold text-sm">
                           <Link
@@ -654,71 +1066,40 @@ export function OrderListClient({
 
                         <TableCell>{getStatusBadge(ord.status)}</TableCell>
 
+                        {/* Directly Visible Icon Buttons (Edit & Delete/Cancel) */}
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <Button variant="ghost" size="icon-sm" aria-label="Order actions">
-                                  <MoreHorizontal className="size-4" />
-                                </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem render={<Link href={`/orders/${ord.id}`} />}>
-                                <Eye className="mr-2 size-4" />
-                                View Details
-                              </DropdownMenuItem>
-
-                              {canChangeStatus && ord.status === OrderStatus.PENDING && (
-                                <DropdownMenuItem onClick={() => handleQuickStatus(ord.id, OrderStatus.CONFIRMED)}>
-                                  <CheckCircle2 className="mr-2 size-4 text-blue-600" />
-                                  Confirm Order
-                                </DropdownMenuItem>
-                              )}
-
-                              {canChangeStatus && ord.status === OrderStatus.CONFIRMED && (
-                                <DropdownMenuItem onClick={() => handleQuickStatus(ord.id, OrderStatus.PREPARING)}>
-                                  <ChefHat className="mr-2 size-4 text-amber-600" />
-                                  Start Preparing
-                                </DropdownMenuItem>
-                              )}
-
-                              {canChangeStatus && ord.status === OrderStatus.PREPARING && (
-                                <DropdownMenuItem onClick={() => handleQuickStatus(ord.id, OrderStatus.READY)}>
-                                  <CheckCircle2 className="mr-2 size-4 text-purple-600" />
-                                  Mark Ready
-                                </DropdownMenuItem>
-                              )}
-
-                              {canChangeStatus && ord.status === OrderStatus.READY && (
-                                <DropdownMenuItem onClick={() => handleQuickStatus(ord.id, OrderStatus.COMPLETED)}>
-                                  <CheckCircle2 className="mr-2 size-4 text-emerald-600" />
-                                  Complete Order
-                                </DropdownMenuItem>
-                              )}
-
-                              {canCancel &&
-                                ord.status !== OrderStatus.COMPLETED &&
-                                ord.status !== OrderStatus.CANCELLED &&
-                                ord.status !== OrderStatus.REFUNDED && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        setCancelDialogOrder({
-                                          id: ord.id,
-                                          orderNumber: ord.orderNumber,
-                                        })
-                                      }
-                                      className="text-destructive focus:text-destructive"
-                                    >
-                                      <Ban className="mr-2 size-4 text-destructive" />
-                                      Cancel Order
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex items-center justify-end gap-1">
+                            {canUpdate && (
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label="Edit order"
+                                title="Edit order"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditOrder(ord);
+                                }}
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                            )}
+                            {canCancel && (
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label="Delete order"
+                                title="Delete order"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteOrder(ord);
+                                }}
+                                className="h-8 w-8 text-destructive/80 hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -728,7 +1109,7 @@ export function OrderListClient({
 
               {/* Mobile Card List */}
               <div className="md:hidden divide-y divide-border/60">
-                {orders.map((ord) => (
+                {sortedOrders.map((ord) => (
                   <div key={ord.id} className="p-4 space-y-2.5">
                     <div className="flex items-start justify-between">
                       <div>
@@ -759,37 +1140,41 @@ export function OrderListClient({
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
-                      <div className="text-muted-foreground">
+                      <div className="text-muted-foreground truncate mr-2">
                         {ord.customerName ? ord.customerName : 'Guest'} • {ord.itemCount} items
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Link
                           href={`/orders/${ord.id}`}
                           className={buttonVariants({
                             variant: 'ghost',
                             size: 'sm',
-                            className: 'min-h-11 h-auto px-3 text-xs',
+                            className: 'h-8 px-2 text-xs',
                           })}
                         >
+                          <Eye className="size-3.5 mr-1" />
                           Details
                         </Link>
-                        {canCancel &&
-                          ord.status !== OrderStatus.COMPLETED &&
-                          ord.status !== OrderStatus.CANCELLED && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                setCancelDialogOrder({
-                                  id: ord.id,
-                                  orderNumber: ord.orderNumber,
-                                })
-                              }
-                              className="min-h-11 h-auto px-3 text-xs text-destructive hover:text-destructive"
-                            >
-                              Cancel
-                            </Button>
-                          )}
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Edit order"
+                          title="Edit order"
+                          onClick={() => handleEditOrder(ord)}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Delete order"
+                          title="Delete order"
+                          onClick={() => handleDeleteOrder(ord)}
+                          className="h-8 w-8 text-destructive/80 hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -831,6 +1216,17 @@ export function OrderListClient({
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Order Dialog */}
+      {editDialogOrder && (
+        <OrderEditDialog
+          open={!!editDialogOrder}
+          onOpenChange={(open) => !open && setEditDialogOrder(null)}
+          orderId={editDialogOrder.id}
+          orderNumber={editDialogOrder.orderNumber}
+          onSuccess={() => fetchOrders(pagination.page)}
+        />
+      )}
 
       {/* Cancellation Dialog */}
       {cancelDialogOrder && (
