@@ -173,13 +173,8 @@ export function EmployeeFormDialog({
     temporaryPassword: '',
   });
 
-  // Designation options: merge approved designations with employee's current designation
-  const designationOptions = Array.from(
-    new Set([
-      ...APPROVED_DESIGNATIONS,
-      ...(employee?.designation ? [employee.designation] : []),
-    ])
-  );
+  // Designation options: strictly approved designations only
+  const designationOptions = APPROVED_DESIGNATIONS;
 
   // Fetch available users asynchronously when dialog opens
   useEffect(() => {

@@ -394,18 +394,10 @@ async function main() {
   ];
 
   const designations = [
-    { role: 'Branch Manager', salary: 65000, count: 1 },
-    { role: 'Assistant Manager', salary: 45000, count: 1 },
-    { role: 'Head Chef', salary: 55000, count: 1 },
-    { role: 'Senior Line Cook', salary: 32000, count: 3 },
-    { role: 'Junior Line Cook', salary: 24000, count: 4 },
-    { role: 'Kitchen Steward', salary: 18000, count: 3 },
-    { role: 'Lead Cashier', salary: 28000, count: 1 },
-    { role: 'POS Cashier', salary: 22000, count: 2 },
-    { role: 'Senior Waiter', salary: 25000, count: 2 },
-    { role: 'Floor Waiter', salary: 19000, count: 4 },
-    { role: 'Delivery Runner', salary: 20000, count: 3 },
-    { role: 'Cleaner / Housekeeper', salary: 16000, count: 2 },
+    { role: 'Branch Manager', salary: 65000, count: 2 },
+    { role: 'Kitchen', salary: 28000, count: 15 },
+    { role: 'Delivery', salary: 22000, count: 6 },
+    { role: 'Cleaner', salary: 18000, count: 4 },
   ];
 
   interface SeedEmp {

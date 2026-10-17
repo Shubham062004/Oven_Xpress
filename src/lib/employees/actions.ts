@@ -10,6 +10,7 @@ import {
   updateEmployeeSchema,
   resetEmployeePasswordSchema,
   createLoginAccountSchema,
+  APPROVED_DESIGNATIONS,
 } from '@/lib/validations/employee';
 import type { ActionResult } from '@/lib/auth/types';
 import type { EmploymentStatus, SalaryType } from '@prisma/client';
@@ -368,21 +369,15 @@ export async function getAvailableUsersForLinking(
 }
 
 /**
- * Fetches unique designations across all employees for filter dropdown.
+ * Fetches approved employee designations.
  */
 export async function getEmployeeDesignations(): Promise<ActionResult<string[]>> {
   try {
     await requirePermission(PERMISSIONS.EMPLOYEE_READ);
 
-    const designations = await prisma.employee.findMany({
-      select: { designation: true },
-      distinct: ['designation'],
-      orderBy: { designation: 'asc' },
-    });
-
     return {
       success: true,
-      data: designations.map((d) => d.designation),
+      data: [...APPROVED_DESIGNATIONS],
     };
   } catch (error) {
     if (isRedirectError(error)) throw error;

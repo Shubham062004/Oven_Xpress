@@ -74,11 +74,9 @@ export const baseEmployeeSchema = z.object({
         message: 'Employee code must contain only uppercase letters, digits, and hyphens',
       })
     ),
-  designation: z
-    .string()
-    .trim()
-    .min(1, { message: 'Designation is required' })
-    .max(100, { message: 'Designation must be 100 characters or less' }),
+  designation: z.enum(APPROVED_DESIGNATIONS, {
+    message: 'Designation must be one of: Kitchen, Delivery, Branch Manager, Cleaner',
+  }),
   branchId: z
     .string()
     .trim()

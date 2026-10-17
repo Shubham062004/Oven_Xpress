@@ -57,6 +57,7 @@ async function main() {
   const ownerRole = await prisma.role.findUnique({ where: { name: ROLES.OWNER } });
 
   assert(!!staffRole && !!managerRole && !!ownerRole, 'System roles STAFF, MANAGER, OWNER are configured in database');
+  if (!staffRole || !managerRole || !ownerRole) throw new Error('Missing system roles');
 
   // ────────────────────────────────────────────────────────────────────────────
   // TASK 1: EMPLOYEE MANAGEMENT TABLE REQUIREMENTS
