@@ -93,12 +93,44 @@ export const createBranchSchema = z.object({
     .refine((val) => !val || timeRegex.test(val), {
       message: 'Closing time must be in HH:mm format (e.g. 22:00)',
     }),
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+  managerId: z.string().trim().nullable().optional(),
 });
 
 /**
- * Update schema: same as create but without `code` (immutable after creation).
+ * Update schema: allows updating all supported fields including code, status, and managerId.
  */
-export const updateBranchSchema = createBranchSchema.omit({ code: true });
+export const updateBranchSchema = createBranchSchema.partial().extend({
+  name: z
+    .string()
+    .trim()
+    .min(1, { message: 'Branch name is required' })
+    .max(100, { message: 'Branch name must be 100 characters or less' }),
+  address: z
+    .string()
+    .trim()
+    .min(1, { message: 'Address is required' })
+    .max(250, { message: 'Address must be 250 characters or less' }),
+  city: z
+    .string()
+    .trim()
+    .min(1, { message: 'City is required' })
+    .max(100, { message: 'City must be 100 characters or less' }),
+  code: z
+    .string()
+    .trim()
+    .min(1, { message: 'Branch code is required' })
+    .max(20, { message: 'Branch code must be 20 characters or less' })
+    .transform((val) => val.toUpperCase())
+    .pipe(
+      z.string().regex(branchCodeRegex, {
+        message: 'Branch code must contain only uppercase letters, digits, and hyphens',
+      })
+    )
+    .optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+  managerId: z.string().trim().nullable().optional(),
+});
 
 export type CreateBranchInput = z.infer<typeof createBranchSchema>;
 export type UpdateBranchInput = z.infer<typeof updateBranchSchema>;
