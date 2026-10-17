@@ -22,6 +22,7 @@ interface CustomerHeaderProps {
     name: string;
     email: string;
     role?: string;
+    avatarUrl?: string | null;
   } | null;
 }
 
@@ -142,9 +143,21 @@ export function CustomerHeader({ branches, user }: CustomerHeaderProps) {
                   href="/account"
                   className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl border border-border/80 hover:bg-muted/60 transition-colors"
                 >
-                  <div className="size-6 sm:size-7 rounded-full bg-gradient-to-br from-primary to-orange-500 text-white flex items-center justify-center text-xs font-bold">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
+                  {user.avatarUrl ? (
+                    <div className="relative size-6 sm:size-7 rounded-full overflow-hidden border border-border/80 shrink-0">
+                      <Image
+                        src={user.avatarUrl}
+                        alt={user.name}
+                        fill
+                        sizes="28px"
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="size-6 sm:size-7 rounded-full bg-gradient-to-br from-primary to-orange-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="hidden md:inline text-xs font-semibold max-w-[90px] truncate">
                     {user.name}
                   </span>

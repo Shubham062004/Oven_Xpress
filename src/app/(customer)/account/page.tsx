@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { requireAuthentication } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
@@ -40,6 +41,7 @@ export default async function CustomerAccountPage() {
       name: true,
       email: true,
       phone: true,
+      avatarUrl: true,
       createdAt: true,
       addresses: true,
       customer: {
@@ -73,9 +75,21 @@ export default async function CustomerAccountPage() {
       {/* Profile Header */}
       <div className="bg-card rounded-3xl border border-border/70 p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 text-center sm:text-left">
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="size-16 sm:size-20 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 text-white font-black text-2xl sm:text-3xl flex items-center justify-center shadow-lg shadow-orange-500/25">
-            {dbUser?.name.charAt(0).toUpperCase()}
-          </div>
+          {dbUser?.avatarUrl ? (
+            <div className="relative size-16 sm:size-20 rounded-3xl overflow-hidden border-2 border-border/70 shadow-lg shadow-orange-500/15 shrink-0">
+              <Image
+                src={dbUser.avatarUrl}
+                alt={dbUser.name}
+                fill
+                sizes="80px"
+                className="object-cover"
+              />
+            </div>
+          ) : (
+            <div className="size-16 sm:size-20 rounded-3xl bg-linear-to-br from-amber-500 to-orange-600 text-white font-black text-2xl sm:text-3xl flex items-center justify-center shadow-lg shadow-orange-500/25 shrink-0">
+              {dbUser?.name.charAt(0).toUpperCase()}
+            </div>
+          )}
           <div className="space-y-1">
             <h1 className="text-xl sm:text-2xl font-black text-foreground">
               {dbUser?.name}

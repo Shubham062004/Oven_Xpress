@@ -107,14 +107,20 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(loginUrl);
       }
 
-      // Update avatar or emailVerified if missing
-      if (!user.avatarUrl && avatarUrl) {
-        await prisma.user.update({
+      // Always sync latest Google avatar profile photo and ensure email is verified
+      if (avatarUrl && avatarUrl !== user.avatarUrl) {
+        user = await prisma.user.update({
           where: { id: user.id },
           data: {
             avatarUrl,
             emailVerified: user.emailVerified || new Date(),
           },
+          include: { role: true },
+        });
+      } else if (!user.emailVerified) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: new Date() },
         }).catch(() => {});
       }
     } else {
