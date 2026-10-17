@@ -1,6 +1,18 @@
 import { z } from 'zod';
 
 /**
+ * Approved system designation options.
+ */
+export const APPROVED_DESIGNATIONS = [
+  'Kitchen',
+  'Delivery',
+  'Branch Manager',
+  'Cleaner',
+] as const;
+
+export type ApprovedDesignation = (typeof APPROVED_DESIGNATIONS)[number];
+
+/**
  * Phone validation: allows digits, spaces, dashes, parentheses, plus sign.
  * Intentionally permissive to support international formats.
  */
@@ -11,7 +23,7 @@ const phoneRegex = /^[+]?[\d\s\-()]{7,20}$/;
  */
 const employeeCodeRegex = /^[A-Z0-9][A-Z0-9-]*[A-Z0-9]$|^[A-Z0-9]$/;
 
-export const createEmployeeSchema = z.object({
+export const baseEmployeeSchema = z.object({
   // Personal
   firstName: z
     .string()
@@ -112,12 +124,113 @@ export const createEmployeeSchema = z.object({
     .optional()
     .or(z.literal(''))
     .nullable(),
+
+  // Create System Login Account (Optional inline account creation)
+  createLoginAccount: z.boolean().optional(),
+  loginEmail: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal('')),
+  loginPassword: z
+    .string()
+    .optional()
+    .or(z.literal('')),
+  confirmPassword: z
+    .string()
+    .optional()
+    .or(z.literal('')),
+});
+
+export const createEmployeeSchema = baseEmployeeSchema.superRefine((data, ctx) => {
+  if (data.createLoginAccount) {
+    if (!data.loginEmail || !z.string().email().safeParse(data.loginEmail).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['loginEmail'],
+        message: 'A valid email address is required for system login credentials',
+      });
+    }
+
+    if (!data.loginPassword || data.loginPassword.length < 8) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['loginPassword'],
+        message: 'Temporary password must be at least 8 characters long',
+      });
+    }
+
+    if (data.confirmPassword !== undefined && data.confirmPassword !== data.loginPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['confirmPassword'],
+        message: 'Password confirmation does not match',
+      });
+    }
+  }
 });
 
 /**
  * Update schema: employeeCode is immutable after creation.
  */
-export const updateEmployeeSchema = createEmployeeSchema.omit({ employeeCode: true });
+export const updateEmployeeSchema = baseEmployeeSchema
+  .omit({ employeeCode: true })
+  .superRefine((data, ctx) => {
+    if (data.createLoginAccount) {
+      if (!data.loginEmail || !z.string().email().safeParse(data.loginEmail).success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['loginEmail'],
+          message: 'A valid email address is required for system login credentials',
+        });
+      }
+
+      if (!data.loginPassword || data.loginPassword.length < 8) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['loginPassword'],
+          message: 'Temporary password must be at least 8 characters long',
+        });
+      }
+
+      if (data.confirmPassword !== undefined && data.confirmPassword !== data.loginPassword) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['confirmPassword'],
+          message: 'Password confirmation does not match',
+        });
+      }
+    }
+  });
+
+/**
+ * Schema for resetting an employee's system password
+ */
+export const resetEmployeePasswordSchema = z
+  .object({
+    employeeId: z.string().min(1, 'Employee ID is required'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters long'),
+    confirmPassword: z.string().min(8, 'Password confirmation is required'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+/**
+ * Schema for creating a system login account for an existing employee
+ */
+export const createLoginAccountSchema = z
+  .object({
+    employeeId: z.string().min(1, 'Employee ID is required'),
+    email: z.string().email('Please enter a valid login email address'),
+    password: z.string().min(8, 'Password must be at least 8 characters long'),
+    confirmPassword: z.string().min(8, 'Password confirmation is required'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 /**
  * Filter schema for searching and filtering employees
@@ -132,3 +245,5 @@ export const employeeFilterSchema = z.object({
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 export type EmployeeFilterInput = z.infer<typeof employeeFilterSchema>;
+export type ResetEmployeePasswordInput = z.infer<typeof resetEmployeePasswordSchema>;
+export type CreateLoginAccountInput = z.infer<typeof createLoginAccountSchema>;

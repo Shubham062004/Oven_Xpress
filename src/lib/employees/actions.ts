@@ -2,11 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { requirePermission, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
-import { PERMISSIONS } from '@/lib/permissions/definitions';
+import { requirePermission, requireAuthentication, getAuthorizedBranchScope, isBranchAuthorized } from '@/lib/auth/guards';
+import { PERMISSIONS, ROLES } from '@/lib/permissions/definitions';
+import { hashPassword } from '@/lib/auth/password';
 import {
   createEmployeeSchema,
   updateEmployeeSchema,
+  resetEmployeePasswordSchema,
+  createLoginAccountSchema,
 } from '@/lib/validations/employee';
 import type { ActionResult } from '@/lib/auth/types';
 import type { EmploymentStatus, SalaryType } from '@prisma/client';
@@ -56,6 +59,10 @@ export interface EmployeeItem {
 
 export interface EmployeeFormState extends ActionResult<EmployeeItem> {
   fieldErrors?: Record<string, string[]>;
+  createdCredentials?: {
+    loginId: string;
+    temporaryPassword: string;
+  };
 }
 
 export interface EmployeeListParams {
@@ -475,8 +482,152 @@ export async function createEmployee(
       };
     }
 
-    // Rule 9: Explicit user linking - verify user exists and is not already linked
+    // Rule 9: Explicit user linking or inline account creation
     let linkedUserId: string | null = null;
+    let createdCredentials: { loginId: string; temporaryPassword: string } | undefined;
+
+    if (input.createLoginAccount && input.loginEmail && input.loginPassword) {
+      // Inline account creation requested
+      const normalizedEmail = input.loginEmail.trim().toLowerCase();
+      const existingUserEmail = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+
+      if (existingUserEmail) {
+        return {
+          success: false,
+          error: 'A system user with this login ID (email) already exists.',
+          fieldErrors: { loginEmail: ['This login ID is already registered to another account.'] },
+        };
+      }
+
+      // Determine least-privileged role based on designation
+      const isManager = input.designation.toLowerCase().includes('manager');
+      const targetRoleName = isManager ? ROLES.MANAGER : ROLES.STAFF;
+      const roleRecord = await prisma.role.findUnique({
+        where: { name: targetRoleName },
+      });
+
+      if (!roleRecord) {
+        return {
+          success: false,
+          error: `System role "${targetRoleName}" not configured. Please contact administrator.`,
+        };
+      }
+
+      const hashedPassword = await hashPassword(input.loginPassword);
+
+      // Parse dates
+      const joiningDate = new Date(input.joiningDate);
+      const dateOfBirth = input.dateOfBirth ? new Date(input.dateOfBirth) : null;
+
+      // Create User and Employee atomically in a transaction
+      const { newEmployee, newUser } = await prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            name: `${input.firstName} ${input.lastName}`,
+            email: normalizedEmail,
+            passwordHash: hashedPassword,
+            phone: input.phone,
+            roleId: roleRecord.id,
+            isActive: input.employmentStatus === 'ACTIVE',
+            emailVerified: new Date(),
+          },
+        });
+
+        const emp = await tx.employee.create({
+          data: {
+            employeeCode: input.employeeCode,
+            firstName: input.firstName,
+            lastName: input.lastName,
+            phone: input.phone,
+            email: input.email || null,
+            dateOfBirth,
+            joiningDate,
+            designation: input.designation,
+            branchId: input.branchId,
+            employmentStatus: input.employmentStatus,
+            salary: input.salary,
+            salaryType: input.salaryType,
+            address: input.address || null,
+            emergencyContactName: input.emergencyContactName || null,
+            emergencyContactPhone: input.emergencyContactPhone || null,
+            userId: createdUser.id,
+          },
+          include: {
+            branch: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                city: true,
+                status: true,
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        return { newEmployee: emp, newUser: createdUser };
+      });
+
+      // Audit logs
+      await createAuditLog({
+        actorUserId: currentUser.id,
+        branchId: newEmployee.branchId,
+        action: AUDIT_ACTIONS.CREATE,
+        entityType: AUDIT_ENTITY_TYPES.USER,
+        entityId: newUser.id,
+        description: `Created system login account "${newUser.email}" for employee "${newEmployee.firstName} ${newEmployee.lastName}" with role ${targetRoleName}`,
+        afterData: { email: newUser.email, role: targetRoleName },
+      }).catch((e: unknown) => console.error('Failed to create user audit log:', e));
+
+      await createAuditLog({
+        actorUserId: currentUser.id,
+        branchId: newEmployee.branchId,
+        action: AUDIT_ACTIONS.CREATE,
+        entityType: AUDIT_ENTITY_TYPES.EMPLOYEE,
+        entityId: newEmployee.id,
+        description: `Created employee "${newEmployee.firstName} ${newEmployee.lastName}" (${newEmployee.employeeCode}) as ${newEmployee.designation} with linked account`,
+        afterData: {
+          employeeCode: newEmployee.employeeCode,
+          firstName: newEmployee.firstName,
+          lastName: newEmployee.lastName,
+          designation: newEmployee.designation,
+          branchId: newEmployee.branchId,
+          employmentStatus: newEmployee.employmentStatus,
+          salary: Number(newEmployee.salary),
+          salaryType: newEmployee.salaryType,
+        },
+      }).catch((e: unknown) => console.error('Failed to create employee audit log:', e));
+
+      revalidatePath('/employees');
+      revalidatePath('/owner/employees');
+
+      return {
+        success: true,
+        data: {
+          ...newEmployee,
+          salary: Number(newEmployee.salary),
+        },
+        createdCredentials: {
+          loginId: newUser.email,
+          temporaryPassword: input.loginPassword,
+        },
+      };
+    }
+
     if (input.userId && input.userId.trim().length > 0) {
       const targetUser = await prisma.user.findUnique({
         where: { id: input.userId },
@@ -571,12 +722,14 @@ export async function createEmployee(
     }).catch((e: unknown) => console.error('Failed to create employee audit log:', e));
 
     revalidatePath('/employees');
+    revalidatePath('/owner/employees');
     return {
       success: true,
       data: {
         ...employee,
         salary: Number(employee.salary),
       },
+      createdCredentials,
     };
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -787,6 +940,7 @@ export async function updateEmployee(
     }).catch((e: unknown) => console.error('Failed to create employee update audit log:', e));
 
     revalidatePath('/employees');
+    revalidatePath('/owner/employees');
     revalidatePath(`/employees/${id}`);
     return {
       success: true,
@@ -882,7 +1036,24 @@ export async function toggleEmployeeStatus(
       afterData: { employmentStatus: employee.employmentStatus },
     }).catch((e: unknown) => console.error('Failed to create employee toggle audit log:', e));
 
+    // If deactivating, also deactivate linked user account and revoke active sessions
+    if (newStatus === 'INACTIVE' && existing.userId) {
+      await prisma.user.update({
+        where: { id: existing.userId },
+        data: { isActive: false },
+      });
+      await prisma.session.deleteMany({
+        where: { userId: existing.userId },
+      });
+    } else if (newStatus === 'ACTIVE' && existing.userId) {
+      await prisma.user.update({
+        where: { id: existing.userId },
+        data: { isActive: true },
+      });
+    }
+
     revalidatePath('/employees');
+    revalidatePath('/owner/employees');
     revalidatePath(`/employees/${id}`);
     return {
       success: true,
@@ -897,6 +1068,415 @@ export async function toggleEmployeeStatus(
     return {
       success: false,
       error: 'Failed to update employee status. Please try again.',
+    };
+  }
+}
+
+/**
+ * Safely deletes or deactivates an employee.
+ * - If historical operational records exist (attendance, salary, bonuses, etc.),
+ *   permanent deletion is prohibited: active employees are safely deactivated
+ *   and already-inactive employees are preserved for audit compliance.
+ * - If zero historical records exist, clean deletion of the employee and
+ *   their linked user account is performed.
+ */
+export async function deleteEmployee(
+  id: string
+): Promise<ActionResult<{ deactivated: boolean }>> {
+  try {
+    const currentUser = await requirePermission(PERMISSIONS.EMPLOYEE_DEACTIVATE);
+
+    const existing = await prisma.employee.findUnique({
+      where: { id },
+      include: { branch: true, user: true },
+    });
+
+    if (!existing) {
+      return { success: false, error: 'Employee not found.' };
+    }
+
+    const scope = await getAuthorizedBranchScope(currentUser);
+    if (!isBranchAuthorized(scope, existing.branchId)) {
+      return {
+        success: false,
+        error: 'Unauthorized: You do not have permission to delete or deactivate employees in this branch.',
+      };
+    }
+
+    // Check historical operational records
+    const [
+      attendanceCount,
+      salaryRecordCount,
+      salaryStructureCount,
+      bonusCount,
+      incentiveCount,
+      issueCount,
+    ] = await Promise.all([
+      prisma.attendance.count({ where: { employeeId: id } }),
+      prisma.salaryRecord.count({ where: { employeeId: id } }),
+      prisma.salaryStructure.count({ where: { employeeId: id } }),
+      prisma.bonus.count({ where: { employeeId: id } }),
+      prisma.incentive.count({ where: { employeeId: id } }),
+      prisma.customerIssue.count({ where: { assignedTo: id } }),
+    ]);
+
+    const totalRecords =
+      attendanceCount +
+      salaryRecordCount +
+      salaryStructureCount +
+      bonusCount +
+      incentiveCount +
+      issueCount;
+
+    if (totalRecords > 0) {
+      // Historical records must NEVER be deleted.
+      if (existing.employmentStatus === 'ACTIVE') {
+        // Safe deactivation workflow
+        await prisma.$transaction(async (tx) => {
+          await tx.employee.update({
+            where: { id },
+            data: { employmentStatus: 'INACTIVE' },
+          });
+
+          if (existing.userId) {
+            await tx.user.update({
+              where: { id: existing.userId },
+              data: { isActive: false },
+            });
+            await tx.session.deleteMany({
+              where: { userId: existing.userId },
+            });
+          }
+        });
+
+        await createAuditLog({
+          actorUserId: currentUser.id,
+          branchId: existing.branchId,
+          action: AUDIT_ACTIONS.DEACTIVATE,
+          entityType: AUDIT_ENTITY_TYPES.EMPLOYEE,
+          entityId: existing.id,
+          description: `Safely deactivated employee "${existing.firstName} ${existing.lastName}" (${existing.employeeCode}) to preserve ${totalRecords} historical records`,
+          beforeData: { employmentStatus: 'ACTIVE' },
+          afterData: { employmentStatus: 'INACTIVE' },
+        }).catch((e) => console.error('Failed to create audit log for safe deactivation:', e));
+
+        revalidatePath('/employees');
+        revalidatePath('/owner/employees');
+        revalidatePath(`/employees/${id}`);
+
+        return {
+          success: true,
+          data: { deactivated: true },
+          message: `Employee "${existing.firstName} ${existing.lastName}" has ${totalRecords} historical operational records and was safely deactivated instead of deleted to preserve compliance records.`,
+        };
+      } else {
+        // Already inactive and has operational history
+        return {
+          success: false,
+          error: `Cannot permanently delete employee "${existing.firstName} ${existing.lastName}" because historical records (${totalRecords} attendance, salary, or payroll records) must be preserved for auditing. This employee is already deactivated.`,
+        };
+      }
+    }
+
+    // Zero historical records: Clean delete permitted
+    await prisma.$transaction(async (tx) => {
+      await tx.employee.delete({
+        where: { id },
+      });
+
+      if (existing.userId) {
+        await tx.session.deleteMany({ where: { userId: existing.userId } });
+        await tx.user.delete({ where: { id: existing.userId } });
+      }
+    });
+
+    await createAuditLog({
+      actorUserId: currentUser.id,
+      branchId: existing.branchId,
+      action: AUDIT_ACTIONS.DELETE,
+      entityType: AUDIT_ENTITY_TYPES.EMPLOYEE,
+      entityId: existing.id,
+      description: `Deleted employee "${existing.firstName} ${existing.lastName}" (${existing.employeeCode}) who had no operational history`,
+    }).catch((e) => console.error('Failed to create audit log for employee deletion:', e));
+
+    revalidatePath('/employees');
+    revalidatePath('/owner/employees');
+
+    return {
+      success: true,
+      data: { deactivated: false },
+      message: `Employee "${existing.firstName} ${existing.lastName}" has been permanently removed.`,
+    };
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    console.error('Failed to delete employee:', error);
+    return {
+      success: false,
+      error: 'An unexpected error occurred while deleting the employee. Please try again.',
+    };
+  }
+}
+
+/**
+ * Resets the password for an employee's linked system user account.
+ * Requires Owner or Admin authority. Hashes password with bcrypt,
+ * invalidates existing sessions, and writes audit record.
+ */
+export async function resetEmployeePassword(
+  employeeId: string,
+  newPassword: string,
+  confirmPassword?: string
+): Promise<ActionResult> {
+  try {
+    const currentUser = await requireAuthentication();
+
+    if (currentUser.role !== 'OWNER' && currentUser.role !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Unauthorized: Only restaurant owners and administrators can reset employee login credentials.',
+      };
+    }
+
+    const parsed = resetEmployeePasswordSchema.safeParse({
+      employeeId,
+      newPassword,
+      confirmPassword: confirmPassword || newPassword,
+    });
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message ?? 'Invalid password format.',
+      };
+    }
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true },
+    });
+
+    if (!employee || !employee.userId || !employee.user) {
+      return {
+        success: false,
+        error: 'Employee does not have a linked system user account.',
+      };
+    }
+
+    const scope = await getAuthorizedBranchScope(currentUser);
+    if (!isBranchAuthorized(scope, employee.branchId)) {
+      return {
+        success: false,
+        error: 'Unauthorized: You do not have permission to modify employees in this branch.',
+      };
+    }
+
+    const hashedPassword = await hashPassword(parsed.data.newPassword);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: employee.userId! },
+        data: {
+          passwordHash: hashedPassword,
+          passwordChangedAt: new Date(),
+        },
+      }),
+      // Invalidate all existing sessions according to session management policy
+      prisma.session.deleteMany({
+        where: { userId: employee.userId! },
+      }),
+    ]);
+
+    await createAuditLog({
+      actorUserId: currentUser.id,
+      branchId: employee.branchId,
+      action: AUDIT_ACTIONS.PASSWORD_CHANGED,
+      entityType: AUDIT_ENTITY_TYPES.USER,
+      entityId: employee.userId,
+      description: `Reset password for employee user account "${employee.user.email}" (${employee.firstName} ${employee.lastName}) and invalidated active sessions`,
+      metadata: { employeeId: employee.id, userEmail: employee.user.email },
+    }).catch((e) => console.error('Failed to log password reset audit:', e));
+
+    return {
+      success: true,
+      message: 'Password reset successfully. Active sessions have been invalidated.',
+    };
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    console.error('Failed to reset employee password:', error);
+    return {
+      success: false,
+      error: 'Failed to reset employee password. Please try again.',
+    };
+  }
+}
+
+/**
+ * Creates a system login account for an existing employee who does not have one yet.
+ * Assigns least-privileged role (MANAGER if designation contains Manager, otherwise STAFF).
+ */
+export async function createLoginAccountForExistingEmployee(
+  employeeId: string,
+  loginEmail: string,
+  temporaryPassword: string,
+  confirmPassword?: string
+): Promise<ActionResult<{ loginId: string; temporaryPassword: string }>> {
+  try {
+    const currentUser = await requireAuthentication();
+
+    if (currentUser.role !== 'OWNER' && currentUser.role !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Unauthorized: Only restaurant owners and administrators can create employee login credentials.',
+      };
+    }
+
+    const parsed = createLoginAccountSchema.safeParse({
+      employeeId,
+      email: loginEmail,
+      password: temporaryPassword,
+      confirmPassword: confirmPassword || temporaryPassword,
+    });
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message ?? 'Invalid credentials input.',
+      };
+    }
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true },
+    });
+
+    if (!employee) {
+      return { success: false, error: 'Employee not found.' };
+    }
+
+    if (employee.userId) {
+      return {
+        success: false,
+        error: 'This employee already has a linked system user account.',
+      };
+    }
+
+    const scope = await getAuthorizedBranchScope(currentUser);
+    if (!isBranchAuthorized(scope, employee.branchId)) {
+      return {
+        success: false,
+        error: 'Unauthorized: You do not have permission to modify employees in this branch.',
+      };
+    }
+
+    // Check unique email
+    const existingUser = await prisma.user.findUnique({
+      where: { email: parsed.data.email.toLowerCase() },
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        error: 'A system user with this login email already exists. Please choose another email.',
+      };
+    }
+
+    // Determine role: least-privileged
+    const isManager = employee.designation.toLowerCase().includes('manager');
+    const targetRoleName = isManager ? ROLES.MANAGER : ROLES.STAFF;
+    const roleRecord = await prisma.role.findUnique({
+      where: { name: targetRoleName },
+    });
+
+    if (!roleRecord) {
+      return {
+        success: false,
+        error: `System role "${targetRoleName}" not configured.`,
+      };
+    }
+
+    const hashedPassword = await hashPassword(parsed.data.password);
+
+    const user = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          name: `${employee.firstName} ${employee.lastName}`,
+          email: parsed.data.email.toLowerCase(),
+          passwordHash: hashedPassword,
+          phone: employee.phone,
+          roleId: roleRecord.id,
+          isActive: employee.employmentStatus === 'ACTIVE',
+          emailVerified: new Date(),
+        },
+      });
+
+      await tx.employee.update({
+        where: { id: employee.id },
+        data: { userId: newUser.id },
+      });
+
+      return newUser;
+    });
+
+    await createAuditLog({
+      actorUserId: currentUser.id,
+      branchId: employee.branchId,
+      action: AUDIT_ACTIONS.CREATE,
+      entityType: AUDIT_ENTITY_TYPES.USER,
+      entityId: user.id,
+      description: `Created login account "${user.email}" for employee "${employee.firstName} ${employee.lastName}" with role ${targetRoleName}`,
+      afterData: { email: user.email, role: targetRoleName },
+    }).catch((e) => console.error('Failed to log user creation audit:', e));
+
+    revalidatePath('/employees');
+    revalidatePath('/owner/employees');
+    revalidatePath(`/employees/${employeeId}`);
+
+    return {
+      success: true,
+      data: {
+        loginId: user.email,
+        temporaryPassword: parsed.data.password,
+      },
+      message: `System login account created successfully for ${employee.firstName} ${employee.lastName}.`,
+    };
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    console.error('Failed to create login account for employee:', error);
+    return {
+      success: false,
+      error: 'An unexpected error occurred while creating the login account.',
+    };
+  }
+}
+
+/**
+ * Checks whether a given email / login ID is available for account creation.
+ */
+export async function checkLoginIdAvailability(
+  email: string
+): Promise<ActionResult<{ available: boolean }>> {
+  try {
+    await requireAuthentication();
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'Invalid email address.' };
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+      select: { id: true },
+    });
+
+    return {
+      success: true,
+      data: { available: !existing },
+    };
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    console.error('Failed to check login ID availability:', error);
+    return {
+      success: false,
+      error: 'Failed to verify login ID availability.',
     };
   }
 }

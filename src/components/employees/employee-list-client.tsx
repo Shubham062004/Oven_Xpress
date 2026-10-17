@@ -1,18 +1,21 @@
 'use client';
 
-import { useState, useTransition, useCallback, useRef, useEffect } from 'react';
+import { useState, useTransition, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
   Plus,
-  MoreHorizontal,
   Eye,
+  EyeOff,
   Pencil,
-  Power,
+  Trash2,
   CheckCircle2,
   XCircle,
   Building2,
   Users,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -40,42 +43,59 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 
 import { EmployeeFormDialog } from '@/components/employees/employee-form-dialog';
-import { EmployeeStatusDialog } from '@/components/employees/employee-status-dialog';
+import { EmployeeDeleteDialog } from '@/components/employees/employee-delete-dialog';
 
-// ─── Props ──────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+type SortColumn =
+  | 'employee'
+  | 'code'
+  | 'designation'
+  | 'branch'
+  | 'joiningDate'
+  | 'salary'
+  | 'status';
+
+type SortDirection = 'asc' | 'desc';
 
 interface EmployeeListClientProps {
   initialEmployees: EmployeeItem[];
   initialStats: EmployeeStats;
   branches: BranchOption[];
-  designations: string[];
+  designations?: string[];
 }
 
-// ─── Component ──────────────────────────────────────────────────────────────
+// ─── Sort Indicator Component ───────────────────────────────────────────────
+
+function SortIndicator({
+  column,
+  currentColumn,
+  direction,
+}: {
+  column: SortColumn;
+  currentColumn: SortColumn;
+  direction: SortDirection;
+}) {
+  if (currentColumn !== column) {
+    return <ArrowUpDown className="size-3.5 text-muted-foreground/30 shrink-0" />;
+  }
+  return direction === 'asc' ? (
+    <ArrowUp className="size-3.5 text-primary shrink-0" />
+  ) : (
+    <ArrowDown className="size-3.5 text-primary shrink-0" />
+  );
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 
 export function EmployeeListClient({
   initialEmployees,
   initialStats,
   branches,
-  designations,
 }: EmployeeListClientProps) {
   const router = useRouter();
   const user = useAuth();
@@ -85,17 +105,21 @@ export function EmployeeListClient({
   const [employees, setEmployees] = useState<EmployeeItem[]>(initialEmployees);
   const [stats, setStats] = useState<EmployeeStats>(initialStats);
 
-  // Filter state
+  // Search state (the only active filter on this page)
   const [searchQuery, setSearchQuery] = useState('');
-  const [branchFilter, setBranchFilter] = useState<string>('ALL');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [designationFilter, setDesignationFilter] = useState<string>('ALL');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Sorting state (Default: Employee A–Z)
+  const [sortColumn, setSortColumn] = useState<SortColumn>('employee');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Salary Privacy: Hidden by default (stores set of employee IDs with revealed salaries)
+  const [revealedSalaries, setRevealedSalaries] = useState<Set<string>>(new Set());
 
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeItem | null>(null);
 
   // Permission checks
@@ -103,30 +127,24 @@ export function EmployeeListClient({
   const canUpdate = hasPermission(user, PERMISSIONS.EMPLOYEE_UPDATE);
   const canDeactivate = hasPermission(user, PERMISSIONS.EMPLOYEE_DEACTIVATE);
 
-  // ─── Data Fetching ──────────────────────────────────────────────────────
+  // ─── Data Fetching ────────────────────────────────────────────────────────
 
-  const fetchEmployees = useCallback(
-    (search?: string, branch?: string, status?: string, desig?: string) => {
-      startTransition(async () => {
-        const result = await getEmployees({
-          search: search || undefined,
-          branchId: branch === 'ALL' ? undefined : branch,
-          status: (status === 'ALL' ? undefined : status) as 'ACTIVE' | 'INACTIVE' | undefined,
-          designation: desig === 'ALL' ? undefined : desig,
-        });
-
-        if (result.success && result.data) {
-          setEmployees(result.data);
-        } else {
-          toast.error(result.error ?? 'Failed to load employees');
-        }
+  const fetchEmployees = useCallback((search?: string) => {
+    startTransition(async () => {
+      const result = await getEmployees({
+        search: search || undefined,
       });
-    },
-    []
-  );
+
+      if (result.success && result.data) {
+        setEmployees(result.data);
+      } else {
+        toast.error(result.error ?? 'Failed to load employees');
+      }
+    });
+  }, []);
 
   const refreshData = useCallback(() => {
-    fetchEmployees(searchQuery, branchFilter, statusFilter, designationFilter);
+    fetchEmployees(searchQuery);
     // Refresh stats
     startTransition(async () => {
       const statsResult = await getEmployeeStats();
@@ -134,49 +152,22 @@ export function EmployeeListClient({
         setStats(statsResult.data);
       }
     });
-  }, [fetchEmployees, searchQuery, branchFilter, statusFilter, designationFilter]);
+  }, [fetchEmployees, searchQuery]);
 
-  // ─── Search Debounce ────────────────────────────────────────────────────
+  // ─── Search Debounce ──────────────────────────────────────────────────────
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      fetchEmployees(value, branchFilter, statusFilter, designationFilter);
+      fetchEmployees(value);
     }, 300);
   };
 
-  const handleBranchFilter = (value: string | null) => {
-    const val = value ?? 'ALL';
-    setBranchFilter(val);
-    fetchEmployees(searchQuery, val, statusFilter, designationFilter);
-  };
-
-  const handleStatusFilter = (value: string | null) => {
-    const val = value ?? 'ALL';
-    setStatusFilter(val);
-    fetchEmployees(searchQuery, branchFilter, val, designationFilter);
-  };
-
-  const handleDesignationFilter = (value: string | null) => {
-    const val = value ?? 'ALL';
-    setDesignationFilter(val);
-    fetchEmployees(searchQuery, branchFilter, statusFilter, val);
-  };
-
-  const clearFilters = () => {
+  const clearSearch = () => {
     setSearchQuery('');
-    setBranchFilter('ALL');
-    setStatusFilter('ALL');
-    setDesignationFilter('ALL');
-    fetchEmployees('', 'ALL', 'ALL', 'ALL');
+    fetchEmployees('');
   };
-
-  const hasActiveFilters =
-    searchQuery.trim().length > 0 ||
-    branchFilter !== 'ALL' ||
-    statusFilter !== 'ALL' ||
-    designationFilter !== 'ALL';
 
   useEffect(() => {
     return () => {
@@ -184,19 +175,110 @@ export function EmployeeListClient({
     };
   }, []);
 
-  // ─── Actions ────────────────────────────────────────────────────────────
+  // ─── Sorting Logic ────────────────────────────────────────────────────────
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedEmployees = useMemo(() => {
+    const list = [...employees];
+    return list.sort((a, b) => {
+      let comparison = 0;
+      switch (sortColumn) {
+        case 'employee': {
+          const nameA = `${a.firstName} ${a.lastName}`.trim().toLowerCase();
+          const nameB = `${b.firstName} ${b.lastName}`.trim().toLowerCase();
+          comparison = nameA.localeCompare(nameB);
+          break;
+        }
+        case 'code': {
+          comparison = (a.employeeCode || '').localeCompare(b.employeeCode || '');
+          break;
+        }
+        case 'designation': {
+          comparison = (a.designation || '').localeCompare(b.designation || '');
+          break;
+        }
+        case 'branch': {
+          const branchA = a.branch?.name || '';
+          const branchB = b.branch?.name || '';
+          comparison = branchA.localeCompare(branchB);
+          break;
+        }
+        case 'joiningDate': {
+          const timeA = a.joiningDate ? new Date(a.joiningDate).getTime() : 0;
+          const timeB = b.joiningDate ? new Date(b.joiningDate).getTime() : 0;
+          comparison = timeA - timeB;
+          break;
+        }
+        case 'salary': {
+          const salA = Number(a.salary) || 0;
+          const salB = Number(b.salary) || 0;
+          comparison = salA - salB;
+          break;
+        }
+        case 'status': {
+          comparison = (a.employmentStatus || '').localeCompare(b.employmentStatus || '');
+          break;
+        }
+      }
+
+      // Stable secondary tiebreaker
+      if (comparison === 0) {
+        return (a.employeeCode || a.id).localeCompare(b.employeeCode || b.id);
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [employees, sortColumn, sortDirection]);
+
+  // ─── Salary Visibility Logic ──────────────────────────────────────────────
+
+  const allSalariesVisible =
+    sortedEmployees.length > 0 &&
+    sortedEmployees.every((emp) => revealedSalaries.has(emp.id));
+
+  const toggleSingleSalary = (id: string) => {
+    setRevealedSalaries((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllSalaries = () => {
+    if (allSalariesVisible) {
+      // Hiding globally hides all row salaries
+      setRevealedSalaries(new Set());
+    } else {
+      // Revealing globally reveals all rows currently displayed
+      setRevealedSalaries(new Set(sortedEmployees.map((e) => e.id)));
+    }
+  };
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
 
   const handleEdit = (emp: EmployeeItem) => {
     setSelectedEmployee(emp);
     setEditDialogOpen(true);
   };
 
-  const handleStatusToggle = (emp: EmployeeItem) => {
+  const handleDelete = (emp: EmployeeItem) => {
     setSelectedEmployee(emp);
-    setStatusDialogOpen(true);
+    setDeleteDialogOpen(true);
   };
 
-  const handleView = (emp: EmployeeItem) => {
+  const handleRowClick = (emp: EmployeeItem) => {
     router.push(`/employees/${emp.id}`);
   };
 
@@ -207,13 +289,13 @@ export function EmployeeListClient({
     refreshData();
   };
 
-  const handleStatusSuccess = () => {
-    setStatusDialogOpen(false);
+  const handleDeleteSuccess = () => {
+    setDeleteDialogOpen(false);
     setSelectedEmployee(null);
     refreshData();
   };
 
-  // ─── Formatters ─────────────────────────────────────────────────────────
+  // ─── Formatters ───────────────────────────────────────────────────────────
 
   const formatCurrency = (amount: number, type: string) => {
     const formatted = new Intl.NumberFormat('en-IN', {
@@ -224,11 +306,11 @@ export function EmployeeListClient({
 
     switch (type) {
       case 'MONTHLY':
-        return `${formatted} / mo`;
+        return `${formatted}/mo`;
       case 'DAILY':
-        return `${formatted} / day`;
+        return `${formatted}/day`;
       case 'HOURLY':
-        return `${formatted} / hr`;
+        return `${formatted}/hr`;
       default:
         return formatted;
     }
@@ -316,8 +398,8 @@ export function EmployeeListClient({
         </Card>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      {/* Responsive Search Bar (Three filters removed as requested) */}
+      <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -328,78 +410,31 @@ export function EmployeeListClient({
             className="pl-8"
           />
         </div>
-
-        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-          {/* Branch Filter */}
-          <Select value={branchFilter} onValueChange={handleBranchFilter}>
-            <SelectTrigger id="branch-filter" className="w-full sm:w-44 min-h-9 sm:min-h-0">
-              <SelectValue placeholder="Branch" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Branches</SelectItem>
-              {branches.map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={handleStatusFilter}>
-            <SelectTrigger id="status-filter" className="w-full sm:w-32 min-h-9 sm:min-h-0">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Status</SelectItem>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="INACTIVE">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Designation Filter */}
-          {designations.length > 0 && (
-            <Select value={designationFilter} onValueChange={handleDesignationFilter}>
-              <SelectTrigger id="designation-filter" className="w-full sm:w-40 min-h-9 sm:min-h-0">
-                <SelectValue placeholder="Designation" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Designations</SelectItem>
-                {designations.map((d) => (
-                  <SelectItem key={d} value={d}>
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs">
-              Reset
-            </Button>
-          )}
-        </div>
+        {searchQuery.trim().length > 0 && (
+          <Button variant="ghost" size="sm" onClick={clearSearch} className="text-xs">
+            Clear
+          </Button>
+        )}
       </div>
 
       {/* Loading State */}
       {isPending && employees.length === 0 && (
-        <TableSkeleton rows={5} columns={7} />
+        <TableSkeleton rows={5} columns={8} />
       )}
 
       {/* Empty State */}
-      {!isPending && employees.length === 0 && (
+      {!isPending && sortedEmployees.length === 0 && (
         <EmptyState
           icon={Users}
-          title={hasActiveFilters ? 'No matching employees' : 'No employees yet'}
+          title={searchQuery ? 'No matching employees' : 'No employees yet'}
           description={
-            hasActiveFilters
-              ? 'Try adjusting your search criteria or clearing active filters.'
-              : 'Add staff members to assign them to branches and track compensation.'
+            searchQuery
+              ? `No staff records matched "${searchQuery}". Try searching with a different term.`
+              : 'Add staff members to assign them to branches and manage compensation.'
           }
           action={
-            hasActiveFilters
-              ? { label: 'Clear Filters', onClick: clearFilters }
+            searchQuery
+              ? { label: 'Clear Search', onClick: clearSearch }
               : canCreate
                 ? { label: 'Add Employee', onClick: () => setCreateDialogOpen(true) }
                 : undefined
@@ -407,241 +442,397 @@ export function EmployeeListClient({
         />
       )}
 
-      {/* Desktop / Tablet Data Table */}
-      {employees.length > 0 && (
-        <div className="hidden rounded-lg border md:block">
+      {/* Desktop / Tablet Data Table with Clickable Sort Headers & Visibility Controls */}
+      {sortedEmployees.length > 0 && (
+        <div className="hidden rounded-lg border md:block overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead>Designation</TableHead>
-                <TableHead>Branch</TableHead>
-                <TableHead className="hidden lg:table-cell">Joining Date</TableHead>
-                <TableHead>Salary</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-10">
+                {/* Employee Header */}
+                <TableHead>
+                  <button
+                    type="button"
+                    onClick={() => handleSort('employee')}
+                    className="cursor-pointer select-none hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-semibold"
+                    aria-label={`Sort by Employee name, currently ${sortColumn === 'employee' ? sortDirection : 'none'}`}
+                  >
+                    <span>Employee</span>
+                    <SortIndicator column="employee" currentColumn={sortColumn} direction={sortDirection} />
+                  </button>
+                </TableHead>
+
+                {/* Code Header */}
+                <TableHead>
+                  <button
+                    type="button"
+                    onClick={() => handleSort('code')}
+                    className="cursor-pointer select-none hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-semibold"
+                    aria-label={`Sort by Code, currently ${sortColumn === 'code' ? sortDirection : 'none'}`}
+                  >
+                    <span>Code</span>
+                    <SortIndicator column="code" currentColumn={sortColumn} direction={sortDirection} />
+                  </button>
+                </TableHead>
+
+                {/* Designation Header */}
+                <TableHead>
+                  <button
+                    type="button"
+                    onClick={() => handleSort('designation')}
+                    className="cursor-pointer select-none hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-semibold"
+                    aria-label={`Sort by Designation, currently ${sortColumn === 'designation' ? sortDirection : 'none'}`}
+                  >
+                    <span>Designation</span>
+                    <SortIndicator column="designation" currentColumn={sortColumn} direction={sortDirection} />
+                  </button>
+                </TableHead>
+
+                {/* Branch Header */}
+                <TableHead>
+                  <button
+                    type="button"
+                    onClick={() => handleSort('branch')}
+                    className="cursor-pointer select-none hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-semibold"
+                    aria-label={`Sort by Branch, currently ${sortColumn === 'branch' ? sortDirection : 'none'}`}
+                  >
+                    <span>Branch</span>
+                    <SortIndicator column="branch" currentColumn={sortColumn} direction={sortDirection} />
+                  </button>
+                </TableHead>
+
+                {/* Joining Date Header */}
+                <TableHead className="hidden lg:table-cell">
+                  <button
+                    type="button"
+                    onClick={() => handleSort('joiningDate')}
+                    className="cursor-pointer select-none hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-semibold"
+                    aria-label={`Sort by Joining Date, currently ${sortColumn === 'joiningDate' ? sortDirection : 'none'}`}
+                  >
+                    <span>Joining Date</span>
+                    <SortIndicator column="joiningDate" currentColumn={sortColumn} direction={sortDirection} />
+                  </button>
+                </TableHead>
+
+                {/* Salary Header with Global Visibility Control */}
+                <TableHead className="group">
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('salary')}
+                      className="cursor-pointer select-none hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-semibold"
+                      aria-label={`Sort by Salary, currently ${sortColumn === 'salary' ? sortDirection : 'none'}`}
+                    >
+                      <span>Salary</span>
+                      <SortIndicator column="salary" currentColumn={sortColumn} direction={sortDirection} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleAllSalaries();
+                      }}
+                      className="ml-2 inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground focus:outline-none focus:ring-1 focus:ring-primary opacity-80 md:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                      aria-label={allSalariesVisible ? 'Hide all salaries' : 'Show all salaries'}
+                      title={allSalariesVisible ? 'Hide all salaries' : 'Show all salaries'}
+                    >
+                      {allSalariesVisible ? (
+                        <EyeOff className="size-3.5 text-primary" />
+                      ) : (
+                        <Eye className="size-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </TableHead>
+
+                {/* Status Header */}
+                <TableHead>
+                  <button
+                    type="button"
+                    onClick={() => handleSort('status')}
+                    className="cursor-pointer select-none hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-semibold"
+                    aria-label={`Sort by Status, currently ${sortColumn === 'status' ? sortDirection : 'none'}`}
+                  >
+                    <span>Status</span>
+                    <SortIndicator column="status" currentColumn={sortColumn} direction={sortDirection} />
+                  </button>
+                </TableHead>
+
+                {/* Actions Header */}
+                <TableHead className="w-24 text-right">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {employees.map((emp) => (
-                <TableRow key={emp.id}>
-                  {/* Employee Name & Contact */}
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                        {getInitials(emp.firstName, emp.lastName)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5 font-medium">
-                          <span>{emp.firstName} {emp.lastName}</span>
-                          {emp.user && (
-                            <span title="Linked to application user account">
-                              <Badge variant="outline" className="px-1 py-0 text-[10px] font-normal text-muted-foreground">
-                                Account
-                              </Badge>
+              {sortedEmployees.map((emp) => {
+                const isSalaryRevealed = revealedSalaries.has(emp.id);
+
+                return (
+                  <TableRow
+                    key={emp.id}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handleRowClick(emp)}
+                  >
+                    {/* Employee Name & Contact */}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                          {getInitials(emp.firstName, emp.lastName)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5 font-medium text-foreground">
+                            <span>
+                              {emp.firstName} {emp.lastName}
                             </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {emp.email || emp.phone}
+                            {emp.user && (
+                              <span title="Linked to application user account">
+                                <Badge
+                                  variant="outline"
+                                  className="px-1 py-0 text-[10px] font-normal text-muted-foreground"
+                                >
+                                  Account
+                                </Badge>
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {emp.email || emp.phone}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </TableCell>
+                    </TableCell>
 
-                  {/* Code */}
-                  <TableCell>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {emp.employeeCode}
-                    </Badge>
-                  </TableCell>
+                    {/* Code */}
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {emp.employeeCode}
+                      </Badge>
+                    </TableCell>
 
-                  {/* Designation */}
-                  <TableCell>
-                    <span className="text-sm font-medium">{emp.designation}</span>
-                  </TableCell>
+                    {/* Designation */}
+                    <TableCell>
+                      <span className="text-sm font-medium">{emp.designation}</span>
+                    </TableCell>
 
-                  {/* Branch */}
-                  <TableCell>
-                    <div>
-                      <div className="text-sm font-medium">{emp.branch.name}</div>
-                      <div className="text-xs text-muted-foreground">{emp.branch.city}</div>
-                    </div>
-                  </TableCell>
+                    {/* Branch */}
+                    <TableCell>
+                      <div>
+                        <div className="text-sm font-medium">{emp.branch.name}</div>
+                        <div className="text-xs text-muted-foreground">{emp.branch.city}</div>
+                      </div>
+                    </TableCell>
 
-                  {/* Joining Date */}
-                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                    {formatDate(emp.joiningDate)}
-                  </TableCell>
+                    {/* Joining Date */}
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                      {formatDate(emp.joiningDate)}
+                    </TableCell>
 
-                  {/* Salary */}
-                  <TableCell>
-                    <div className="text-sm font-medium">
-                      {formatCurrency(emp.salary, emp.salaryType)}
-                    </div>
-                  </TableCell>
+                    {/* Salary with Per-Row Privacy Masking */}
+                    <TableCell>
+                      <div className="flex items-center gap-2 font-mono text-sm">
+                        <span className="min-w-24 tabular-nums font-medium text-foreground">
+                          {isSalaryRevealed ? (
+                            formatCurrency(emp.salary, emp.salaryType)
+                          ) : (
+                            <span className="tracking-widest text-muted-foreground">••••••</span>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSingleSalary(emp.id);
+                          }}
+                          className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          aria-label={isSalaryRevealed ? 'Hide salary' : 'Show salary'}
+                          title={isSalaryRevealed ? 'Hide salary' : 'Show salary'}
+                        >
+                          {isSalaryRevealed ? (
+                            <EyeOff className="size-3.5" />
+                          ) : (
+                            <Eye className="size-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </TableCell>
 
-                  {/* Status */}
-                  <TableCell>
-                    <Badge
-                      variant={emp.employmentStatus === 'ACTIVE' ? 'default' : 'secondary'}
-                      className={
-                        emp.employmentStatus === 'ACTIVE'
-                          ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                          : 'bg-muted text-muted-foreground'
-                      }
-                    >
-                      {emp.employmentStatus === 'ACTIVE' ? (
-                        <CheckCircle2 className="mr-1 size-3" />
-                      ) : (
-                        <XCircle className="mr-1 size-3" />
-                      )}
-                      {emp.employmentStatus}
-                    </Badge>
-                  </TableCell>
+                    {/* Status */}
+                    <TableCell>
+                      <Badge
+                        variant={emp.employmentStatus === 'ACTIVE' ? 'default' : 'secondary'}
+                        className={
+                          emp.employmentStatus === 'ACTIVE'
+                            ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+                            : 'bg-muted text-muted-foreground'
+                        }
+                      >
+                        {emp.employmentStatus === 'ACTIVE' ? (
+                          <CheckCircle2 className="mr-1 size-3" />
+                        ) : (
+                          <XCircle className="mr-1 size-3" />
+                        )}
+                        {emp.employmentStatus}
+                      </Badge>
+                    </TableCell>
 
-                  {/* Actions Dropdown */}
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
+                    {/* Directly Visible Action Buttons (Replaces Three-Dot Menu) */}
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        {canUpdate && (
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            aria-label={`Actions for ${emp.firstName} ${emp.lastName}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(emp);
+                            }}
+                            aria-label={`Edit employee ${emp.firstName} ${emp.lastName}`}
+                            title="Edit employee"
                           >
-                            <MoreHorizontal className="size-4" />
+                            <Pencil className="size-4" />
                           </Button>
-                        }
-                      />
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleView(emp)}>
-                          <Eye className="mr-2 size-4" />
-                          View Details
-                        </DropdownMenuItem>
-
-                        {canUpdate && (
-                          <DropdownMenuItem onClick={() => handleEdit(emp)}>
-                            <Pencil className="mr-2 size-4" />
-                            Edit Employee
-                          </DropdownMenuItem>
                         )}
 
                         {canDeactivate && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleStatusToggle(emp)}
-                              className={
-                                emp.employmentStatus === 'ACTIVE'
-                                  ? 'text-destructive focus:text-destructive'
-                                  : 'text-green-600 focus:text-green-600'
-                              }
-                            >
-                              <Power className="mr-2 size-4" />
-                              {emp.employmentStatus === 'ACTIVE'
-                                ? 'Deactivate Employee'
-                                : 'Reactivate Employee'}
-                            </DropdownMenuItem>
-                          </>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(emp);
+                            }}
+                            aria-label={`Delete employee ${emp.firstName} ${emp.lastName}`}
+                            title="Delete employee"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
                         )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
       )}
 
       {/* Mobile Cards Layout */}
-      {employees.length > 0 && (
+      {sortedEmployees.length > 0 && (
         <div className="grid gap-3 md:hidden">
-          {employees.map((emp) => (
-            <Card key={emp.id} size="sm" className="relative">
-              <CardContent className="pt-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                      {getInitials(emp.firstName, emp.lastName)}
+          {sortedEmployees.map((emp) => {
+            const isSalaryRevealed = revealedSalaries.has(emp.id);
+
+            return (
+              <Card key={emp.id} size="sm" className="relative">
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {getInitials(emp.firstName, emp.lastName)}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">
+                          {emp.firstName} {emp.lastName}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Badge variant="outline" className="font-mono text-[10px] px-1 py-0">
+                            {emp.employeeCode}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">{emp.designation}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Badge
+                      variant={emp.employmentStatus === 'ACTIVE' ? 'default' : 'secondary'}
+                      className={
+                        emp.employmentStatus === 'ACTIVE'
+                          ? 'bg-green-500/10 text-green-700 dark:text-green-400 text-xs'
+                          : 'bg-muted text-muted-foreground text-xs'
+                      }
+                    >
+                      {emp.employmentStatus}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground border-t pt-2">
+                    <div>
+                      <span className="block font-medium text-foreground">Branch</span>
+                      <span>{emp.branch.name}</span>
                     </div>
                     <div>
-                      <div className="font-semibold text-sm">
-                        {emp.firstName} {emp.lastName}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Badge variant="outline" className="font-mono text-[10px] px-1 py-0">
-                          {emp.employeeCode}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">{emp.designation}</span>
+                      <span className="block font-medium text-foreground">Compensation</span>
+                      <div className="flex items-center gap-1.5 font-mono text-foreground font-medium">
+                        <span>
+                          {isSalaryRevealed
+                            ? formatCurrency(emp.salary, emp.salaryType)
+                            : '••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleSingleSalary(emp.id)}
+                          className="inline-flex size-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                          aria-label={isSalaryRevealed ? 'Hide salary' : 'Show salary'}
+                        >
+                          {isSalaryRevealed ? (
+                            <EyeOff className="size-3" />
+                          ) : (
+                            <Eye className="size-3" />
+                          )}
+                        </button>
                       </div>
                     </div>
                   </div>
 
-                  <Badge
-                    variant={emp.employmentStatus === 'ACTIVE' ? 'default' : 'secondary'}
-                    className={
-                      emp.employmentStatus === 'ACTIVE'
-                        ? 'bg-green-500/10 text-green-700 dark:text-green-400 text-xs'
-                        : 'bg-muted text-muted-foreground text-xs'
-                    }
-                  >
-                    {emp.employmentStatus}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground border-t pt-2">
-                  <div>
-                    <span className="block font-medium text-foreground">Branch</span>
-                    <span>{emp.branch.name}</span>
-                  </div>
-                  <div>
-                    <span className="block font-medium text-foreground">Compensation</span>
-                    <span>{formatCurrency(emp.salary, emp.salaryType)}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between border-t pt-2">
-                  <span className="text-xs text-muted-foreground">
-                    Joined {formatDate(emp.joiningDate)}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" onClick={() => handleView(emp)} className="min-h-11 h-auto">
-                      <Eye className="mr-1 size-3.5" />
-                      View
-                    </Button>
-                    {canUpdate && (
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(emp)} className="min-h-11 h-auto min-w-11">
-                        <Pencil className="size-3.5" />
-                      </Button>
-                    )}
-                    {canDeactivate && (
+                  <div className="flex items-center justify-between border-t pt-2">
+                    <span className="text-xs text-muted-foreground">
+                      Joined {formatDate(emp.joiningDate)}
+                    </span>
+                    <div className="flex items-center gap-1">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        onClick={() => handleStatusToggle(emp)}
-                        className={`min-h-11 h-auto min-w-11 ${
-                          emp.employmentStatus === 'ACTIVE'
-                            ? 'text-destructive'
-                            : 'text-green-600'
-                        }`}
+                        onClick={() => handleRowClick(emp)}
+                        className="h-8 text-xs"
                       >
-                        <Power className="size-3.5" />
+                        <Eye className="mr-1 size-3.5" />
+                        View
                       </Button>
-                    )}
+                      {canUpdate && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleEdit(emp)}
+                          aria-label="Edit employee"
+                          title="Edit employee"
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                      )}
+                      {canDeactivate && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleDelete(emp)}
+                          aria-label="Delete employee"
+                          title="Delete employee"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Form Dialog */}
+      {/* Form Dialog for Creating New Employee */}
       <EmployeeFormDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
@@ -649,8 +840,8 @@ export function EmployeeListClient({
         onSuccess={handleFormSuccess}
       />
 
-      {/* Edit Dialog */}
-      {selectedEmployee && (
+      {/* Form Dialog for Editing Employee */}
+      {selectedEmployee && editDialogOpen && (
         <EmployeeFormDialog
           key={selectedEmployee.id}
           open={editDialogOpen}
@@ -664,16 +855,16 @@ export function EmployeeListClient({
         />
       )}
 
-      {/* Status Confirmation Dialog */}
-      {selectedEmployee && (
-        <EmployeeStatusDialog
-          open={statusDialogOpen}
+      {/* Safe Deletion / Deactivation Confirmation Dialog */}
+      {selectedEmployee && deleteDialogOpen && (
+        <EmployeeDeleteDialog
+          open={deleteDialogOpen}
           onOpenChange={(open) => {
-            setStatusDialogOpen(open);
+            setDeleteDialogOpen(open);
             if (!open) setSelectedEmployee(null);
           }}
           employee={selectedEmployee}
-          onSuccess={handleStatusSuccess}
+          onSuccess={handleDeleteSuccess}
         />
       )}
     </div>
