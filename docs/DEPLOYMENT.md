@@ -65,7 +65,7 @@ Oven Xpress is an enterprise multi-branch restaurant operating system built with
 | Operation | Command | Execution Context |
 | :--- | :--- | :--- |
 | **Dependency Installation** | `pnpm install --frozen-lockfile` | CI & Vercel Build Phase |
-| **Prisma Generation** | `pnpm dlx prisma generate` | Pre-build Hook |
+| **Prisma Generation** | `pnpm exec prisma generate` | Pre-build Hook |
 | **Production Build** | `pnpm run build` (`prisma generate && next build`) | Vercel Deployment Pipeline |
 | **Container Start** | `pnpm run start` (`next start`) | Standalone / Docker Node daemon |
 | **Code Quality Audit** | `pnpm run lint` (`eslint .`) | Pre-deployment Gate |
