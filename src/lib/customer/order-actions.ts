@@ -341,19 +341,21 @@ export async function createCustomerOrderAction(
 
 export async function getCustomerOrdersAction() {
   const user = await getCurrentUser();
-  if (!user) return [];
+  if (!user || !user.id) return [];
 
-  const customer = await prisma.customer.findFirst({
-    where: {
-      OR: [{ userId: user.id }, { email: user.email }],
-    },
+  // Strictly query customer record belonging to this authenticated user account
+  const customer = await prisma.customer.findUnique({
+    where: { userId: user.id },
   });
 
-  if (!customer) return [];
-
+  // Query only orders that were created by this user ID,
+  // or assigned to this user's verified customer record.
   const orders = await prisma.order.findMany({
     where: {
-      OR: [{ customerId: customer.id }, { createdBy: user.id }],
+      OR: [
+        { createdBy: user.id },
+        ...(customer ? [{ customerId: customer.id }] : []),
+      ],
     },
     include: {
       branch: {
@@ -410,6 +412,45 @@ export async function getCustomerOrdersAction() {
     })),
   }));
 }
+
+/**
+ * Checks whether an order exists and whether the current viewer is authorized to access it.
+ */
+export async function checkOrderAccess(orderNumber: string, token?: string): Promise<{
+  exists: boolean;
+  authorized: boolean;
+  reason?: string;
+}> {
+  if (!orderNumber || typeof orderNumber !== 'string') {
+    return { exists: false, authorized: false, reason: 'INVALID_ORDER_NUMBER' };
+  }
+
+  const order = await prisma.order.findUnique({
+    where: { orderNumber },
+    select: {
+      id: true,
+      orderNumber: true,
+      branchId: true,
+      customerId: true,
+      createdBy: true,
+      trackingTokenHash: true,
+    },
+  });
+
+  if (!order) {
+    return { exists: false, authorized: false, reason: 'NOT_FOUND' };
+  }
+
+  const currentUser = await getCurrentUser();
+  const auth = await authorizeOrderAccess(order, currentUser, token);
+
+  return {
+    exists: true,
+    authorized: auth.authorized,
+    reason: auth.reason,
+  };
+}
+
 
 export async function getCustomerOrderDetails(orderNumber: string, token?: string) {
   if (!orderNumber || typeof orderNumber !== 'string') {

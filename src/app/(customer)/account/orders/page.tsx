@@ -9,13 +9,16 @@ import {
 } from 'lucide-react';
 import type { Metadata } from 'next';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: 'My Orders | Oven Xpress',
   description: 'View and track all your Oven Xpress orders.',
 };
 
 export default async function CustomerOrdersPage() {
-  await requireAuthentication('/account/orders');
+  const user = await requireAuthentication('/account/orders');
   const orders = await getCustomerOrdersAction();
 
   return (
@@ -26,7 +29,8 @@ export default async function CustomerOrdersPage() {
             Order History
           </h1>
           <p className="text-xs text-muted-foreground">
-            Track active deliveries and review your past orders
+            Private order history for{' '}
+            <strong className="text-foreground">{user.name}</strong>
           </p>
         </div>
 
@@ -116,6 +120,7 @@ export default async function CustomerOrdersPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-2.5 text-muted-foreground">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={item.imageUrl}
                         alt={item.name}

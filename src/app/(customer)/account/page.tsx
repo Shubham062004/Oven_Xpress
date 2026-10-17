@@ -20,6 +20,9 @@ import {
 import { logoutAction } from '@/lib/auth/actions';
 import type { Metadata } from 'next';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface SavedAddress {
   id?: string;
   label?: string;

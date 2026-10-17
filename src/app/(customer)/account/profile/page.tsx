@@ -4,6 +4,9 @@ import type { Metadata } from 'next';
 import { getCustomerProfile } from '@/lib/customer/customer-profile-actions';
 import { CustomerProfileClient } from '@/components/customer/customer-profile-client';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: 'My Profile | Oven Xpress',
   description: 'View and manage your Oven Xpress customer account profile, contact details, and password.',

@@ -99,13 +99,8 @@ export async function authorizeOrderAccess(
     }
 
     if (order.customerId) {
-      const customerRecord = await prisma.customer.findFirst({
-        where: {
-          OR: [
-            { userId: user.id },
-            ...(user.email ? [{ email: user.email }] : []),
-          ],
-        },
+      const customerRecord = await prisma.customer.findUnique({
+        where: { userId: user.id },
         select: { id: true },
       });
 
@@ -115,7 +110,32 @@ export async function authorizeOrderAccess(
     }
   }
 
-  // 4. Guest / Token-based Authorization
+  // 4. Check if order belongs to a registered customer account.
+  // Registered customer orders are private to that customer account.
+  // A URL token must NEVER leak a registered customer's order to other devices or users.
+  let isRegisteredUserOrder = false;
+  if (
+    order.createdBy &&
+    order.createdBy !== 'CUSTOMER_SELF_SERVICE' &&
+    !order.createdBy.startsWith('GUEST_')
+  ) {
+    isRegisteredUserOrder = true;
+  } else if (order.customerId) {
+    const cust = await prisma.customer.findUnique({
+      where: { id: order.customerId },
+      select: { userId: true },
+    });
+    if (cust?.userId) {
+      isRegisteredUserOrder = true;
+    }
+  }
+
+  if (isRegisteredUserOrder) {
+    // Order belongs to a registered account and viewer is not authorized
+    return { authorized: false, reason: 'PRIVATE_ACCOUNT_ORDER' };
+  }
+
+  // 5. Guest / Token-based Authorization (strictly for unlinked guest orders only)
   if (token && order.trackingTokenHash) {
     if (verifyTrackingToken(token, order.trackingTokenHash)) {
       return { authorized: true, reason: 'VALID_GUEST_TOKEN' };
