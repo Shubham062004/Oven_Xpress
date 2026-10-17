@@ -19,6 +19,16 @@ import {
 } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
 import { createCustomerOrderAction } from '@/lib/customer/order-actions';
+import {
+  initiateRazorpayOrderAction,
+  verifyAndCompleteRazorpayPaymentAction,
+} from '@/lib/customer/razorpay-actions';
+import {
+  loadRazorpayScript,
+  type RazorpayPaymentSuccessPayload,
+} from '@/lib/payments/razorpay-client';
+import { RazorpayMockModal } from '@/components/payments/razorpay-mock-modal';
+import { toast } from 'sonner';
 
 interface SavedAddress {
   id?: string;
@@ -79,7 +89,18 @@ export function CheckoutClient({
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'ONLINE' | 'CARD'>('UPI');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittingLabel, setSubmittingLabel] = useState<string>('Placing Your Order...');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Mock modal state for testing/demo environments without live keys
+  const [mockModalOpen, setMockModalOpen] = useState(false);
+  const [mockOrderDetails, setMockOrderDetails] = useState<{
+    orderId: string;
+    orderNumber: string;
+    amount: number;
+    razorpayOrderId: string;
+    trackingToken?: string;
+  } | null>(null);
 
   if (items.length === 0) {
     return (
@@ -122,8 +143,52 @@ export function CheckoutClient({
 
     setIsSubmitting(true);
 
+    // ==========================================
+    // 1. CASH ON DELIVERY FLOW
+    // ==========================================
+    if (paymentMethod === 'CASH') {
+      setSubmittingLabel('Placing Your Order...');
+      try {
+        const result = await createCustomerOrderAction({
+          branchId: branch.id,
+          orderType,
+          tableNumber: orderType === 'DINE_IN' ? tableNumber : undefined,
+          customerName,
+          customerPhone,
+          deliveryAddress: orderType === 'DELIVERY' ? finalAddress : undefined,
+          deliveryNotes: deliveryNotes || undefined,
+          items: items.map((i) => ({ menuItemId: i.id, quantity: i.quantity })),
+          couponCode: appliedCoupon?.code,
+          paymentMethod: 'CASH',
+        });
+
+        if (result.success && result.orderNumber) {
+          clearCart();
+          toast.success('Order placed successfully!');
+          const targetUrl =
+            result.trackingUrl ||
+            (result.trackingToken
+              ? `/track/${result.orderNumber}?token=${result.trackingToken}`
+              : `/track/${result.orderNumber}`);
+          router.push(targetUrl);
+        } else {
+          setErrorMessage(result.error || 'Failed to place order. Please try again.');
+          setIsSubmitting(false);
+        }
+      } catch (err) {
+        console.error(err);
+        setErrorMessage('An unexpected error occurred. Please try again.');
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // ==========================================
+    // 2. RAZORPAY GATEWAY FLOW (UPI / ONLINE / CARD)
+    // ==========================================
+    setSubmittingLabel('Initializing Razorpay Gateway...');
     try {
-      const result = await createCustomerOrderAction({
+      const initResult = await initiateRazorpayOrderAction({
         branchId: branch.id,
         orderType,
         tableNumber: orderType === 'DINE_IN' ? tableNumber : undefined,
@@ -133,26 +198,140 @@ export function CheckoutClient({
         deliveryNotes: deliveryNotes || undefined,
         items: items.map((i) => ({ menuItemId: i.id, quantity: i.quantity })),
         couponCode: appliedCoupon?.code,
-        paymentMethod,
+        paymentMethod: paymentMethod === 'ONLINE' ? 'ONLINE' : 'UPI',
       });
 
-      if (result.success && result.orderNumber) {
+      if (!initResult.success || !initResult.razorpayOrderId || !initResult.orderId) {
+        setErrorMessage(initResult.error || 'Unable to connect to payment gateway.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check if running in mock sandbox environment
+      if (initResult.isMock) {
+        setIsSubmitting(false);
+        setMockOrderDetails({
+          orderId: initResult.orderId,
+          orderNumber: initResult.orderNumber || '',
+          amount: (initResult.amount || 0) / 100,
+          razorpayOrderId: initResult.razorpayOrderId,
+          trackingToken: initResult.trackingToken,
+        });
+        setMockModalOpen(true);
+        return;
+      }
+
+      // Live / Test Razorpay flow
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !window.Razorpay) {
+        setErrorMessage('Failed to load Razorpay Checkout SDK. Please check your internet connection.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const options = {
+        key: initResult.keyId || '',
+        amount: initResult.amount || 0,
+        currency: initResult.currency || 'INR',
+        name: 'Oven Xpress',
+        description: `Order #${initResult.orderNumber}`,
+        image: '/images/hero-pizza.jpg',
+        order_id: initResult.razorpayOrderId,
+        handler: async (response: RazorpayPaymentSuccessPayload) => {
+          setSubmittingLabel('Verifying Payment...');
+          setIsSubmitting(true);
+          try {
+            const verifyResult = await verifyAndCompleteRazorpayPaymentAction({
+              orderId: initResult.orderId!,
+              orderNumber: initResult.orderNumber!,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              trackingToken: initResult.trackingToken,
+            });
+
+            if (verifyResult.success && verifyResult.trackingUrl) {
+              clearCart();
+              toast.success('Payment verified & order confirmed!');
+              router.push(verifyResult.trackingUrl);
+            } else {
+              setErrorMessage(
+                verifyResult.error || 'Payment verification failed. Please contact support.'
+              );
+              setIsSubmitting(false);
+            }
+          } catch (verifyErr) {
+            console.error('Verification error:', verifyErr);
+            setErrorMessage('Error verifying payment. Please do not re-pay and check order status.');
+            setIsSubmitting(false);
+          }
+        },
+        prefill: {
+          name: customerName,
+          contact: customerPhone,
+          email: initResult.customerEmail || user.email || '',
+        },
+        notes: {
+          orderNumber: initResult.orderNumber || '',
+          branchId: branch.id,
+        },
+        theme: {
+          color: '#ea580c', // Oven Xpress Brand Orange
+        },
+        modal: {
+          ondismiss: () => {
+            setIsSubmitting(false);
+            toast.info('Payment was cancelled or dismissed. Your cart is preserved.');
+          },
+        },
+      };
+
+      const rzpInstance = new window.Razorpay(options);
+      rzpInstance.open();
+    } catch (err) {
+      console.error('Razorpay initialization error:', err);
+      setErrorMessage('An unexpected error occurred while launching Razorpay.');
+      setIsSubmitting(false);
+    }
+  };
+
+  // Mock modal simulation actions
+  const handleSimulateMockSuccess = async () => {
+    if (!mockOrderDetails) return;
+    setMockModalOpen(false);
+    setIsSubmitting(true);
+    setSubmittingLabel('Verifying Test Payment...');
+
+    try {
+      const mockPaymentId = `pay_mock_${Date.now()}`;
+      const verifyResult = await verifyAndCompleteRazorpayPaymentAction({
+        orderId: mockOrderDetails.orderId,
+        orderNumber: mockOrderDetails.orderNumber,
+        razorpayOrderId: mockOrderDetails.razorpayOrderId,
+        razorpayPaymentId: mockPaymentId,
+        razorpaySignature: 'mock_signature_success',
+        trackingToken: mockOrderDetails.trackingToken,
+      });
+
+      if (verifyResult.success && verifyResult.trackingUrl) {
         clearCart();
-        const targetUrl =
-          result.trackingUrl ||
-          (result.trackingToken
-            ? `/track/${result.orderNumber}?token=${result.trackingToken}`
-            : `/track/${result.orderNumber}`);
-        router.push(targetUrl);
+        toast.success('Test payment simulated & order confirmed!');
+        router.push(verifyResult.trackingUrl);
       } else {
-        setErrorMessage(result.error || 'Failed to place order. Please try again.');
+        setErrorMessage(verifyResult.error || 'Mock verification failed.');
         setIsSubmitting(false);
       }
     } catch (err) {
       console.error(err);
-      setErrorMessage('An unexpected error occurred. Please try again.');
+      setErrorMessage('Failed to simulate test payment.');
       setIsSubmitting(false);
     }
+  };
+
+  const handleSimulateMockFailure = () => {
+    setMockModalOpen(false);
+    setIsSubmitting(false);
+    toast.error('Test payment failed. You can re-attempt payment.');
   };
 
   return (
@@ -353,10 +532,15 @@ export function CheckoutClient({
 
           {/* Payment Method Selector */}
           <div className="bg-card rounded-2xl border border-border/70 p-4 sm:p-5 space-y-4">
-            <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
-              <CreditCard className="size-4 text-primary" />
-              <span>Choose Payment Method</span>
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <CreditCard className="size-4 text-primary" />
+                <span>Choose Payment Method</span>
+              </h2>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                Secured by Razorpay
+              </span>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* UPI */}
@@ -368,12 +552,40 @@ export function CheckoutClient({
                     : 'hover:bg-muted/40 border-border/70'
                 }`}
               >
-                <div className="size-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center">
-                  <QrCode className="size-4" />
+                <div className="flex items-center justify-between">
+                  <div className="size-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center">
+                    <QrCode className="size-4" />
+                  </div>
+                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-blue-600 text-white rounded">
+                    RZP
+                  </span>
                 </div>
                 <div>
-                  <span className="font-bold text-foreground block">UPI / QR</span>
-                  <span className="text-[11px] text-muted-foreground">GPay, PhonePe, Paytm</span>
+                  <span className="font-bold text-foreground block">UPI / QR (Razorpay)</span>
+                  <span className="text-[11px] text-muted-foreground">GPay, PhonePe, Paytm, BHIM</span>
+                </div>
+              </div>
+
+              {/* Online Card */}
+              <div
+                onClick={() => setPaymentMethod('ONLINE')}
+                className={`p-3.5 rounded-xl border text-xs cursor-pointer flex flex-col justify-between space-y-2 transition-all ${
+                  paymentMethod === 'ONLINE'
+                    ? 'bg-primary/5 border-primary shadow-xs ring-1 ring-primary/20'
+                    : 'hover:bg-muted/40 border-border/70'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="size-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                    <CreditCard className="size-4" />
+                  </div>
+                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-blue-600 text-white rounded">
+                    RZP
+                  </span>
+                </div>
+                <div>
+                  <span className="font-bold text-foreground block">Cards & NetBanking</span>
+                  <span className="text-[11px] text-muted-foreground">Visa, MasterCard, 50+ Banks</span>
                 </div>
               </div>
 
@@ -392,24 +604,6 @@ export function CheckoutClient({
                 <div>
                   <span className="font-bold text-foreground block">Cash on Delivery</span>
                   <span className="text-[11px] text-muted-foreground">Pay in cash when delivered</span>
-                </div>
-              </div>
-
-              {/* Online Card */}
-              <div
-                onClick={() => setPaymentMethod('ONLINE')}
-                className={`p-3.5 rounded-xl border text-xs cursor-pointer flex flex-col justify-between space-y-2 transition-all ${
-                  paymentMethod === 'ONLINE'
-                    ? 'bg-primary/5 border-primary shadow-xs ring-1 ring-primary/20'
-                    : 'hover:bg-muted/40 border-border/70'
-                }`}
-              >
-                <div className="size-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
-                  <CreditCard className="size-4" />
-                </div>
-                <div>
-                  <span className="font-bold text-foreground block">Card / NetBanking</span>
-                  <span className="text-[11px] text-muted-foreground">Credit & Debit cards</span>
                 </div>
               </div>
             </div>
@@ -485,11 +679,15 @@ export function CheckoutClient({
               {isSubmitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  <span>Placing Your Order...</span>
+                  <span>{submittingLabel}</span>
                 </>
               ) : (
                 <>
-                  <span>Place Order • ₹{total.toFixed(2)}</span>
+                  <span>
+                    {paymentMethod === 'CASH'
+                      ? `Place Order • ₹${total.toFixed(2)}`
+                      : `Pay with Razorpay • ₹${total.toFixed(2)}`}
+                  </span>
                   <ArrowRight className="size-4" />
                 </>
               )}
@@ -497,11 +695,23 @@ export function CheckoutClient({
 
             <p className="text-center text-[10px] text-muted-foreground flex items-center justify-center gap-1">
               <ShieldCheck className="size-3 text-emerald-500" />
-              <span>Safe & Secure 256-bit encrypted checkout</span>
+              <span>Safe & Secure 256-bit Razorpay encrypted checkout</span>
             </p>
           </div>
         </div>
       </form>
+
+      {/* Razorpay Mock Sandbox Modal (active when real keys are not in .env) */}
+      {mockOrderDetails && (
+        <RazorpayMockModal
+          open={mockModalOpen}
+          onOpenChange={setMockModalOpen}
+          orderNumber={mockOrderDetails.orderNumber}
+          amount={mockOrderDetails.amount}
+          onSimulateSuccess={handleSimulateMockSuccess}
+          onSimulateFailure={handleSimulateMockFailure}
+        />
+      )}
     </div>
   );
 }

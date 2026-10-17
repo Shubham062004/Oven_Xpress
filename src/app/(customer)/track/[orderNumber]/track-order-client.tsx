@@ -18,6 +18,7 @@ import {
   CreditCard,
   Wifi,
   WifiOff,
+  Loader2,
 } from 'lucide-react';
 import type { OrderStatus, PaymentStatus } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRealtime } from '@/lib/realtime/use-realtime';
 import { getCustomerOrderDetails } from '@/lib/customer/order-actions';
+import {
+  initiatePendingOrderRazorpayAction,
+  verifyAndCompleteRazorpayPaymentAction,
+} from '@/lib/customer/razorpay-actions';
+import {
+  loadRazorpayScript,
+  type RazorpayPaymentSuccessPayload,
+} from '@/lib/payments/razorpay-client';
+import { RazorpayMockModal } from '@/components/payments/razorpay-mock-modal';
 import type {
   OrderStatusChangedPayload,
   KitchenStatusChangedPayload,
@@ -68,8 +78,156 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
+  // Razorpay payment state for unpaid / pending orders
+  const [isPaying, setIsPaying] = useState(false);
+  const [mockModalOpen, setMockModalOpen] = useState(false);
+  const [mockOrderDetails, setMockOrderDetails] = useState<{
+    orderId: string;
+    orderNumber: string;
+    amount: number;
+    razorpayOrderId: string;
+  } | null>(null);
+
   const currentStep = getStepIndex(order.status);
   const isCancelled = order.status === 'CANCELLED';
+
+  const handlePayPendingWithRazorpay = async () => {
+    setIsPaying(true);
+    try {
+      const initResult = await initiatePendingOrderRazorpayAction({
+        orderNumber: order.orderNumber,
+        token,
+      });
+
+      if (!initResult.success || !initResult.razorpayOrderId || !initResult.orderId) {
+        toast.error(initResult.error || 'Failed to start payment gateway.');
+        setIsPaying(false);
+        return;
+      }
+
+      if (initResult.isMock) {
+        setIsPaying(false);
+        setMockOrderDetails({
+          orderId: initResult.orderId,
+          orderNumber: initResult.orderNumber || order.orderNumber,
+          amount: (initResult.amount || 0) / 100,
+          razorpayOrderId: initResult.razorpayOrderId,
+        });
+        setMockModalOpen(true);
+        return;
+      }
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !window.Razorpay) {
+        toast.error('Failed to load Razorpay SDK. Please check your internet connection.');
+        setIsPaying(false);
+        return;
+      }
+
+      const options = {
+        key: initResult.keyId || '',
+        amount: initResult.amount || 0,
+        currency: initResult.currency || 'INR',
+        name: 'Oven Xpress',
+        description: `Order #${initResult.orderNumber}`,
+        image: '/images/hero-pizza.jpg',
+        order_id: initResult.razorpayOrderId,
+        handler: async (response: RazorpayPaymentSuccessPayload) => {
+          setIsPaying(true);
+          try {
+            const verifyResult = await verifyAndCompleteRazorpayPaymentAction({
+              orderId: initResult.orderId!,
+              orderNumber: initResult.orderNumber!,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              trackingToken: token,
+            });
+
+            if (verifyResult.success) {
+              toast.success('Payment completed successfully!');
+              setOrder((prev) => ({
+                ...prev,
+                payment: {
+                  ...prev.payment,
+                  status: 'SUCCESS' as PaymentStatus,
+                },
+              }));
+            } else {
+              toast.error(verifyResult.error || 'Payment verification failed.');
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error('Error verifying payment.');
+          } finally {
+            setIsPaying(false);
+          }
+        },
+        prefill: {
+          name: initResult.customerName || '',
+          contact: initResult.customerPhone || '',
+          email: initResult.customerEmail || '',
+        },
+        theme: {
+          color: '#ea580c',
+        },
+        modal: {
+          ondismiss: () => {
+            setIsPaying(false);
+            toast.info('Payment window closed.');
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error(err);
+      toast.error('Unable to open payment gateway.');
+      setIsPaying(false);
+    }
+  };
+
+  const handleSimulateTrackSuccess = async () => {
+    if (!mockOrderDetails) return;
+    setMockModalOpen(false);
+    setIsPaying(true);
+
+    try {
+      const verifyResult = await verifyAndCompleteRazorpayPaymentAction({
+        orderId: mockOrderDetails.orderId,
+        orderNumber: mockOrderDetails.orderNumber,
+        razorpayOrderId: mockOrderDetails.razorpayOrderId,
+        razorpayPaymentId: `pay_mock_${Date.now()}`,
+        razorpaySignature: 'mock_signature_success',
+        trackingToken: token,
+      });
+
+      if (verifyResult.success) {
+        toast.success('Test payment simulated & order confirmed!');
+        setOrder((prev) => ({
+          ...prev,
+          payment: {
+            ...prev.payment,
+            status: 'SUCCESS' as PaymentStatus,
+          },
+        }));
+      } else {
+        toast.error(verifyResult.error || 'Mock verification failed.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to simulate test payment.');
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  const handleSimulateTrackFailure = () => {
+    setMockModalOpen(false);
+    setIsPaying(false);
+    toast.error('Test payment failed.');
+  };
 
   // Manual & Polling resync function
   const refreshStatus = useCallback(async () => {
@@ -409,6 +567,31 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
                   <div className="text-xs text-muted-foreground mt-1">{order.deliveryNotes}</div>
                 </div>
               )}
+
+              {/* Pay Online with Razorpay button if payment is PENDING */}
+              {order.payment.status === 'PENDING' && !isCancelled && (
+                <div className="pt-3 border-t">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isPaying}
+                    onClick={handlePayPendingWithRazorpay}
+                    className="w-full bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {isPaying ? (
+                      <>
+                        <Loader2 className="size-3.5 animate-spin" />
+                        <span>Opening Razorpay...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="size-3.5" />
+                        <span>Pay ₹{order.totalAmount.toFixed(2)} with Razorpay</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -430,6 +613,18 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
           </div>
         </div>
       </div>
+
+      {/* Razorpay Mock Sandbox Modal for testing */}
+      {mockOrderDetails && (
+        <RazorpayMockModal
+          open={mockModalOpen}
+          onOpenChange={setMockModalOpen}
+          orderNumber={mockOrderDetails.orderNumber}
+          amount={mockOrderDetails.amount}
+          onSimulateSuccess={handleSimulateTrackSuccess}
+          onSimulateFailure={handleSimulateTrackFailure}
+        />
+      )}
     </div>
   );
 }
