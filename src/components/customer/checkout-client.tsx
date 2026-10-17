@@ -100,6 +100,7 @@ export function CheckoutClient({
     orderNumber: string;
     amount: number;
     trackingToken?: string;
+    qrImageUrl?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     initResult?: any;
   } | null>(null);
@@ -348,6 +349,7 @@ export function CheckoutClient({
           orderNumber: initResult.orderNumber || '',
           amount: (initResult.amount || 0) / 100,
           trackingToken: initResult.trackingToken,
+          qrImageUrl: initResult.qrImageUrl,
           initResult,
         });
         setUpiQrModalOpen(true);
@@ -780,6 +782,7 @@ export function CheckoutClient({
           orderNumber={upiOrderDetails.orderNumber}
           amount={upiOrderDetails.amount}
           trackingToken={upiOrderDetails.trackingToken}
+          qrImageUrl={upiOrderDetails.qrImageUrl}
           onPaymentConfirmed={() => {
             clearCart();
             const targetUrl = upiOrderDetails.trackingToken

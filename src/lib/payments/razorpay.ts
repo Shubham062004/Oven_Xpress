@@ -181,3 +181,71 @@ export function verifyRazorpayWebhookSignature({
     return false;
   }
 }
+
+export interface RazorpayQrResult {
+  id: string;
+  imageUrl: string;
+  status: string;
+}
+
+/**
+ * Creates a single-use fixed amount dynamic QR code using Razorpay's official QR Code API.
+ * Returns null if the account does not have QR Code API enabled or keys are unconfigured.
+ */
+export async function createRazorpayQrCode({
+  amount,
+  orderNumber,
+  notes = {},
+}: {
+  amount: number;
+  orderNumber: string;
+  notes?: Record<string, string>;
+}): Promise<RazorpayQrResult | null> {
+  if (!isRazorpayConfigured()) return null;
+  const client = getRazorpayClient();
+  if (!client || !client.qrCode) return null;
+
+  try {
+    const amountInPaise = Math.round(amount * 100);
+    const closeBy = Math.floor(Date.now() / 1000) + 1800; // 30 minutes
+
+    const qr = await client.qrCode.create({
+      type: 'upi_qr',
+      name: `Oven Xpress #${orderNumber}`,
+      usage: 'single_use',
+      fixed_amount: true,
+      payment_amount: amountInPaise,
+      description: `Order #${orderNumber}`,
+      close_by: closeBy,
+      notes,
+    });
+
+    return {
+      id: qr.id,
+      imageUrl: qr.image_url,
+      status: qr.status,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn('[Razorpay QR API] Note: Official QR API not enabled or returned error:', message);
+    return null;
+  }
+}
+
+/**
+ * Fetches all payments associated with a Razorpay Order ID.
+ */
+export async function fetchRazorpayOrderPayments(razorpayOrderId: string) {
+  if (!isRazorpayConfigured()) return null;
+  const client = getRazorpayClient();
+  if (!client) return null;
+
+  try {
+    return await client.orders.fetchPayments(razorpayOrderId);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn('[Razorpay] Error fetching payments for order:', message);
+    return null;
+  }
+}
+

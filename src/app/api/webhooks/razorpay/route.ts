@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { verifyRazorpayWebhookSignature } from '@/lib/payments/razorpay';
+import {
+  verifyRazorpayWebhookSignature,
+  fetchRazorpayOrderPayments,
+} from '@/lib/payments/razorpay';
 import { publishPaymentUpdated } from '@/lib/realtime/event-bus';
 
 export async function POST(req: NextRequest) {
@@ -244,4 +247,135 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to verify UPI payment' }, { status: 500 });
   }
 }
+
+/**
+ * Polling status endpoint to verify if an order's payment has succeeded.
+ * Can auto-reconcile against Razorpay API if a webhook or callback was missed.
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const searchParams = req.nextUrl.searchParams;
+    const orderNumber = searchParams.get('orderNumber');
+    const orderId = searchParams.get('orderId');
+
+    if (!orderNumber && !orderId) {
+      return NextResponse.json({ error: 'Order identifier required' }, { status: 400 });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: orderId ? { id: orderId } : { orderNumber: orderNumber! },
+      include: {
+        payments: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    const latestPayment = order.payments[0];
+
+    // If payment is already confirmed
+    if (latestPayment && latestPayment.status === 'SUCCESS') {
+      return NextResponse.json({
+        status: 'SUCCESS',
+        orderStatus: order.status,
+        paymentId: latestPayment.id,
+        method: latestPayment.method,
+      });
+    }
+
+    // If payment is still PENDING and has a Razorpay Order ID, check Razorpay directly
+    if (latestPayment && latestPayment.status === 'PENDING' && latestPayment.gatewayTransactionId) {
+      const paymentsResponse = await fetchRazorpayOrderPayments(latestPayment.gatewayTransactionId);
+      const items = (paymentsResponse as { items?: Array<{ status: string; id: string; method?: string }> })?.items || [];
+      const capturedPayment = items.find((p) => p.status === 'captured');
+
+      if (capturedPayment) {
+        // Auto-reconcile payment
+        await prisma.$transaction(async (tx) => {
+          await tx.payment.update({
+            where: { id: latestPayment.id },
+            data: {
+              status: 'SUCCESS',
+              referenceNumber: capturedPayment.id,
+              gatewayStatus: 'captured',
+              gatewayMetadata: {
+                ...((latestPayment.gatewayMetadata as Record<string, unknown>) || {}),
+                capturedPaymentId: capturedPayment.id,
+                method: capturedPayment.method,
+              },
+            },
+          });
+
+          await tx.paymentAuditLog.create({
+            data: {
+              paymentId: latestPayment.id,
+              action: 'PAYMENT_CAPTURED_RECONCILED',
+              fromStatus: latestPayment.status,
+              toStatus: 'SUCCESS',
+              amount: latestPayment.amount,
+              performedBy: 'RAZORPAY_STATUS_POLL',
+              notes: `Auto-reconciled via Razorpay API payment ${capturedPayment.id}`,
+            },
+          });
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              status: 'CONFIRMED',
+              confirmedAt: new Date(),
+            },
+          });
+
+          await tx.orderAuditLog.create({
+            data: {
+              orderId: order.id,
+              fromStatus: order.status,
+              toStatus: 'CONFIRMED',
+              performedBy: 'RAZORPAY_STATUS_POLL',
+              notes: 'Order auto-confirmed via Razorpay payment reconciliation',
+            },
+          });
+        });
+
+        // Broadcast real-time update
+        try {
+          publishPaymentUpdated({
+            paymentId: latestPayment.paymentNumber,
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            branchId: order.branchId,
+            amount: Number(order.totalAmount),
+            status: 'SUCCESS',
+            method: latestPayment.method,
+            updatedAt: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.error('[Razorpay Poll] Event bus error:', e);
+        }
+
+        return NextResponse.json({
+          status: 'SUCCESS',
+          orderStatus: 'CONFIRMED',
+          paymentId: latestPayment.id,
+          method: latestPayment.method,
+        });
+      }
+    }
+
+    return NextResponse.json({
+      status: latestPayment?.status || 'PENDING',
+      orderStatus: order.status,
+      paymentId: latestPayment?.id,
+    });
+  } catch (err) {
+    console.error('[Payment Status Poll Error]:', err);
+    return NextResponse.json({ error: 'Failed to check status' }, { status: 500 });
+  }
+}
+
 

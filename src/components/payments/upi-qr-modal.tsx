@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import {
   Dialog,
@@ -21,6 +21,8 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  Smartphone,
+  ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,6 +33,7 @@ interface UpiQrModalProps {
   orderNumber: string;
   amount: number; // in rupees
   trackingToken?: string;
+  qrImageUrl?: string; // Optional official Razorpay QR URL
   onPaymentConfirmed: () => void;
   onOpenRazorpayModal: () => void;
 }
@@ -42,6 +45,7 @@ export function UpiQrModal({
   orderNumber,
   amount,
   trackingToken,
+  qrImageUrl,
   onPaymentConfirmed,
   onOpenRazorpayModal,
 }: UpiQrModalProps) {
@@ -51,18 +55,21 @@ export function UpiQrModal({
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [utrNumber, setUtrNumber] = useState<string>('');
   const [showUtrInput, setShowUtrInput] = useState<boolean>(false);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const merchantVpa =
     process.env.NEXT_PUBLIC_MERCHANT_UPI_ID ||
     process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.replace(/[^a-zA-Z0-9]/g, '') + '@razorpay' ||
     'ovenxpress@razorpay';
 
-  // Standard NPCI UPI URI Scheme
+  // Standard NPCI UPI URI Scheme with merchant name and order reference
   const upiUrl = `upi://pay?pa=${encodeURIComponent(merchantVpa)}&pn=Oven%20Xpress&am=${amount.toFixed(2)}&tr=${encodeURIComponent(orderNumber)}&tn=${encodeURIComponent(`Order ${orderNumber}`)}&cu=INR`;
 
-  // Generate QR Code image when modal opens or amount changes
+  const displayQrUrl = qrImageUrl || qrDataUrl;
+
+  // Generate QR Code image when modal opens or amount changes (if no official Razorpay QR image provided)
   useEffect(() => {
-    if (!open) return;
+    if (!open || qrImageUrl) return;
 
     QRCode.toDataURL(upiUrl, {
       width: 280,
@@ -75,12 +82,11 @@ export function UpiQrModal({
     })
       .then((url) => {
         setQrDataUrl(url);
-        setTimeLeft(600);
       })
       .catch((err) => {
         console.error('Failed to generate UPI QR code:', err);
       });
-  }, [open, upiUrl]);
+  }, [open, upiUrl, qrImageUrl]);
 
   // Timer countdown
   useEffect(() => {
@@ -90,6 +96,37 @@ export function UpiQrModal({
     }, 1000);
     return () => clearInterval(interval);
   }, [open, timeLeft]);
+
+  // Bounded status polling (every 4 seconds) to auto-detect webhook or Razorpay capture
+  useEffect(() => {
+    if (!open || timeLeft <= 0) return;
+
+    const pollStatus = async () => {
+      try {
+        const query = new URLSearchParams({
+          orderNumber,
+          orderId: orderId || '',
+        });
+        const res = await fetch(`/api/webhooks/razorpay?${query.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'SUCCESS' || data.orderStatus === 'CONFIRMED') {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+            toast.success('Payment received and confirmed!');
+            onPaymentConfirmed();
+          }
+        }
+      } catch {
+        // Silently tolerate transient poll network drops
+      }
+    };
+
+    pollingRef.current = setInterval(pollStatus, 4000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [open, timeLeft, orderNumber, orderId, onPaymentConfirmed]);
 
   // Format mm:ss
   const formatTime = (seconds: number) => {
@@ -136,7 +173,7 @@ export function UpiQrModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border/80 shadow-2xl p-5 overflow-y-auto max-h-[92vh]">
+      <DialogContent className="sm:max-w-md bg-card border-border/80 shadow-2xl p-5 overflow-y-auto max-h-[94vh]">
         <DialogHeader className="space-y-1.5 text-center sm:text-center pb-1">
           <div className="flex items-center justify-center gap-2">
             <div className="size-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center">
@@ -147,7 +184,7 @@ export function UpiQrModal({
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Use GPay, PhonePe, Paytm, BHIM, or any UPI app to scan and pay instantly.
+            Scan using Google Pay, PhonePe, Paytm, BHIM, or any UPI app.
           </DialogDescription>
         </DialogHeader>
 
@@ -164,18 +201,29 @@ export function UpiQrModal({
           <span className="text-foreground">CRED</span>
         </div>
 
+        {/* Mobile UPI Intent Button (visible on mobile screens) */}
+        <div className="sm:hidden w-full">
+          <a
+            href={upiUrl}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md transition-colors"
+          >
+            <Smartphone className="size-4" />
+            <span>Tap to Pay with UPI App</span>
+          </a>
+        </div>
+
         {/* QR Code Container */}
-        <div className="flex flex-col items-center justify-center py-2 space-y-2">
+        <div className="flex flex-col items-center justify-center py-1 space-y-2">
           <div className="relative p-3 rounded-2xl bg-white shadow-md border-2 border-primary/30 flex items-center justify-center">
-            {qrDataUrl ? (
+            {displayQrUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={qrDataUrl}
+                src={displayQrUrl}
                 alt={`UPI QR Code for Order ${orderNumber}`}
-                className="size-52 sm:size-56 object-contain rounded-lg"
+                className="size-48 sm:size-52 object-contain rounded-lg"
               />
             ) : (
-              <div className="size-52 sm:size-56 flex flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
+              <div className="size-48 sm:size-52 flex flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="size-6 animate-spin text-primary" />
                 <span>Generating secure QR...</span>
               </div>
@@ -229,44 +277,63 @@ export function UpiQrModal({
             <div className="flex items-center gap-1">
               <Clock className="size-3 text-amber-500" />
               <span>
-                QR Code valid for:{' '}
+                QR expires in:{' '}
                 <strong className="text-foreground font-mono">{formatTime(timeLeft)}</strong>
               </span>
             </div>
             <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
               <ShieldCheck className="size-3" />
-              <span>Instant Auto-Verify</span>
+              <span>Auto-Reconciling</span>
             </div>
           </div>
         </div>
 
+        {/* Waiting Status Indicator */}
+        <div className="flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px] font-medium">
+          <Loader2 className="size-3 animate-spin shrink-0" />
+          <span>Waiting for payment confirmation. Do not close or refresh.</span>
+        </div>
+
         {/* Actions */}
         <div className="space-y-2 pt-2 border-t border-border/60">
-          <Button
-            type="button"
-            disabled={isVerifying}
-            onClick={handleConfirmUpiPayment}
-            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-1.5 h-10 cursor-pointer"
-          >
-            {isVerifying ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                <span>Verifying UPI Payment...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="size-4" />
-                <span>I Have Completed Payment</span>
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isVerifying}
+              onClick={() => onOpenChange(false)}
+              className="h-10 text-xs px-3 gap-1 shrink-0"
+            >
+              <ArrowLeft className="size-3.5" />
+              <span>Cancel / Back</span>
+            </Button>
+
+            <Button
+              type="button"
+              disabled={isVerifying}
+              onClick={handleConfirmUpiPayment}
+              className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-1.5 h-10 cursor-pointer"
+            >
+              {isVerifying ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="size-4" />
+                  <span>I Have Paid</span>
+                </>
+              )}
+            </Button>
+          </div>
 
           {/* Optional UTR / Reference Number toggle */}
           <div className="space-y-1.5">
             <button
               type="button"
               onClick={() => setShowUtrInput(!showUtrInput)}
-              className="w-full text-center text-[11px] text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 py-1"
+              className="w-full text-center text-[11px] text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 py-0.5"
             >
               <span>Add 12-digit UPI Reference / UTR Number (Optional)</span>
               {showUtrInput ? (
@@ -309,7 +376,7 @@ export function UpiQrModal({
               }}
               className="text-[11px] text-primary hover:underline font-semibold inline-flex items-center gap-1"
             >
-              <span>Want to pay via Card, NetBanking, or Razorpay Modal instead?</span>
+              <span>Want to pay via Cards, NetBanking, or Razorpay Modal instead?</span>
               <ExternalLink className="size-3" />
             </button>
           </div>

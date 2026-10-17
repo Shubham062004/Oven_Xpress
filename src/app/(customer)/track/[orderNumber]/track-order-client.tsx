@@ -97,6 +97,7 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
     orderNumber: string;
     amount: number;
     trackingToken?: string;
+    qrImageUrl?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     initResult?: any;
   } | null>(null);
@@ -240,6 +241,7 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
         orderNumber: initResult.orderNumber || order.orderNumber,
         amount: (initResult.amount || 0) / 100,
         trackingToken: token,
+        qrImageUrl: initResult.qrImageUrl,
         initResult,
       });
       setUpiQrModalOpen(true);
@@ -685,6 +687,7 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
           orderNumber={upiOrderDetails.orderNumber}
           amount={upiOrderDetails.amount}
           trackingToken={upiOrderDetails.trackingToken}
+          qrImageUrl={upiOrderDetails.qrImageUrl}
           onPaymentConfirmed={() => {
             setOrder((prev) => ({
               ...prev,

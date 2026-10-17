@@ -8,6 +8,7 @@ import { publishOrderCreated, publishPaymentUpdated } from '@/lib/realtime/event
 import { generateTrackingToken, authorizeOrderAccess } from '@/lib/customer/tracking-token';
 import {
   createRazorpayOrder,
+  createRazorpayQrCode,
   verifyRazorpayPaymentSignature,
   getRazorpayKeyId,
 } from '@/lib/payments/razorpay';
@@ -27,7 +28,10 @@ export interface InitiateRazorpayResult {
   customerPhone?: string;
   customerEmail?: string;
   isMock?: boolean;
+  qrImageUrl?: string;
+  qrId?: string;
 }
+
 
 export interface VerifyRazorpayPayload {
   orderId: string;
@@ -312,6 +316,29 @@ export async function initiateRazorpayOrderAction(
       return order;
     });
 
+    // Optionally create official Razorpay QR code if UPI payment method selected
+    let qrImageUrl: string | undefined;
+    let qrId: string | undefined;
+
+    if (paymentMethod === 'UPI') {
+      try {
+        const qrResult = await createRazorpayQrCode({
+          amount: totalAmount,
+          orderNumber: createdOrder.orderNumber,
+          notes: {
+            orderId: createdOrder.id,
+            orderNumber: createdOrder.orderNumber,
+          },
+        });
+        if (qrResult) {
+          qrImageUrl = qrResult.imageUrl;
+          qrId = qrResult.id;
+        }
+      } catch (err) {
+        console.warn('[Razorpay] Official QR code creation failed or not enabled on account:', err);
+      }
+    }
+
     return {
       success: true,
       orderId: createdOrder.id,
@@ -325,8 +352,11 @@ export async function initiateRazorpayOrderAction(
       customerPhone,
       customerEmail: currentUser?.email || '',
       isMock: razorpayOrder.isMock,
+      qrImageUrl,
+      qrId,
     };
   } catch (error) {
+
     console.error('Failed to initiate Razorpay order:', error);
     return {
       success: false,
@@ -578,6 +608,26 @@ export async function initiatePendingOrderRazorpayAction({
       });
     }
 
+    let qrImageUrl: string | undefined;
+    let qrId: string | undefined;
+
+    try {
+      const qrResult = await createRazorpayQrCode({
+        amount: Number(order.totalAmount),
+        orderNumber: order.orderNumber,
+        notes: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+        },
+      });
+      if (qrResult) {
+        qrImageUrl = qrResult.imageUrl;
+        qrId = qrResult.id;
+      }
+    } catch (err) {
+      console.warn('[Razorpay] Official QR code creation failed for pending order:', err);
+    }
+
     return {
       success: true,
       orderId: order.id,
@@ -591,6 +641,8 @@ export async function initiatePendingOrderRazorpayAction({
       customerPhone: order.customerPhone || '',
       customerEmail: currentUser?.email || '',
       isMock: razorpayOrder.isMock,
+      qrImageUrl,
+      qrId,
     };
   } catch (error) {
     console.error('Failed to initiate pending order payment:', error);
