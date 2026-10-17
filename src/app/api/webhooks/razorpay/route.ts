@@ -140,3 +140,108 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 }
+
+/**
+ * Direct customer confirmation endpoint for on-screen UPI QR payments.
+ */
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { orderId, orderNumber, utrNumber, trackingToken } = body;
+
+    if (!orderId && !orderNumber) {
+      return NextResponse.json({ error: 'Order identifier required' }, { status: 400 });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: orderId ? { id: orderId } : { orderNumber },
+      include: {
+        payments: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    const latestPayment = order.payments[0];
+
+    await prisma.$transaction(async (tx) => {
+      if (latestPayment && latestPayment.status !== 'SUCCESS') {
+        await tx.payment.update({
+          where: { id: latestPayment.id },
+          data: {
+            status: 'SUCCESS',
+            method: 'UPI',
+            referenceNumber: utrNumber || latestPayment.referenceNumber || `UPI-${Date.now()}`,
+            gatewayStatus: 'captured',
+            notes: utrNumber
+              ? `UPI QR payment confirmed by customer with UTR: ${utrNumber}`
+              : 'UPI QR payment confirmed by customer',
+          },
+        });
+
+        await tx.paymentAuditLog.create({
+          data: {
+            paymentId: latestPayment.id,
+            action: 'UPI_QR_PAYMENT_CONFIRMED',
+            fromStatus: latestPayment.status,
+            toStatus: 'SUCCESS',
+            amount: latestPayment.amount,
+            performedBy: 'CUSTOMER_UPI_QR',
+            notes: utrNumber ? `Customer entered UTR: ${utrNumber}` : 'Direct UPI QR confirmation',
+          },
+        });
+      }
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: 'CONFIRMED',
+          confirmedAt: new Date(),
+        },
+      });
+
+      await tx.orderAuditLog.create({
+        data: {
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: 'CONFIRMED',
+          performedBy: 'CUSTOMER_UPI_QR',
+          notes: 'Order confirmed after UPI QR scan and pay',
+        },
+      });
+    });
+
+    // Broadcast real-time payment update
+    try {
+      publishPaymentUpdated({
+        paymentId: latestPayment?.paymentNumber || order.orderNumber,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        branchId: order.branchId,
+        amount: Number(order.totalAmount),
+        status: 'SUCCESS',
+        method: 'UPI',
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('[UPI QR] Real-time broadcast error:', err);
+    }
+
+    return NextResponse.json({
+      success: true,
+      orderNumber: order.orderNumber,
+      trackingUrl: trackingToken
+        ? `/track/${order.orderNumber}?token=${trackingToken}`
+        : `/track/${order.orderNumber}`,
+    });
+  } catch (err) {
+    console.error('[UPI Confirmation Error]:', err);
+    return NextResponse.json({ error: 'Failed to verify UPI payment' }, { status: 500 });
+  }
+}
+

@@ -30,6 +30,35 @@ export interface RazorpayOptions {
     escape?: boolean;
     backdropclose?: boolean;
   };
+  method?: {
+    upi?: boolean;
+    card?: boolean;
+    netbanking?: boolean;
+    wallet?: boolean;
+  };
+  config?: {
+    display?: {
+      blocks?: Record<
+        string,
+        {
+          name: string;
+          instruments: Array<{
+            method: string;
+            flows?: string[];
+            issuers?: string[];
+            banks?: string[];
+          }>;
+        }
+      >;
+      sequence?: string[];
+      preferences?: {
+        show_default_blocks?: boolean;
+      };
+      hide?: Array<{
+        method: string;
+      }>;
+    };
+  };
 }
 
 export interface RazorpayPaymentSuccessPayload {

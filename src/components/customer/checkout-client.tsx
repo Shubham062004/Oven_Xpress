@@ -28,6 +28,7 @@ import {
   type RazorpayPaymentSuccessPayload,
 } from '@/lib/payments/razorpay-client';
 import { RazorpayMockModal } from '@/components/payments/razorpay-mock-modal';
+import { UpiQrModal } from '@/components/payments/upi-qr-modal';
 import { toast } from 'sonner';
 
 interface SavedAddress {
@@ -92,6 +93,17 @@ export function CheckoutClient({
   const [submittingLabel, setSubmittingLabel] = useState<string>('Placing Your Order...');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Dedicated UPI QR modal state
+  const [upiQrModalOpen, setUpiQrModalOpen] = useState(false);
+  const [upiOrderDetails, setUpiOrderDetails] = useState<{
+    orderId: string;
+    orderNumber: string;
+    amount: number;
+    trackingToken?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    initResult?: any;
+  } | null>(null);
+
   // Mock modal state for testing/demo environments without live keys
   const [mockModalOpen, setMockModalOpen] = useState(false);
   const [mockOrderDetails, setMockOrderDetails] = useState<{
@@ -115,6 +127,113 @@ export function CheckoutClient({
       </div>
     );
   }
+
+  // Opens the official Razorpay Checkout modal
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const openRazorpayCheckout = async (initResult: any) => {
+    setSubmittingLabel('Launching Razorpay...');
+    setIsSubmitting(true);
+
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !window.Razorpay) {
+        setErrorMessage('Failed to load Razorpay Checkout SDK. Please check your internet connection.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const options = {
+        key: initResult.keyId || '',
+        amount: initResult.amount || 0,
+        currency: initResult.currency || 'INR',
+        name: 'Oven Xpress',
+        description: `Order #${initResult.orderNumber}`,
+        image: '/images/hero-pizza.jpg',
+        order_id: initResult.razorpayOrderId,
+        config: {
+          display: {
+            blocks: {
+              upi_qr_block: {
+                name: 'Pay via UPI / QR Code',
+                instruments: [
+                  {
+                    method: 'upi',
+                    flows: ['qr', 'intent', 'collect'],
+                  },
+                ],
+              },
+              standard_methods: {
+                name: 'Cards, NetBanking & Wallets',
+                instruments: [
+                  { method: 'card' },
+                  { method: 'netbanking' },
+                  { method: 'wallet' },
+                ],
+              },
+            },
+            sequence: ['block.upi_qr_block', 'block.standard_methods'],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
+        },
+        handler: async (response: RazorpayPaymentSuccessPayload) => {
+          setSubmittingLabel('Verifying Payment...');
+          setIsSubmitting(true);
+          try {
+            const verifyResult = await verifyAndCompleteRazorpayPaymentAction({
+              orderId: initResult.orderId!,
+              orderNumber: initResult.orderNumber!,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              trackingToken: initResult.trackingToken,
+            });
+
+            if (verifyResult.success && verifyResult.trackingUrl) {
+              clearCart();
+              toast.success('Payment verified & order confirmed!');
+              router.push(verifyResult.trackingUrl);
+            } else {
+              setErrorMessage(
+                verifyResult.error || 'Payment verification failed. Please contact support.'
+              );
+              setIsSubmitting(false);
+            }
+          } catch (verifyErr) {
+            console.error('Verification error:', verifyErr);
+            setErrorMessage('Error verifying payment. Please do not re-pay and check order status.');
+            setIsSubmitting(false);
+          }
+        },
+        prefill: {
+          name: customerName,
+          contact: customerPhone,
+          email: initResult.customerEmail || user.email || '',
+        },
+        notes: {
+          orderNumber: initResult.orderNumber || '',
+          branchId: branch?.id || '',
+        },
+        theme: {
+          color: '#ea580c', // Oven Xpress Brand Orange
+        },
+        modal: {
+          ondismiss: () => {
+            setIsSubmitting(false);
+            toast.info('Payment was cancelled or dismissed. Your cart is preserved.');
+          },
+        },
+      };
+
+      const rzpInstance = new window.Razorpay(options);
+      rzpInstance.open();
+    } catch (err) {
+      console.error('Razorpay initialization error:', err);
+      setErrorMessage('An unexpected error occurred while launching Razorpay.');
+      setIsSubmitting(false);
+    }
+  };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,9 +303,9 @@ export function CheckoutClient({
     }
 
     // ==========================================
-    // 2. RAZORPAY GATEWAY FLOW (UPI / ONLINE / CARD)
+    // 2. RAZORPAY & UPI GATEWAY FLOW
     // ==========================================
-    setSubmittingLabel('Initializing Razorpay Gateway...');
+    setSubmittingLabel('Initializing Payment Gateway...');
     try {
       const initResult = await initiateRazorpayOrderAction({
         branchId: branch.id,
@@ -221,76 +340,25 @@ export function CheckoutClient({
         return;
       }
 
-      // Live / Test Razorpay flow
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded || !window.Razorpay) {
-        setErrorMessage('Failed to load Razorpay Checkout SDK. Please check your internet connection.');
+      // If user selected UPI: show the instant on-screen UPI QR Code modal!
+      if (paymentMethod === 'UPI') {
         setIsSubmitting(false);
+        setUpiOrderDetails({
+          orderId: initResult.orderId,
+          orderNumber: initResult.orderNumber || '',
+          amount: (initResult.amount || 0) / 100,
+          trackingToken: initResult.trackingToken,
+          initResult,
+        });
+        setUpiQrModalOpen(true);
         return;
       }
 
-      const options = {
-        key: initResult.keyId || '',
-        amount: initResult.amount || 0,
-        currency: initResult.currency || 'INR',
-        name: 'Oven Xpress',
-        description: `Order #${initResult.orderNumber}`,
-        image: '/images/hero-pizza.jpg',
-        order_id: initResult.razorpayOrderId,
-        handler: async (response: RazorpayPaymentSuccessPayload) => {
-          setSubmittingLabel('Verifying Payment...');
-          setIsSubmitting(true);
-          try {
-            const verifyResult = await verifyAndCompleteRazorpayPaymentAction({
-              orderId: initResult.orderId!,
-              orderNumber: initResult.orderNumber!,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-              trackingToken: initResult.trackingToken,
-            });
-
-            if (verifyResult.success && verifyResult.trackingUrl) {
-              clearCart();
-              toast.success('Payment verified & order confirmed!');
-              router.push(verifyResult.trackingUrl);
-            } else {
-              setErrorMessage(
-                verifyResult.error || 'Payment verification failed. Please contact support.'
-              );
-              setIsSubmitting(false);
-            }
-          } catch (verifyErr) {
-            console.error('Verification error:', verifyErr);
-            setErrorMessage('Error verifying payment. Please do not re-pay and check order status.');
-            setIsSubmitting(false);
-          }
-        },
-        prefill: {
-          name: customerName,
-          contact: customerPhone,
-          email: initResult.customerEmail || user.email || '',
-        },
-        notes: {
-          orderNumber: initResult.orderNumber || '',
-          branchId: branch.id,
-        },
-        theme: {
-          color: '#ea580c', // Oven Xpress Brand Orange
-        },
-        modal: {
-          ondismiss: () => {
-            setIsSubmitting(false);
-            toast.info('Payment was cancelled or dismissed. Your cart is preserved.');
-          },
-        },
-      };
-
-      const rzpInstance = new window.Razorpay(options);
-      rzpInstance.open();
+      // If user selected Cards / NetBanking: open Razorpay popup
+      await openRazorpayCheckout(initResult);
     } catch (err) {
-      console.error('Razorpay initialization error:', err);
-      setErrorMessage('An unexpected error occurred while launching Razorpay.');
+      console.error('Payment initialization error:', err);
+      setErrorMessage('An unexpected error occurred while launching payment.');
       setIsSubmitting(false);
     }
   };
@@ -686,7 +754,9 @@ export function CheckoutClient({
                   <span>
                     {paymentMethod === 'CASH'
                       ? `Place Order • ₹${total.toFixed(2)}`
-                      : `Pay with Razorpay • ₹${total.toFixed(2)}`}
+                      : paymentMethod === 'UPI'
+                      ? `Scan & Pay with UPI QR • ₹${total.toFixed(2)}`
+                      : `Pay with Card / NetBanking • ₹${total.toFixed(2)}`}
                   </span>
                   <ArrowRight className="size-4" />
                 </>
@@ -700,6 +770,30 @@ export function CheckoutClient({
           </div>
         </div>
       </form>
+
+      {/* Direct Interactive On-Screen UPI QR Modal */}
+      {upiOrderDetails && (
+        <UpiQrModal
+          open={upiQrModalOpen}
+          onOpenChange={setUpiQrModalOpen}
+          orderId={upiOrderDetails.orderId}
+          orderNumber={upiOrderDetails.orderNumber}
+          amount={upiOrderDetails.amount}
+          trackingToken={upiOrderDetails.trackingToken}
+          onPaymentConfirmed={() => {
+            clearCart();
+            const targetUrl = upiOrderDetails.trackingToken
+              ? `/track/${upiOrderDetails.orderNumber}?token=${upiOrderDetails.trackingToken}`
+              : `/track/${upiOrderDetails.orderNumber}`;
+            router.push(targetUrl);
+          }}
+          onOpenRazorpayModal={() => {
+            if (upiOrderDetails.initResult) {
+              openRazorpayCheckout(upiOrderDetails.initResult);
+            }
+          }}
+        />
+      )}
 
       {/* Razorpay Mock Sandbox Modal (active when real keys are not in .env) */}
       {mockOrderDetails && (

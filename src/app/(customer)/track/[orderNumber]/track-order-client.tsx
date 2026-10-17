@@ -19,6 +19,7 @@ import {
   Wifi,
   WifiOff,
   Loader2,
+  QrCode,
 } from 'lucide-react';
 import type { OrderStatus, PaymentStatus } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,7 @@ import {
   type RazorpayPaymentSuccessPayload,
 } from '@/lib/payments/razorpay-client';
 import { RazorpayMockModal } from '@/components/payments/razorpay-mock-modal';
+import { UpiQrModal } from '@/components/payments/upi-qr-modal';
 import type {
   OrderStatusChangedPayload,
   KitchenStatusChangedPayload,
@@ -78,7 +80,7 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  // Razorpay payment state for unpaid / pending orders
+  // Razorpay & UPI QR payment state for unpaid / pending orders
   const [isPaying, setIsPaying] = useState(false);
   const [mockModalOpen, setMockModalOpen] = useState(false);
   const [mockOrderDetails, setMockOrderDetails] = useState<{
@@ -88,35 +90,24 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
     razorpayOrderId: string;
   } | null>(null);
 
+  // Direct On-screen UPI QR modal
+  const [upiQrModalOpen, setUpiQrModalOpen] = useState(false);
+  const [upiOrderDetails, setUpiOrderDetails] = useState<{
+    orderId: string;
+    orderNumber: string;
+    amount: number;
+    trackingToken?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    initResult?: any;
+  } | null>(null);
+
   const currentStep = getStepIndex(order.status);
   const isCancelled = order.status === 'CANCELLED';
 
-  const handlePayPendingWithRazorpay = async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const openRazorpayPopup = async (initResult: any) => {
     setIsPaying(true);
     try {
-      const initResult = await initiatePendingOrderRazorpayAction({
-        orderNumber: order.orderNumber,
-        token,
-      });
-
-      if (!initResult.success || !initResult.razorpayOrderId || !initResult.orderId) {
-        toast.error(initResult.error || 'Failed to start payment gateway.');
-        setIsPaying(false);
-        return;
-      }
-
-      if (initResult.isMock) {
-        setIsPaying(false);
-        setMockOrderDetails({
-          orderId: initResult.orderId,
-          orderNumber: initResult.orderNumber || order.orderNumber,
-          amount: (initResult.amount || 0) / 100,
-          razorpayOrderId: initResult.razorpayOrderId,
-        });
-        setMockModalOpen(true);
-        return;
-      }
-
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded || !window.Razorpay) {
         toast.error('Failed to load Razorpay SDK. Please check your internet connection.');
@@ -132,6 +123,33 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
         description: `Order #${initResult.orderNumber}`,
         image: '/images/hero-pizza.jpg',
         order_id: initResult.razorpayOrderId,
+        config: {
+          display: {
+            blocks: {
+              upi_qr_block: {
+                name: 'Pay via UPI / QR Code',
+                instruments: [
+                  {
+                    method: 'upi',
+                    flows: ['qr', 'intent', 'collect'],
+                  },
+                ],
+              },
+              standard_methods: {
+                name: 'Cards, NetBanking & Wallets',
+                instruments: [
+                  { method: 'card' },
+                  { method: 'netbanking' },
+                  { method: 'wallet' },
+                ],
+              },
+            },
+            sequence: ['block.upi_qr_block', 'block.standard_methods'],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
+        },
         handler: async (response: RazorpayPaymentSuccessPayload) => {
           setIsPaying(true);
           try {
@@ -153,6 +171,7 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
                   status: 'SUCCESS' as PaymentStatus,
                 },
               }));
+              setUpiQrModalOpen(false);
             } else {
               toast.error(verifyResult.error || 'Payment verification failed.');
             }
@@ -181,6 +200,49 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
 
       const rzp = new window.Razorpay(options);
       rzp.open();
+    } catch (err) {
+      console.error(err);
+      toast.error('Unable to open payment gateway.');
+      setIsPaying(false);
+    }
+  };
+
+  const handlePayPendingWithRazorpay = async () => {
+    setIsPaying(true);
+    try {
+      const initResult = await initiatePendingOrderRazorpayAction({
+        orderNumber: order.orderNumber,
+        token,
+      });
+
+      if (!initResult.success || !initResult.razorpayOrderId || !initResult.orderId) {
+        toast.error(initResult.error || 'Failed to start payment gateway.');
+        setIsPaying(false);
+        return;
+      }
+
+      if (initResult.isMock) {
+        setIsPaying(false);
+        setMockOrderDetails({
+          orderId: initResult.orderId,
+          orderNumber: initResult.orderNumber || order.orderNumber,
+          amount: (initResult.amount || 0) / 100,
+          razorpayOrderId: initResult.razorpayOrderId,
+        });
+        setMockModalOpen(true);
+        return;
+      }
+
+      // Show on-screen UPI QR Code modal directly!
+      setIsPaying(false);
+      setUpiOrderDetails({
+        orderId: initResult.orderId!,
+        orderNumber: initResult.orderNumber || order.orderNumber,
+        amount: (initResult.amount || 0) / 100,
+        trackingToken: token,
+        initResult,
+      });
+      setUpiQrModalOpen(true);
     } catch (err) {
       console.error(err);
       toast.error('Unable to open payment gateway.');
@@ -568,7 +630,7 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
                 </div>
               )}
 
-              {/* Pay Online with Razorpay button if payment is PENDING */}
+              {/* Pay Online with Razorpay / UPI button if payment is PENDING */}
               {order.payment.status === 'PENDING' && !isCancelled && (
                 <div className="pt-3 border-t">
                   <Button
@@ -581,12 +643,12 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
                     {isPaying ? (
                       <>
                         <Loader2 className="size-3.5 animate-spin" />
-                        <span>Opening Razorpay...</span>
+                        <span>Opening Payment QR...</span>
                       </>
                     ) : (
                       <>
-                        <CreditCard className="size-3.5" />
-                        <span>Pay ₹{order.totalAmount.toFixed(2)} with Razorpay</span>
+                        <QrCode className="size-3.5" />
+                        <span>Pay ₹{order.totalAmount.toFixed(2)} with UPI QR / Razorpay</span>
                       </>
                     )}
                   </Button>
@@ -613,6 +675,33 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
           </div>
         </div>
       </div>
+
+      {/* Direct On-Screen UPI QR Modal */}
+      {upiOrderDetails && (
+        <UpiQrModal
+          open={upiQrModalOpen}
+          onOpenChange={setUpiQrModalOpen}
+          orderId={upiOrderDetails.orderId}
+          orderNumber={upiOrderDetails.orderNumber}
+          amount={upiOrderDetails.amount}
+          trackingToken={upiOrderDetails.trackingToken}
+          onPaymentConfirmed={() => {
+            setOrder((prev) => ({
+              ...prev,
+              payment: {
+                ...prev.payment,
+                status: 'SUCCESS' as PaymentStatus,
+              },
+            }));
+            setUpiQrModalOpen(false);
+          }}
+          onOpenRazorpayModal={() => {
+            if (upiOrderDetails.initResult) {
+              openRazorpayPopup(upiOrderDetails.initResult);
+            }
+          }}
+        />
+      )}
 
       {/* Razorpay Mock Sandbox Modal for testing */}
       {mockOrderDetails && (
