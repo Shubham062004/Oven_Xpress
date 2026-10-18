@@ -148,23 +148,18 @@ export function SavedAddressesCard({
       <div className="flex items-center justify-between gap-2">
         <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
           <MapPin className="size-4 text-primary" />
-          <span>Saved Delivery Addresses</span>
-          {addresses.length > 0 && (
-            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-              {addresses.length}
-            </span>
-          )}
+          <span>Saved Addresses</span>
         </h2>
 
         {/* Edit / Add Address Header Action */}
         <button
           type="button"
           onClick={openAddModal}
-          className="px-2.5 py-1.5 rounded-xl border border-border/70 hover:border-primary/50 bg-muted/30 hover:bg-muted/70 text-xs font-semibold text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
+          className="p-2 rounded-xl border border-border/70 hover:border-primary/50 bg-muted/30 hover:bg-muted/70 text-foreground flex items-center justify-center transition-colors cursor-pointer"
           title="Add or Edit Saved Addresses"
+          aria-label="Add or Edit Saved Addresses"
         >
           <Edit3 className="size-3.5 text-primary" />
-          <span className="text-xs">Add / Edit</span>
         </button>
       </div>
 

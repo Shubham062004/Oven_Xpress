@@ -113,10 +113,10 @@ export default async function CustomerAccountPage() {
         </div>
 
         {/* Account Header Actions */}
-        <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 shrink-0">
           <Link
             href="/account/profile"
-            className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-xs hover:opacity-95 transition-opacity"
+            className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:opacity-95 transition-opacity"
           >
             <Edit3 className="size-3.5" />
             <span>Profile & Settings</span>
@@ -124,17 +124,25 @@ export default async function CustomerAccountPage() {
 
           <Link
             href="/account/wishlist"
-            className="px-3.5 py-2 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground flex items-center justify-center gap-1.5 transition-colors"
           >
             <Heart className="size-3.5 text-amber-500 fill-amber-500/20" />
             <span>Wishlist</span>
           </Link>
 
+          <Link
+            href="/report-bug"
+            className="px-3.5 py-2 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <Bug className="size-3.5 text-orange-500" />
+            <span>Report a Bug</span>
+          </Link>
+
           {/* Logout Form */}
-          <form action={logoutAction}>
+          <form action={logoutAction} className="inline-flex">
             <button
               type="submit"
-              className="px-3.5 py-2 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
               <LogOut className="size-3.5" />
               <span>Sign Out</span>
