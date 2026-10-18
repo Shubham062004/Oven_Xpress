@@ -360,6 +360,7 @@ export async function getCustomerOrdersAction() {
     include: {
       branch: {
         select: {
+          id: true,
           name: true,
           slug: true,
           phone: true,
@@ -370,7 +371,9 @@ export async function getCustomerOrdersAction() {
         include: {
           menuItem: {
             select: {
+              id: true,
               imageUrl: true,
+              description: true,
             },
           },
         },
@@ -396,19 +399,23 @@ export async function getCustomerOrdersAction() {
     deliveryCharge: Number(o.deliveryCharge),
     discountAmount: Number(o.discountAmount),
     createdAt: o.createdAt.toISOString(),
+    branchId: o.branch.id,
     branchName: o.branch.name,
     branchSlug: o.branch.slug,
     branchPhone: o.branch.phone,
+    branchAddress: o.branch.address,
     deliveryAddress: o.deliveryAddress,
     paymentMethod: o.payments[0]?.method || 'CASH',
     paymentStatus: o.payments[0]?.status || 'PENDING',
     items: o.items.map((i) => ({
       id: i.id,
+      menuItemId: i.menuItemId,
       name: i.itemName,
       quantity: i.quantity,
       price: Number(i.unitPrice),
       totalPrice: Number(i.totalPrice),
       imageUrl: i.menuItem?.imageUrl || '/images/hero-pizza.jpg',
+      description: i.menuItem?.description || undefined,
     })),
   }));
 }
@@ -462,6 +469,7 @@ export async function getCustomerOrderDetails(orderNumber: string, token?: strin
     include: {
       branch: {
         select: {
+          id: true,
           name: true,
           slug: true,
           phone: true,
@@ -473,7 +481,9 @@ export async function getCustomerOrderDetails(orderNumber: string, token?: strin
         include: {
           menuItem: {
             select: {
+              id: true,
               imageUrl: true,
+              description: true,
             },
           },
         },
@@ -520,6 +530,7 @@ export async function getCustomerOrderDetails(orderNumber: string, token?: strin
     deliveryAddress: order.deliveryAddress,
     deliveryNotes: order.deliveryNotes,
     branch: {
+      id: order.branch.id,
       name: order.branch.name,
       slug: order.branch.slug,
       phone: order.branch.phone,
@@ -533,11 +544,13 @@ export async function getCustomerOrderDetails(orderNumber: string, token?: strin
     },
     items: order.items.map((i) => ({
       id: i.id,
+      menuItemId: i.menuItemId,
       name: i.itemName,
       quantity: i.quantity,
       price: Number(i.unitPrice),
       totalPrice: Number(i.totalPrice),
       imageUrl: i.menuItem?.imageUrl || '/images/hero-pizza.jpg',
+      description: i.menuItem?.description || undefined,
     })),
   };
 }

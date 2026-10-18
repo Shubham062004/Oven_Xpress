@@ -43,6 +43,7 @@ import type {
   PaymentUpdatedPayload,
 } from '@/lib/realtime/types';
 import { toast } from 'sonner';
+import { ReorderButton } from '@/components/customer/reorder-button';
 
 type TrackOrderData = NonNullable<Awaited<ReturnType<typeof getCustomerOrderDetails>>>;
 
@@ -503,11 +504,27 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
         {/* Left Column: Order Items */}
         <div className="md:col-span-2 space-y-6">
           <Card className="border shadow-xs">
-            <CardHeader className="pb-3 border-b">
+            <CardHeader className="pb-3 border-b flex flex-row items-center justify-between gap-2">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Receipt className="size-4 text-primary" />
                 Items in Order ({order.items.reduce((s, i) => s + i.quantity, 0)})
               </CardTitle>
+
+              <ReorderButton
+                orderNumber={order.orderNumber}
+                items={order.items.map((i) => ({
+                  id: i.menuItemId || i.id,
+                  name: i.name,
+                  price: i.price,
+                  quantity: i.quantity,
+                  imageUrl: i.imageUrl,
+                  description: i.description,
+                }))}
+                branch={order.branch}
+                orderType={order.orderType}
+                variant="outline"
+                label="Reorder Meal"
+              />
             </CardHeader>
             <CardContent className="divide-y p-0">
               {order.items.map((item) => (

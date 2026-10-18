@@ -12,7 +12,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export interface BranchSelectorProps {
   branches: Array<{
@@ -38,6 +38,7 @@ export function BranchSelectorModal({
   const { branch, setBranch } = useCart();
   const [search, setSearch] = useState('');
   const router = useRouter();
+  const pathname = usePathname();
 
   if (!isOpen) return null;
 
@@ -58,7 +59,19 @@ export function BranchSelectorModal({
       phone: selected.phone || undefined,
     });
     onClose();
-    router.push(`/b/${selected.slug}/menu`);
+
+    // Only switch URL if the user is already browsing a branch-specific route (e.g. /b/[branchSlug]/menu)
+    if (pathname.startsWith('/b/')) {
+      const segments = pathname.split('/');
+      if (segments.length >= 3 && segments[1] === 'b') {
+        segments[2] = selected.slug;
+        router.push(segments.join('/'));
+        return;
+      }
+    }
+
+    // Otherwise stay on the exact same page
+    router.refresh();
   };
 
   return (
@@ -167,7 +180,7 @@ export function BranchSelectorModal({
                   <div className="shrink-0 pt-1">
                     {isSelected ? (
                       <div className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                        <Check className="size-3.5 stroke-[3]" />
+                        <Check className="size-3.5 stroke-3" />
                       </div>
                     ) : (
                       <div className="size-6 rounded-full text-muted-foreground/40 group-hover:text-primary flex items-center justify-center">

@@ -22,7 +22,7 @@ export interface WishlistItemData {
  */
 export async function getCustomerWishlist(
   userId: string,
-  branchSlug?: string
+  branchSlug?: string | null
 ): Promise<WishlistItemData[]> {
   // Look up branch if slug provided
   let branchId: string | undefined;
@@ -208,7 +208,7 @@ export async function mergeGuestWishlist(
  */
 export async function getGuestWishlistItems(
   menuItemIds: string[],
-  branchSlug?: string
+  branchSlug?: string | null
 ): Promise<WishlistItemData[]> {
   if (!menuItemIds || menuItemIds.length === 0) {
     return [];

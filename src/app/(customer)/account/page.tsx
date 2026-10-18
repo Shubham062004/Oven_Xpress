@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { logoutAction } from '@/lib/auth/actions';
 import { SavedAddressesCard } from '@/components/customer/saved-addresses-card';
+import { ReorderButton } from '@/components/customer/reorder-button';
 import type { SavedCustomerAddress } from '@/lib/customer/customer-profile-actions';
 import type { Metadata } from 'next';
 
@@ -55,7 +56,7 @@ export default async function CustomerAccountPage() {
     ? (rawAddresses as SavedCustomerAddress[])
     : [];
 
-  // Strictly query ONLY the authenticated user's orders
+  // Strictly query ONLY the authenticated user's orders with full item details for reordering
   const recentOrders = await prisma.order.findMany({
     where: {
       OR: [
@@ -69,9 +70,36 @@ export default async function CustomerAccountPage() {
       id: true,
       orderNumber: true,
       status: true,
+      orderType: true,
       totalAmount: true,
       createdAt: true,
-      branch: { select: { name: true } },
+      branch: {
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          phone: true,
+          address: true,
+        },
+      },
+      items: {
+        select: {
+          id: true,
+          menuItemId: true,
+          itemName: true,
+          quantity: true,
+          unitPrice: true,
+          menuItem: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              imageUrl: true,
+              description: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -189,31 +217,50 @@ export default async function CustomerAccountPage() {
           ) : (
             <div className="space-y-2.5">
               {recentOrders.map((order) => (
-                <Link
+                <div
                   key={order.id}
-                  href={`/track/${order.orderNumber}`}
-                  className="group block p-3.5 rounded-xl border border-border/60 hover:border-primary/40 bg-muted/20 hover:bg-primary/5 transition-all"
+                  className="group p-3.5 rounded-xl border border-border/60 hover:border-primary/40 bg-muted/20 hover:bg-muted/30 transition-all text-xs"
                 >
-                  <div className="flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-bold text-foreground group-hover:text-primary transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <Link
+                      href={`/track/${order.orderNumber}`}
+                      className="space-y-0.5 hover:underline block flex-1 min-w-0"
+                    >
+                      <span className="font-bold text-foreground group-hover:text-primary transition-colors block truncate">
                         #{order.orderNumber}
                       </span>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground truncate">
                         {order.branch.name} • {new Date(order.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                       </p>
-                    </div>
+                    </Link>
 
-                    <div className="text-right">
-                      <span className="font-black text-foreground block">
-                        ₹{Number(order.totalAmount).toFixed(2)}
-                      </span>
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase">
-                        {order.status}
-                      </span>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <div className="text-right">
+                        <span className="font-black text-foreground block">
+                          ₹{Number(order.totalAmount).toFixed(2)}
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-600 uppercase">
+                          {order.status}
+                        </span>
+                      </div>
+
+                      <ReorderButton
+                        orderNumber={order.orderNumber}
+                        items={order.items.map((i) => ({
+                          id: i.menuItemId || i.id,
+                          name: i.itemName,
+                          price: i.menuItem?.price ? Number(i.menuItem.price) : Number(i.unitPrice),
+                          quantity: i.quantity,
+                          imageUrl: i.menuItem?.imageUrl,
+                          description: i.menuItem?.description || undefined,
+                        }))}
+                        branch={order.branch}
+                        orderType={order.orderType}
+                        variant="compact"
+                      />
                     </div>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}

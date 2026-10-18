@@ -16,7 +16,7 @@ import { revalidatePath } from 'next/cache';
  * Retrieves wishlist items for the authenticated user, or empty if unauthenticated.
  */
 export async function getWishlistItemsAction(
-  branchSlug?: string
+  branchSlug?: string | null
 ): Promise<{ success: boolean; items: WishlistItemData[]; isAuthenticated: boolean; error?: string }> {
   const user = await getCurrentUser();
 
@@ -117,7 +117,7 @@ export async function mergeGuestWishlistAction(
  */
 export async function getGuestWishlistItemsAction(
   menuItemIds: string[],
-  branchSlug?: string
+  branchSlug?: string | null
 ): Promise<{ success: boolean; items: WishlistItemData[] }> {
   try {
     const items = await getGuestWishlistItems(menuItemIds, branchSlug);

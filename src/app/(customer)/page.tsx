@@ -21,6 +21,7 @@ import {
   HomepageHeroActions,
   OrderAheadCtaButton,
 } from '@/components/customer/homepage-hero-actions';
+import { CustomerFooter } from '@/components/customer/customer-footer';
 
 export const metadata = {
   title: 'Oven Xpress — Good food. Less waiting.',
@@ -409,6 +410,9 @@ export default async function CustomerHomePage() {
           ))}
         </div>
       </section>
+
+      {/* Storefront Footer (Exclusive to Home Page) */}
+      <CustomerFooter branches={branches} />
     </div>
   );
 }

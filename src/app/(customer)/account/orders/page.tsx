@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Package,
 } from 'lucide-react';
+import { ReorderButton } from '@/components/customer/reorder-button';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -107,13 +108,36 @@ export default async function CustomerOrdersPage() {
                     </p>
                   </div>
 
-                  <Link
-                    href={`/track/${order.orderNumber}`}
-                    className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground font-bold text-xs transition-colors"
-                  >
-                    <span>Track Order</span>
-                    <ChevronRight className="size-3.5" />
-                  </Link>
+                  <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                    <ReorderButton
+                      orderNumber={order.orderNumber}
+                      items={order.items.map((i) => ({
+                        id: i.menuItemId || i.id,
+                        name: i.name,
+                        price: i.price,
+                        quantity: i.quantity,
+                        imageUrl: i.imageUrl,
+                        description: i.description,
+                      }))}
+                      branch={{
+                        id: order.branchId || '',
+                        name: order.branchName,
+                        slug: order.branchSlug,
+                        phone: order.branchPhone,
+                        address: order.branchAddress,
+                      }}
+                      orderType={order.orderType}
+                      variant="primary"
+                    />
+
+                    <Link
+                      href={`/track/${order.orderNumber}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 hover:border-primary/50 bg-card hover:bg-muted font-bold text-xs text-foreground transition-colors"
+                    >
+                      <span>Track</span>
+                      <ChevronRight className="size-3.5" />
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Items preview */}

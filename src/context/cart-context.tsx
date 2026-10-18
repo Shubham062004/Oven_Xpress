@@ -17,11 +17,11 @@ export type OrderType = 'DELIVERY' | 'TAKEAWAY' | 'DINE_IN';
 
 export interface BranchInfo {
   id: string;
-  slug: string;
+  slug?: string | null;
   name: string;
-  address?: string;
-  city?: string;
-  phone?: string;
+  address?: string | null;
+  city?: string | null;
+  phone?: string | null;
 }
 
 export interface AppliedCoupon {
@@ -51,6 +51,18 @@ interface CartContextType {
   setTableNumber: (table: string) => void;
   applyCoupon: (code: string) => { success: boolean; message: string };
   removeCoupon: () => void;
+  reorderItems: (
+    items: {
+      id: string;
+      name: string;
+      price: number;
+      imageUrl?: string | null;
+      quantity: number;
+      description?: string;
+    }[],
+    branch?: BranchInfo | null,
+    orderType?: OrderType
+  ) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -167,6 +179,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setAppliedCoupon(null);
   };
 
+  const reorderItems = (
+    newItems: {
+      id: string;
+      name: string;
+      price: number;
+      imageUrl?: string | null;
+      quantity: number;
+      description?: string;
+    }[],
+    newBranch?: BranchInfo | null,
+    newOrderType?: OrderType
+  ) => {
+    if (newBranch) {
+      setBranchState(newBranch);
+    }
+    if (newOrderType) {
+      setOrderType(newOrderType);
+    }
+    setItems((prev) => {
+      const updated = [...prev];
+      for (const item of newItems) {
+        const existingIdx = updated.findIndex((i) => i.id === item.id);
+        const addQty = Math.max(1, item.quantity || 1);
+        if (existingIdx >= 0) {
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            quantity: updated[existingIdx].quantity + addQty,
+          };
+        } else {
+          updated.push({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            imageUrl: item.imageUrl,
+            description: item.description,
+            quantity: addQty,
+          });
+        }
+      }
+      return updated;
+    });
+  };
+
   const itemCount = useMemo(() => items.reduce((acc, i) => acc + i.quantity, 0), [items]);
   const subtotal = useMemo(() => items.reduce((acc, i) => acc + i.price * i.quantity, 0), [items]);
   
@@ -217,6 +272,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setTableNumber,
         applyCoupon,
         removeCoupon,
+        reorderItems,
       }}
     >
       {children}
