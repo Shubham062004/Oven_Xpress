@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import type { Prisma } from '@prisma/client';
 import { requireAuthentication } from '@/lib/auth/guards';
 import { createAuditLog, getClientContext } from '@/lib/audit/audit-service';
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/audit/audit-types';
@@ -259,3 +260,192 @@ export async function updateCustomerProfileAction(
     };
   }
 }
+
+export interface SavedCustomerAddress {
+  id: string;
+  label: string;
+  street: string;
+  city: string;
+  pincode?: string;
+  isDefault?: boolean;
+}
+
+export interface SaveAddressInput {
+  id?: string;
+  label?: string;
+  street: string;
+  city: string;
+  pincode?: string;
+  isDefault?: boolean;
+}
+
+/**
+ * Server Action: Save or Update a Customer Delivery Address.
+ * Modifies the user's saved addresses in User.addresses and synchronizes Customer.address.
+ */
+export async function saveCustomerAddressAction(
+  input: SaveAddressInput
+): Promise<ActionResult<SavedCustomerAddress[]>> {
+  const authUser = await requireAuthentication('/account');
+
+  const cleanStreet = input.street?.trim();
+  const cleanCity = input.city?.trim();
+  const cleanPincode = input.pincode?.trim() || '';
+  const cleanLabel = input.label?.trim() || 'Home';
+
+  if (!cleanStreet || cleanStreet.length < 3) {
+    return { success: false, error: 'Street address must be at least 3 characters long.' };
+  }
+  if (!cleanCity || cleanCity.length < 2) {
+    return { success: false, error: 'City name must be at least 2 characters long.' };
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: {
+        id: true,
+        addresses: true,
+        customer: { select: { id: true, address: true } },
+      },
+    });
+
+    if (!user) {
+      return { success: false, error: 'Account not found.' };
+    }
+
+    const rawAddresses = (user.addresses as unknown) || [];
+    const currentAddresses: SavedCustomerAddress[] = Array.isArray(rawAddresses)
+      ? (rawAddresses as SavedCustomerAddress[])
+      : [];
+
+    const addressId = input.id || `addr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newOrUpdatedAddress: SavedCustomerAddress = {
+      id: addressId,
+      label: cleanLabel,
+      street: cleanStreet,
+      city: cleanCity,
+      pincode: cleanPincode,
+      isDefault: Boolean(input.isDefault ?? currentAddresses.length === 0),
+    };
+
+    let updatedAddresses: SavedCustomerAddress[];
+    if (input.id) {
+      const exists = currentAddresses.some((a) => a.id === input.id);
+      if (exists) {
+        updatedAddresses = currentAddresses.map((a) =>
+          a.id === input.id ? newOrUpdatedAddress : a
+        );
+      } else {
+        updatedAddresses = [...currentAddresses, newOrUpdatedAddress];
+      }
+    } else {
+      updatedAddresses = [...currentAddresses, newOrUpdatedAddress];
+    }
+
+    const fullAddressString = `${cleanStreet}, ${cleanCity} ${cleanPincode}`.trim();
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: authUser.id },
+        data: {
+          addresses: updatedAddresses as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      if (user.customer) {
+        if (!user.customer.address || newOrUpdatedAddress.isDefault) {
+          await tx.customer.update({
+            where: { id: user.customer.id },
+            data: { address: fullAddressString },
+          });
+        }
+      }
+    });
+
+    revalidatePath('/account');
+    revalidatePath('/account/profile');
+    revalidatePath('/checkout');
+
+    return {
+      success: true,
+      data: updatedAddresses,
+    };
+  } catch (err) {
+    console.error('Error saving customer address:', err);
+    return {
+      success: false,
+      error: 'Failed to save address. Please try again.',
+    };
+  }
+}
+
+/**
+ * Server Action: Delete a Customer Delivery Address.
+ */
+export async function deleteCustomerAddressAction(
+  addressId: string
+): Promise<ActionResult<SavedCustomerAddress[]>> {
+  const authUser = await requireAuthentication('/account');
+
+  if (!addressId) {
+    return { success: false, error: 'Address ID is required.' };
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: {
+        id: true,
+        addresses: true,
+        customer: { select: { id: true, address: true } },
+      },
+    });
+
+    if (!user) {
+      return { success: false, error: 'Account not found.' };
+    }
+
+    const rawAddresses = (user.addresses as unknown) || [];
+    const currentAddresses: SavedCustomerAddress[] = Array.isArray(rawAddresses)
+      ? (rawAddresses as SavedCustomerAddress[])
+      : [];
+
+    const updatedAddresses = currentAddresses.filter((a) => a.id !== addressId);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: authUser.id },
+        data: {
+          addresses: updatedAddresses as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      // If user deleted the address matching default customer address, update customer.address to next available
+      if (user.customer && updatedAddresses.length > 0) {
+        const nextDefault = updatedAddresses[0];
+        const nextAddressString = `${nextDefault.street}, ${nextDefault.city} ${nextDefault.pincode || ''}`.trim();
+        await tx.customer.update({
+          where: { id: user.customer.id },
+          data: { address: nextAddressString },
+        });
+      }
+    });
+
+    revalidatePath('/account');
+    revalidatePath('/account/profile');
+    revalidatePath('/checkout');
+
+    return {
+      success: true,
+      data: updatedAddresses,
+    };
+  } catch (err) {
+    console.error('Error deleting customer address:', err);
+    return {
+      success: false,
+      error: 'Failed to remove address. Please try again.',
+    };
+  }
+}
+

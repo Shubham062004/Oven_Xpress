@@ -6,30 +6,21 @@ import Link from 'next/link';
 import {
   Mail,
   Phone,
-  MapPin,
   Receipt,
   LogOut,
   ChevronRight,
-  Home,
-  Briefcase,
   ShoppingBag,
   Bug,
   Edit3,
   Heart,
 } from 'lucide-react';
 import { logoutAction } from '@/lib/auth/actions';
+import { SavedAddressesCard } from '@/components/customer/saved-addresses-card';
+import type { SavedCustomerAddress } from '@/lib/customer/customer-profile-actions';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-interface SavedAddress {
-  id?: string;
-  label?: string;
-  street: string;
-  city: string;
-  pincode?: string;
-}
 
 export const metadata: Metadata = {
   title: 'My Account | Oven Xpress',
@@ -54,26 +45,35 @@ export default async function CustomerAccountPage() {
           id: true,
           phone: true,
           address: true,
-          orders: {
-            take: 3,
-            orderBy: { createdAt: 'desc' },
-            select: {
-              id: true,
-              orderNumber: true,
-              status: true,
-              totalAmount: true,
-              createdAt: true,
-              branch: { select: { name: true } },
-            },
-          },
         },
       },
     },
   });
 
   const rawAddresses = (dbUser?.addresses as unknown) || [];
-  const savedAddresses: SavedAddress[] = Array.isArray(rawAddresses) ? (rawAddresses as SavedAddress[]) : [];
-  const recentOrders = dbUser?.customer?.orders || [];
+  const savedAddresses: SavedCustomerAddress[] = Array.isArray(rawAddresses)
+    ? (rawAddresses as SavedCustomerAddress[])
+    : [];
+
+  // Strictly query ONLY the authenticated user's orders
+  const recentOrders = await prisma.order.findMany({
+    where: {
+      OR: [
+        { createdBy: user.id },
+        ...(dbUser?.customer?.id ? [{ customerId: dbUser.customer.id }] : []),
+      ],
+    },
+    take: 3,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      orderNumber: true,
+      status: true,
+      totalAmount: true,
+      createdAt: true,
+      branch: { select: { name: true } },
+    },
+  });
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -145,51 +145,10 @@ export default async function CustomerAccountPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* Saved Addresses */}
-        <div className="bg-card rounded-2xl border border-border/70 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
-              <MapPin className="size-4 text-primary" />
-              <span>Saved Delivery Addresses</span>
-            </h2>
-          </div>
-
-          {savedAddresses.length === 0 && !dbUser?.customer?.address ? (
-            <p className="text-xs text-muted-foreground py-4 text-center">
-              No saved addresses yet. Addresses will be saved automatically when you place orders.
-            </p>
-          ) : (
-            <div className="space-y-2.5">
-              {savedAddresses.map((addr: SavedAddress, idx: number) => (
-                <div
-                  key={addr.id || idx}
-                  className="p-3.5 rounded-xl border border-border/60 bg-muted/20 text-xs space-y-1"
-                >
-                  <div className="flex items-center gap-1.5 font-bold text-foreground">
-                    {addr.label === 'Work' ? (
-                      <Briefcase className="size-3.5 text-primary" />
-                    ) : (
-                      <Home className="size-3.5 text-primary" />
-                    )}
-                    <span>{addr.label || `Address ${idx + 1}`}</span>
-                  </div>
-                  <p className="text-muted-foreground">
-                    {addr.street}, {addr.city} {addr.pincode}
-                  </p>
-                </div>
-              ))}
-
-              {dbUser?.customer?.address && savedAddresses.length === 0 && (
-                <div className="p-3.5 rounded-xl border border-border/60 bg-muted/20 text-xs space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold text-foreground">
-                    <Home className="size-3.5 text-primary" />
-                    <span>Default Delivery Address</span>
-                  </div>
-                  <p className="text-muted-foreground">{dbUser.customer.address}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <SavedAddressesCard
+          initialAddresses={savedAddresses}
+          defaultCustomerAddress={dbUser?.customer?.address || null}
+        />
 
         {/* Recent Orders Overview */}
         <div className="bg-card rounded-2xl border border-border/70 p-5 space-y-4">
