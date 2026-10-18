@@ -10,11 +10,14 @@ export function FloatingCartBar() {
   const { itemCount, total, branch } = useCart();
   const pathname = usePathname();
 
-  // Don't show floating bar on cart or checkout pages
+  // Don't show floating bar on cart, checkout, tracking, or account/profile pages
   if (
     pathname === '/cart' ||
     pathname === '/checkout' ||
     pathname.startsWith('/track/') ||
+    pathname.startsWith('/account') ||
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/report-bug') ||
     itemCount === 0
   ) {
     return null;
