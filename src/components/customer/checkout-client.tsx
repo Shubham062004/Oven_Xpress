@@ -7,7 +7,7 @@ import {
   MapPin,
   User,
   CreditCard,
-  QrCode,
+  Smartphone,
   Banknote,
   ShieldCheck,
   Loader2,
@@ -28,7 +28,6 @@ import {
   type RazorpayPaymentSuccessPayload,
 } from '@/lib/payments/razorpay-client';
 import { RazorpayMockModal } from '@/components/payments/razorpay-mock-modal';
-import { UpiQrModal } from '@/components/payments/upi-qr-modal';
 import { toast } from 'sonner';
 
 interface SavedAddress {
@@ -93,17 +92,6 @@ export function CheckoutClient({
   const [submittingLabel, setSubmittingLabel] = useState<string>('Placing Your Order...');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Dedicated UPI QR modal state
-  const [upiQrModalOpen, setUpiQrModalOpen] = useState(false);
-  const [upiOrderDetails, setUpiOrderDetails] = useState<{
-    orderId: string;
-    orderNumber: string;
-    amount: number;
-    trackingToken?: string;
-    qrImageUrl?: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    initResult?: any;
-  } | null>(null);
 
   // Mock modal state for testing/demo environments without live keys
   const [mockModalOpen, setMockModalOpen] = useState(false);
@@ -151,33 +139,6 @@ export function CheckoutClient({
         description: `Order #${initResult.orderNumber}`,
         image: '/images/hero-pizza.jpg',
         order_id: initResult.razorpayOrderId,
-        config: {
-          display: {
-            blocks: {
-              upi_qr_block: {
-                name: 'Pay via UPI / QR Code',
-                instruments: [
-                  {
-                    method: 'upi',
-                    flows: ['qr', 'intent', 'collect'],
-                  },
-                ],
-              },
-              standard_methods: {
-                name: 'Cards, NetBanking & Wallets',
-                instruments: [
-                  { method: 'card' },
-                  { method: 'netbanking' },
-                  { method: 'wallet' },
-                ],
-              },
-            },
-            sequence: ['block.upi_qr_block', 'block.standard_methods'],
-            preferences: {
-              show_default_blocks: true,
-            },
-          },
-        },
         handler: async (response: RazorpayPaymentSuccessPayload) => {
           setSubmittingLabel('Verifying Payment...');
           setIsSubmitting(true);
@@ -341,22 +302,7 @@ export function CheckoutClient({
         return;
       }
 
-      // If user selected UPI: show the instant on-screen UPI QR Code modal!
-      if (paymentMethod === 'UPI') {
-        setIsSubmitting(false);
-        setUpiOrderDetails({
-          orderId: initResult.orderId,
-          orderNumber: initResult.orderNumber || '',
-          amount: (initResult.amount || 0) / 100,
-          trackingToken: initResult.trackingToken,
-          qrImageUrl: initResult.qrImageUrl,
-          initResult,
-        });
-        setUpiQrModalOpen(true);
-        return;
-      }
-
-      // If user selected Cards / NetBanking: open Razorpay popup
+      // Launch official Razorpay checkout popup
       await openRazorpayCheckout(initResult);
     } catch (err) {
       console.error('Payment initialization error:', err);
@@ -624,14 +570,14 @@ export function CheckoutClient({
               >
                 <div className="flex items-center justify-between">
                   <div className="size-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center">
-                    <QrCode className="size-4" />
+                    <Smartphone className="size-4" />
                   </div>
                   <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-blue-600 text-white rounded">
                     RZP
                   </span>
                 </div>
                 <div>
-                  <span className="font-bold text-foreground block">UPI / QR (Razorpay)</span>
+                  <span className="font-bold text-foreground block">UPI (Razorpay)</span>
                   <span className="text-[11px] text-muted-foreground">GPay, PhonePe, Paytm, BHIM</span>
                 </div>
               </div>
@@ -744,7 +690,7 @@ export function CheckoutClient({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-xl shadow-orange-600/25 flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-60 cursor-pointer"
+              className="w-full py-3.5 rounded-xl bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-xl shadow-orange-600/25 flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-60 cursor-pointer"
             >
               {isSubmitting ? (
                 <>
@@ -757,7 +703,7 @@ export function CheckoutClient({
                     {paymentMethod === 'CASH'
                       ? `Place Order • ₹${total.toFixed(2)}`
                       : paymentMethod === 'UPI'
-                      ? `Scan & Pay with UPI QR • ₹${total.toFixed(2)}`
+                      ? `Pay with UPI • ₹${total.toFixed(2)}`
                       : `Pay with Card / NetBanking • ₹${total.toFixed(2)}`}
                   </span>
                   <ArrowRight className="size-4" />
@@ -773,30 +719,6 @@ export function CheckoutClient({
         </div>
       </form>
 
-      {/* Direct Interactive On-Screen UPI QR Modal */}
-      {upiOrderDetails && (
-        <UpiQrModal
-          open={upiQrModalOpen}
-          onOpenChange={setUpiQrModalOpen}
-          orderId={upiOrderDetails.orderId}
-          orderNumber={upiOrderDetails.orderNumber}
-          amount={upiOrderDetails.amount}
-          trackingToken={upiOrderDetails.trackingToken}
-          qrImageUrl={upiOrderDetails.qrImageUrl}
-          onPaymentConfirmed={() => {
-            clearCart();
-            const targetUrl = upiOrderDetails.trackingToken
-              ? `/track/${upiOrderDetails.orderNumber}?token=${upiOrderDetails.trackingToken}`
-              : `/track/${upiOrderDetails.orderNumber}`;
-            router.push(targetUrl);
-          }}
-          onOpenRazorpayModal={() => {
-            if (upiOrderDetails.initResult) {
-              openRazorpayCheckout(upiOrderDetails.initResult);
-            }
-          }}
-        />
-      )}
 
       {/* Razorpay Mock Sandbox Modal (active when real keys are not in .env) */}
       {mockOrderDetails && (

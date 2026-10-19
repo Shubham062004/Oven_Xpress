@@ -125,7 +125,14 @@ export default async function CustomerAccountPage() {
           )}
           <div className="space-y-1">
             <h1 className="text-xl sm:text-2xl font-black text-foreground">
-              {dbUser?.name}
+              {dbUser?.name} 
+            <Link
+            href="/account/profile"
+            className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:opacity-95 transition-opacity"
+          >
+            <Edit3 className="size-3.5" />
+            {/* <span>Profile & Settings</span> */}
+          </Link>
             </h1>
             <p className="text-xs text-muted-foreground flex items-center justify-center sm:justify-start gap-1.5">
               <Mail className="size-3.5" />
@@ -142,13 +149,7 @@ export default async function CustomerAccountPage() {
 
         {/* Account Header Actions */}
         <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 shrink-0">
-          <Link
-            href="/account/profile"
-            className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:opacity-95 transition-opacity"
-          >
-            <Edit3 className="size-3.5" />
-            <span>Profile & Settings</span>
-          </Link>
+          
 
           <Link
             href="/account/wishlist"
@@ -268,7 +269,7 @@ export default async function CustomerAccountPage() {
       </div>
 
       {/* Support & Bug Reporting */}
-      <div className="bg-card rounded-2xl border border-border/70 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* <div className="bg-card rounded-2xl border border-border/70 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
             <Bug className="size-5" />
@@ -290,7 +291,7 @@ export default async function CustomerAccountPage() {
           <span>Report a Bug</span>
           <ChevronRight className="size-3.5" />
         </Link>
-      </div>
+      </div> */}
     </div>
   );
 }

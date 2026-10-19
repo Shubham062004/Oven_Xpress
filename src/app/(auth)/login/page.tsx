@@ -41,7 +41,7 @@ export default function LoginPage() {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Oven Express</h1>
           <p className="text-xs text-muted-foreground">
-            Sign in to order food, track deliveries, or access your staff dashboard
+            Sign in to order food or track deliveries
           </p>
         </div>
 

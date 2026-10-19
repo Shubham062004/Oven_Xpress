@@ -78,6 +78,46 @@ export function getProductImage(
   return CATEGORY_IMAGE_MAP[catKey] || '/images/hero-pizza.jpg';
 }
 
+export const NON_VEG_KEYWORDS = [
+  'pepperoni',
+  'chicken',
+  'beef',
+  'meat',
+  'pork',
+  'bacon',
+  'fish',
+  'mutton',
+  'prawn',
+  'seafood',
+  'ham',
+  'egg',
+  'turkey',
+  'salami',
+  'lamb',
+  'sausage',
+  'wings',
+  'patty',
+  'smash',
+];
+
+export function isItemVeg(item: { name: string; description?: string | null }): boolean {
+  const text = `${item.name} ${item.description || ''}`.toLowerCase();
+
+  // Explicit veg keywords take precedence
+  if (
+    text.includes('veggie') ||
+    text.includes('pure veg') ||
+    text.includes('paneer') ||
+    text.includes('margherita') ||
+    text.includes('makhani veg') ||
+    text.includes('mushroom')
+  ) {
+    return true;
+  }
+
+  return !NON_VEG_KEYWORDS.some((kw) => text.includes(kw));
+}
+
 export async function getPublicBranchMenu(branchSlug: string): Promise<BranchMenuData | null> {
   const branch = await getPublicBranchBySlug(branchSlug);
   if (!branch) return null;

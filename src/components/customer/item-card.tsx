@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Plus, Minus, Clock } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
 import { WishlistButton } from './wishlist-button';
-import type { PublicMenuItem } from '@/lib/customer/menu-service';
+import { isItemVeg, type PublicMenuItem } from '@/lib/customer/menu-service';
 
 interface ItemCardProps {
   item: PublicMenuItem;
@@ -29,10 +29,7 @@ export function ItemCard({ item }: ItemCardProps) {
     });
   };
 
-  const isVeg = !item.name.toLowerCase().includes('pepperoni') &&
-    !item.name.toLowerCase().includes('chicken') &&
-    !item.name.toLowerCase().includes('beef') &&
-    !item.name.toLowerCase().includes('meat');
+  const isVeg = isItemVeg(item);
 
   return (
     <div className="group relative bg-card rounded-2xl border border-border/70 hover:border-border overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">

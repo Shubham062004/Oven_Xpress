@@ -206,6 +206,10 @@ export const PERMISSIONS = {
   // Bug Reports (Technical Customer Bug Reports - Owner only)
   BUG_REPORT_READ: 'bug_report.read',
   BUG_REPORT_UPDATE: 'bug_report.update',
+
+  // Coupons & Promotions Management
+  COUPON_READ: 'coupon.read',
+  COUPON_MANAGE: 'coupon.manage',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -375,6 +379,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleName, readonly PermissionCode[
     PERMISSIONS.NOTIFICATION_DISMISS,
     PERMISSIONS.AUDIT_READ,
     PERMISSIONS.AUDIT_EXPORT,
+    PERMISSIONS.COUPON_READ,
+    PERMISSIONS.COUPON_MANAGE,
   ],
   ADMIN: [
     PERMISSIONS.DASHBOARD_READ,
@@ -520,6 +526,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleName, readonly PermissionCode[
     PERMISSIONS.NOTIFICATION_DISMISS,
     PERMISSIONS.AUDIT_READ,
     PERMISSIONS.AUDIT_EXPORT,
+    PERMISSIONS.COUPON_READ,
+    PERMISSIONS.COUPON_MANAGE,
   ],
   MANAGER: [
     PERMISSIONS.DASHBOARD_READ,

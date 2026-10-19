@@ -81,9 +81,9 @@ export const EXPENSE_PAYMENT_METHOD_META: Record<PaymentMethod, PaymentMethodMet
     description: 'Disbursed directly from physical restaurant petty cash drawer',
   },
   [PaymentMethod.UPI]: {
-    label: 'UPI / QR Code',
+    label: 'UPI',
     shortLabel: 'UPI',
-    description: 'Instant bank transfer via UPI QR code or VPA',
+    description: 'Instant bank transfer via UPI or VPA',
   },
   [PaymentMethod.CARD]: {
     label: 'Corporate Card / Debit',

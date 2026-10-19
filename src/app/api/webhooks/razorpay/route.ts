@@ -213,8 +213,8 @@ export async function PUT(req: NextRequest) {
           orderId: order.id,
           fromStatus: order.status,
           toStatus: 'CONFIRMED',
-          performedBy: 'CUSTOMER_UPI_QR',
-          notes: 'Order confirmed after UPI QR scan and pay',
+          performedBy: 'CUSTOMER_UPI',
+          notes: 'Order confirmed after UPI payment',
         },
       });
     });
@@ -232,7 +232,7 @@ export async function PUT(req: NextRequest) {
         updatedAt: new Date().toISOString(),
       });
     } catch (err) {
-      console.error('[UPI QR] Real-time broadcast error:', err);
+      console.error('[UPI] Real-time broadcast error:', err);
     }
 
     return NextResponse.json({

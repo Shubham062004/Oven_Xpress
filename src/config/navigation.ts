@@ -21,6 +21,7 @@ import {
   Bell,
   ScrollText,
   Bug,
+  Tag,
 } from 'lucide-react';
 
 import { PERMISSIONS } from '@/lib/permissions/definitions';
@@ -160,6 +161,12 @@ export const mainNavItems: NavItem[] = [
     requiredPermission: PERMISSIONS.AUDIT_READ,
   },
   {
+    label: 'Coupons & Offers',
+    href: '/coupons',
+    icon: Tag,
+    requiredPermission: PERMISSIONS.COUPON_READ,
+  },
+  {
     label: 'Bug Reports',
     href: '/bug-reports',
     icon: Bug,
@@ -199,6 +206,7 @@ export const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
     'salary',
     'salaries',
     'customers',
+    'coupons',
     'reviews',
     'feedback',
     'sales',
@@ -215,6 +223,7 @@ export const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
     'users',
     'branches',
     'employees',
+    'coupons',
     'attendance',
     'audit-logs',
     'settings',

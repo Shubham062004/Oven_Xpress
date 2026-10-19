@@ -258,7 +258,7 @@ export function LoginForm() {
           >
             Owner
           </Button>
-          <Button
+          {/* <Button
             type="button"
             variant="outline"
             size="xs"
@@ -266,7 +266,7 @@ export function LoginForm() {
             className="text-[11px]"
           >
             Admin
-          </Button>
+          </Button> */}
           <Button
             type="button"
             variant="outline"

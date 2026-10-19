@@ -521,7 +521,7 @@ export const SETTING_DEFINITIONS: Record<string, SettingDefinition> = {
     options: [
       { label: 'Cash', value: 'CASH' },
       { label: 'Credit / Debit Card', value: 'CARD' },
-      { label: 'UPI / QR Code', value: 'UPI' },
+      { label: 'UPI', value: 'UPI' },
       { label: 'Net Banking', value: 'NET_BANKING' },
       { label: 'Digital Wallet', value: 'WALLET' },
       { label: 'Other', value: 'OTHER' },

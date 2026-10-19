@@ -30,6 +30,7 @@ model User {
   preference              UserPreference?
   bugReports              BugReport[]
   wishlist                CustomerWishlist[]
+  couponUsages            CouponUsage[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -609,6 +610,7 @@ model Customer {
   orders    Order[]
   reviews   Review[]
   issues    CustomerIssue[]
+  couponUsages CouponUsage[]
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
@@ -675,6 +677,9 @@ model Order {
   payments           Payment[]
   reviews            Review[]
   issues             CustomerIssue[]
+  couponCode         String?
+  couponInstruction  String?
+  couponUsages       CouponUsage[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -1408,17 +1413,7 @@ model UserPreference {
   @@index([userId])
 }
 
-model Coupon {
-  id           String    @id
-  code         String    @unique
-  discount     Decimal   @db.Decimal
-  discountType String    @default("percentage")
-  minOrder     Decimal   @default(0) @db.Decimal
-  maxDiscount  Decimal?  @db.Decimal
-  expiresAt    DateTime? @db.Timestamp(6)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now()) @db.Timestamp(6)
-}
+
 
 enum BugReportCategory {
   LOGIN_REGISTRATION
@@ -1466,4 +1461,76 @@ model BugReport {
   @@index([createdAt])
   @@index([reportNumber])
 }
+
+// ─── Coupons & Promotion Engine ─────────────────────────────────────────────
+
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_ITEM
+}
+
+enum CouponUserFilter {
+  ALL_USERS
+  FIRST_ORDER_ONLY
+  JOINED_LAST_10_DAYS
+  JOINED_LAST_30_DAYS
+  SPECIFIC_USERS
+}
+
+model Coupon {
+  id                  String             @id @default(cuid())
+  code                String             @unique
+  title               String             @default("Special Offer")
+  description         String?
+  discountType        CouponDiscountType @default(FIXED_AMOUNT)
+  discountValue       Decimal            @default(0) @db.Decimal(10, 2)
+  minOrderAmount      Decimal            @default(0) @db.Decimal(10, 2)
+  maxDiscountAmount   Decimal?           @db.Decimal(10, 2)
+  freeItemName        String?
+  requiresInstruction Boolean            @default(false)
+  instructionPrompt   String?
+  allBranches         Boolean            @default(true)
+  branchIds           Json?              @default("[]")
+  userFilter          CouponUserFilter   @default(ALL_USERS)
+  targetedUserIds     Json?              @default("[]")
+  maxUsesPerUser      Int?
+  totalMaxUses        Int?
+  isActive            Boolean            @default(true)
+  startDate           DateTime?
+  endDate             DateTime?
+  usages              CouponUsage[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @default(now()) @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
+
+model CouponUsage {
+  id             String    @id @default(cuid())
+  couponId       String
+  coupon         Coupon    @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  couponCode     String
+  userId         String?
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerId     String?
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerPhone  String?
+  customerEmail  String?
+  customerName   String?
+  orderId        String?
+  order          Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderNumber    String?
+  discountAmount Decimal   @default(0) @db.Decimal(10, 2)
+  instruction    String?
+  createdAt      DateTime  @default(now())
+
+  @@index([couponId])
+  @@index([couponCode])
+  @@index([userId])
+  @@index([customerPhone])
+  @@index([orderId])
+}
+
 

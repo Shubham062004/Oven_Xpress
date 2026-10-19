@@ -19,7 +19,6 @@ import {
   Wifi,
   WifiOff,
   Loader2,
-  QrCode,
 } from 'lucide-react';
 import type { OrderStatus, PaymentStatus } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +35,6 @@ import {
   type RazorpayPaymentSuccessPayload,
 } from '@/lib/payments/razorpay-client';
 import { RazorpayMockModal } from '@/components/payments/razorpay-mock-modal';
-import { UpiQrModal } from '@/components/payments/upi-qr-modal';
 import type {
   OrderStatusChangedPayload,
   KitchenStatusChangedPayload,
@@ -91,17 +89,6 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
     razorpayOrderId: string;
   } | null>(null);
 
-  // Direct On-screen UPI QR modal
-  const [upiQrModalOpen, setUpiQrModalOpen] = useState(false);
-  const [upiOrderDetails, setUpiOrderDetails] = useState<{
-    orderId: string;
-    orderNumber: string;
-    amount: number;
-    trackingToken?: string;
-    qrImageUrl?: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    initResult?: any;
-  } | null>(null);
 
   const currentStep = getStepIndex(order.status);
   const isCancelled = order.status === 'CANCELLED';
@@ -125,33 +112,6 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
         description: `Order #${initResult.orderNumber}`,
         image: '/images/hero-pizza.jpg',
         order_id: initResult.razorpayOrderId,
-        config: {
-          display: {
-            blocks: {
-              upi_qr_block: {
-                name: 'Pay via UPI / QR Code',
-                instruments: [
-                  {
-                    method: 'upi',
-                    flows: ['qr', 'intent', 'collect'],
-                  },
-                ],
-              },
-              standard_methods: {
-                name: 'Cards, NetBanking & Wallets',
-                instruments: [
-                  { method: 'card' },
-                  { method: 'netbanking' },
-                  { method: 'wallet' },
-                ],
-              },
-            },
-            sequence: ['block.upi_qr_block', 'block.standard_methods'],
-            preferences: {
-              show_default_blocks: true,
-            },
-          },
-        },
         handler: async (response: RazorpayPaymentSuccessPayload) => {
           setIsPaying(true);
           try {
@@ -173,7 +133,6 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
                   status: 'SUCCESS' as PaymentStatus,
                 },
               }));
-              setUpiQrModalOpen(false);
             } else {
               toast.error(verifyResult.error || 'Payment verification failed.');
             }
@@ -235,17 +194,8 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
         return;
       }
 
-      // Show on-screen UPI QR Code modal directly!
-      setIsPaying(false);
-      setUpiOrderDetails({
-        orderId: initResult.orderId!,
-        orderNumber: initResult.orderNumber || order.orderNumber,
-        amount: (initResult.amount || 0) / 100,
-        trackingToken: token,
-        qrImageUrl: initResult.qrImageUrl,
-        initResult,
-      });
-      setUpiQrModalOpen(true);
+      // Launch official Razorpay payment popup
+      await openRazorpayPopup(initResult);
     } catch (err) {
       console.error(err);
       toast.error('Unable to open payment gateway.');
@@ -662,12 +612,12 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
                     {isPaying ? (
                       <>
                         <Loader2 className="size-3.5 animate-spin" />
-                        <span>Opening Payment QR...</span>
+                        <span>Launching Razorpay...</span>
                       </>
                     ) : (
                       <>
-                        <QrCode className="size-3.5" />
-                        <span>Pay ₹{order.totalAmount.toFixed(2)} with UPI QR / Razorpay</span>
+                        <CreditCard className="size-3.5" />
+                        <span>Pay ₹{order.totalAmount.toFixed(2)} Online with Razorpay</span>
                       </>
                     )}
                   </Button>
@@ -695,33 +645,6 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
         </div>
       </div>
 
-      {/* Direct On-Screen UPI QR Modal */}
-      {upiOrderDetails && (
-        <UpiQrModal
-          open={upiQrModalOpen}
-          onOpenChange={setUpiQrModalOpen}
-          orderId={upiOrderDetails.orderId}
-          orderNumber={upiOrderDetails.orderNumber}
-          amount={upiOrderDetails.amount}
-          trackingToken={upiOrderDetails.trackingToken}
-          qrImageUrl={upiOrderDetails.qrImageUrl}
-          onPaymentConfirmed={() => {
-            setOrder((prev) => ({
-              ...prev,
-              payment: {
-                ...prev.payment,
-                status: 'SUCCESS' as PaymentStatus,
-              },
-            }));
-            setUpiQrModalOpen(false);
-          }}
-          onOpenRazorpayModal={() => {
-            if (upiOrderDetails.initResult) {
-              openRazorpayPopup(upiOrderDetails.initResult);
-            }
-          }}
-        />
-      )}
 
       {/* Razorpay Mock Sandbox Modal for testing */}
       {mockOrderDetails && (
