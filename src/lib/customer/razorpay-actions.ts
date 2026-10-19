@@ -406,6 +406,9 @@ export async function verifyAndCompleteRazorpayPaymentAction(
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
+        customer: {
+          select: { userId: true },
+        },
         payments: {
           where: { gatewayProvider: 'RAZORPAY' },
           orderBy: { createdAt: 'desc' },
@@ -478,7 +481,7 @@ export async function verifyAndCompleteRazorpayPaymentAction(
     if (existingOrder.couponCode) {
       await recordCouponUsage({
         couponCode: existingOrder.couponCode,
-        userId: existingOrder.customerId ? existingOrder.customer?.userId : null,
+        userId: existingOrder.customer?.userId || existingOrder.createdBy || null,
         customerId: existingOrder.customerId,
         customerPhone: existingOrder.customerPhone,
         customerName: existingOrder.customerName,
