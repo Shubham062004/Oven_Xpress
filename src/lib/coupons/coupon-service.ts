@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db/prisma';
-import type { CouponDiscountType, CouponUserFilter } from '@prisma/client';
 
 export interface ValidateCouponParams {
   code: string;
@@ -184,14 +183,18 @@ export async function validateCoupon({
           OR: [
             { customer: { userId } },
             { customerPhone: customerPhone || undefined },
+            { customer: { email: customerEmail || undefined } },
           ],
           status: { in: ['CONFIRMED', 'PREPARING', 'READY', 'COMPLETED'] },
         },
       });
-    } else if (customerPhone) {
+    } else if (customerPhone || customerEmail) {
       priorOrdersCount = await prisma.order.count({
         where: {
-          customerPhone,
+          OR: [
+            { customerPhone: customerPhone || undefined },
+            { customer: { email: customerEmail || undefined } },
+          ],
           status: { in: ['CONFIRMED', 'PREPARING', 'READY', 'COMPLETED'] },
         },
       });
@@ -258,14 +261,21 @@ export async function validateCoupon({
       userUsages = await prisma.couponUsage.count({
         where: {
           couponId: coupon.id,
-          OR: [{ userId }, { customerPhone: customerPhone || undefined }],
+          OR: [
+            { userId },
+            { customerPhone: customerPhone || undefined },
+            { customerEmail: customerEmail || undefined },
+          ],
         },
       });
-    } else if (customerPhone) {
+    } else if (customerPhone || customerEmail) {
       userUsages = await prisma.couponUsage.count({
         where: {
           couponId: coupon.id,
-          customerPhone,
+          OR: [
+            { customerPhone: customerPhone || undefined },
+            { customerEmail: customerEmail || undefined },
+          ],
         },
       });
     }

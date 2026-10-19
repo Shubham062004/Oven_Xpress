@@ -5,6 +5,7 @@ import {
   fetchRazorpayOrderPayments,
 } from '@/lib/payments/razorpay';
 import { publishPaymentUpdated } from '@/lib/realtime/event-bus';
+import { recordCouponUsage } from '@/lib/coupons/coupon-service';
 
 export async function POST(req: NextRequest) {
   try {
@@ -84,6 +85,21 @@ export async function POST(req: NextRequest) {
             });
           });
 
+          // Record coupon usage if applied
+          if (paymentRecord.order.couponCode) {
+            await recordCouponUsage({
+              couponCode: paymentRecord.order.couponCode,
+              userId: paymentRecord.order.customerId ? undefined : null,
+              customerId: paymentRecord.order.customerId,
+              customerPhone: paymentRecord.order.customerPhone,
+              customerName: paymentRecord.order.customerName,
+              orderId: paymentRecord.order.id,
+              orderNumber: paymentRecord.order.orderNumber,
+              discountAmount: Number(paymentRecord.order.discountAmount),
+              instruction: paymentRecord.order.couponInstruction,
+            });
+          }
+
           // Broadcast realtime notification
           try {
             publishPaymentUpdated({
@@ -147,10 +163,14 @@ export async function POST(req: NextRequest) {
 /**
  * Direct customer confirmation endpoint for on-screen UPI QR payments.
  */
+/**
+ * Server-verified reconciliation endpoint for UPI payments.
+ * Strictly verifies status against Razorpay API. Never accepts unverified customer claims.
+ */
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { orderId, orderNumber, utrNumber, trackingToken } = body;
+    const { orderId, orderNumber, trackingToken } = body;
 
     if (!orderId && !orderNumber) {
       return NextResponse.json({ error: 'Order identifier required' }, { status: 400 });
@@ -172,78 +192,118 @@ export async function PUT(req: NextRequest) {
 
     const latestPayment = order.payments[0];
 
-    await prisma.$transaction(async (tx) => {
-      if (latestPayment && latestPayment.status !== 'SUCCESS') {
-        await tx.payment.update({
-          where: { id: latestPayment.id },
-          data: {
+    if (!latestPayment) {
+      return NextResponse.json({ error: 'No payment record found for order' }, { status: 404 });
+    }
+
+    if (latestPayment.status === 'SUCCESS') {
+      return NextResponse.json({
+        success: true,
+        orderNumber: order.orderNumber,
+        trackingUrl: trackingToken
+          ? `/track/${order.orderNumber}?token=${trackingToken}`
+          : `/track/${order.orderNumber}`,
+      });
+    }
+
+    // Verify against Razorpay API
+    if (latestPayment.gatewayTransactionId) {
+      const paymentsResponse = await fetchRazorpayOrderPayments(latestPayment.gatewayTransactionId);
+      const items = (paymentsResponse as { items?: Array<{ status: string; id: string; method?: string }> })?.items || [];
+      const capturedPayment = items.find((p) => p.status === 'captured');
+
+      if (capturedPayment) {
+        await prisma.$transaction(async (tx) => {
+          await tx.payment.update({
+            where: { id: latestPayment.id },
+            data: {
+              status: 'SUCCESS',
+              referenceNumber: capturedPayment.id,
+              gatewayStatus: 'captured',
+              gatewayMetadata: {
+                ...((latestPayment.gatewayMetadata as Record<string, unknown>) || {}),
+                capturedPaymentId: capturedPayment.id,
+                method: capturedPayment.method,
+              },
+            },
+          });
+
+          await tx.paymentAuditLog.create({
+            data: {
+              paymentId: latestPayment.id,
+              action: 'PAYMENT_CAPTURED_RECONCILED',
+              fromStatus: latestPayment.status,
+              toStatus: 'SUCCESS',
+              amount: latestPayment.amount,
+              performedBy: 'RAZORPAY_STATUS_VERIFY',
+              notes: `Verified via Razorpay API payment ${capturedPayment.id}`,
+            },
+          });
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              status: 'CONFIRMED',
+              confirmedAt: new Date(),
+            },
+          });
+
+          await tx.orderAuditLog.create({
+            data: {
+              orderId: order.id,
+              fromStatus: order.status,
+              toStatus: 'CONFIRMED',
+              performedBy: 'RAZORPAY_STATUS_VERIFY',
+              notes: 'Order confirmed after server-verified Razorpay payment',
+            },
+          });
+        });
+
+        if (order.couponCode) {
+          await recordCouponUsage({
+            couponCode: order.couponCode,
+            customerId: order.customerId,
+            customerPhone: order.customerPhone,
+            customerName: order.customerName,
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            discountAmount: Number(order.discountAmount),
+            instruction: order.couponInstruction,
+          });
+        }
+
+        try {
+          publishPaymentUpdated({
+            paymentId: latestPayment.paymentNumber,
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            branchId: order.branchId,
+            amount: Number(order.totalAmount),
             status: 'SUCCESS',
             method: 'UPI',
-            referenceNumber: utrNumber || latestPayment.referenceNumber || `UPI-${Date.now()}`,
-            gatewayStatus: 'captured',
-            notes: utrNumber
-              ? `UPI QR payment confirmed by customer with UTR: ${utrNumber}`
-              : 'UPI QR payment confirmed by customer',
-          },
-        });
+            updatedAt: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.error('[Razorpay Verify] Realtime error:', e);
+        }
 
-        await tx.paymentAuditLog.create({
-          data: {
-            paymentId: latestPayment.id,
-            action: 'UPI_QR_PAYMENT_CONFIRMED',
-            fromStatus: latestPayment.status,
-            toStatus: 'SUCCESS',
-            amount: latestPayment.amount,
-            performedBy: 'CUSTOMER_UPI_QR',
-            notes: utrNumber ? `Customer entered UTR: ${utrNumber}` : 'Direct UPI QR confirmation',
-          },
+        return NextResponse.json({
+          success: true,
+          orderNumber: order.orderNumber,
+          trackingUrl: trackingToken
+            ? `/track/${order.orderNumber}?token=${trackingToken}`
+            : `/track/${order.orderNumber}`,
         });
       }
-
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'CONFIRMED',
-          confirmedAt: new Date(),
-        },
-      });
-
-      await tx.orderAuditLog.create({
-        data: {
-          orderId: order.id,
-          fromStatus: order.status,
-          toStatus: 'CONFIRMED',
-          performedBy: 'CUSTOMER_UPI',
-          notes: 'Order confirmed after UPI payment',
-        },
-      });
-    });
-
-    // Broadcast real-time payment update
-    try {
-      publishPaymentUpdated({
-        paymentId: latestPayment?.paymentNumber || order.orderNumber,
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        branchId: order.branchId,
-        amount: Number(order.totalAmount),
-        status: 'SUCCESS',
-        method: 'UPI',
-        updatedAt: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error('[UPI] Real-time broadcast error:', err);
     }
 
     return NextResponse.json({
-      success: true,
-      orderNumber: order.orderNumber,
-      trackingUrl: trackingToken
-        ? `/track/${order.orderNumber}?token=${trackingToken}`
-        : `/track/${order.orderNumber}`,
+      success: false,
+      status: 'PENDING',
+      message: 'Payment verification is pending. Please complete the transaction in your UPI app.',
     });
   } catch (err) {
-    console.error('[UPI Confirmation Error]:', err);
+    console.error('[UPI Verification Error]:', err);
     return NextResponse.json({ error: 'Failed to verify UPI payment' }, { status: 500 });
   }
 }

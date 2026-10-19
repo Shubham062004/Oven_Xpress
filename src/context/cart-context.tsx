@@ -24,10 +24,17 @@ export interface BranchInfo {
   phone?: string | null;
 }
 
+import { validateCustomerCouponAction } from '@/lib/coupons/coupon-actions';
+
 export interface AppliedCoupon {
   code: string;
+  title?: string;
   discount: number;
-  discountType: 'percentage' | 'fixed';
+  discountType: 'percentage' | 'fixed' | 'free_item';
+  freeItemName?: string;
+  requiresInstruction?: boolean;
+  instructionPrompt?: string;
+  instruction?: string;
 }
 
 interface CartContextType {
@@ -49,7 +56,16 @@ interface CartContextType {
   setBranch: (branch: BranchInfo) => void;
   setOrderType: (type: OrderType) => void;
   setTableNumber: (table: string) => void;
-  applyCoupon: (code: string) => { success: boolean; message: string };
+  applyCoupon: (
+    code: string,
+    instruction?: string
+  ) => Promise<{
+    success: boolean;
+    message: string;
+    requiresInstruction?: boolean;
+    prompt?: string;
+  }>;
+  setCouponInstruction: (instruction: string) => void;
   removeCoupon: () => void;
   reorderItems: (
     items: {
@@ -154,25 +170,56 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setBranchState(newBranch);
   };
 
-  const applyCoupon = (rawCode: string): { success: boolean; message: string } => {
+  const applyCoupon = async (
+    rawCode: string,
+    instruction?: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    requiresInstruction?: boolean;
+    prompt?: string;
+  }> => {
     const code = rawCode.trim().toUpperCase();
-    if (code === 'WELCOME50' || code === 'FIRST50') {
-      setAppliedCoupon({
-        code,
-        discount: 50,
-        discountType: 'fixed',
-      });
-      return { success: true, message: '₹50 discount applied!' };
+    if (!code) {
+      return { success: false, message: 'Please enter a coupon code' };
     }
-    if (code === 'OVEN20' || code === 'PIZZA20') {
-      setAppliedCoupon({
+
+    try {
+      const res = await validateCustomerCouponAction({
         code,
-        discount: 20,
-        discountType: 'percentage',
+        subtotal,
+        branchId: branch?.id,
+        instruction,
       });
-      return { success: true, message: '20% discount applied!' };
+
+      if (!res.valid) {
+        return { success: false, message: res.message };
+      }
+
+      setAppliedCoupon({
+        code: res.code || code,
+        title: res.title,
+        discount: res.discountAmount || 0,
+        discountType: res.discountType || 'fixed',
+        freeItemName: res.freeItemName,
+        requiresInstruction: res.requiresInstruction,
+        instructionPrompt: res.instructionPrompt,
+        instruction: instruction || undefined,
+      });
+
+      return {
+        success: true,
+        message: res.message,
+        requiresInstruction: res.requiresInstruction,
+        prompt: res.instructionPrompt,
+      };
+    } catch {
+      return { success: false, message: 'Failed to validate coupon' };
     }
-    return { success: false, message: 'Invalid or expired coupon code' };
+  };
+
+  const setCouponInstruction = (instruction: string) => {
+    setAppliedCoupon((prev) => (prev ? { ...prev, instruction } : null));
   };
 
   const removeCoupon = () => {
@@ -237,9 +284,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Coupon discount calculation
   const discount = useMemo(() => {
     if (!appliedCoupon || subtotal === 0) return 0;
+    if (appliedCoupon.discountType === 'free_item') {
+      return 0; // Free item gift (cake)
+    }
     if (appliedCoupon.discountType === 'percentage') {
       const pctDiscount = (subtotal * appliedCoupon.discount) / 100;
-      return Math.min(pctDiscount, 150); // capped at ₹150 max discount
+      return Math.min(pctDiscount, 250);
     }
     return Math.min(appliedCoupon.discount, subtotal);
   }, [appliedCoupon, subtotal]);
@@ -271,6 +321,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setOrderType,
         setTableNumber,
         applyCoupon,
+        setCouponInstruction,
         removeCoupon,
         reorderItems,
       }}

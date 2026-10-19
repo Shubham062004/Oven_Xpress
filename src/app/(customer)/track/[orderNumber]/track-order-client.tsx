@@ -19,6 +19,8 @@ import {
   Wifi,
   WifiOff,
   Loader2,
+  Tag,
+  Cake,
 } from 'lucide-react';
 import type { OrderStatus, PaymentStatus } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
@@ -509,8 +511,20 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
                 </div>
                 {order.discountAmount > 0 && (
                   <div className="flex justify-between text-emerald-600 font-medium">
-                    <span>Discount</span>
+                    <span className="flex items-center gap-1">
+                      <Tag className="size-3.5" />
+                      <span>Discount {order.couponCode ? `(${order.couponCode})` : ''}</span>
+                    </span>
                     <span>-₹{order.discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                {order.couponInstruction && (
+                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-800 dark:text-purple-300 text-xs flex items-start gap-2">
+                    <Cake className="size-4 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold">Complimentary Birthday Cake Request:</div>
+                      <div className="italic">&ldquo;{order.couponInstruction}&rdquo;</div>
+                    </div>
                   </div>
                 )}
                 <div className="flex justify-between text-muted-foreground">

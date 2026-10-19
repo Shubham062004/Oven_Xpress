@@ -16,6 +16,7 @@ import {
   Home,
   Briefcase,
   PackageCheck,
+  QrCode,
 } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
 import { createCustomerOrderAction } from '@/lib/customer/order-actions';
@@ -25,9 +26,14 @@ import {
 } from '@/lib/customer/razorpay-actions';
 import {
   loadRazorpayScript,
+  type RazorpayOptions,
   type RazorpayPaymentSuccessPayload,
 } from '@/lib/payments/razorpay-client';
 import { RazorpayMockModal } from '@/components/payments/razorpay-mock-modal';
+import {
+  UpiQrPaymentModal,
+  type UpiQrModalDetails,
+} from '@/components/payments/upi-qr-payment-modal';
 import { toast } from 'sonner';
 
 interface SavedAddress {
@@ -87,11 +93,16 @@ export function CheckoutClient({
   );
   const [customAddress, setCustomAddress] = useState(initialAddress);
   const [deliveryNotes, setDeliveryNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'ONLINE' | 'CARD'>('UPI');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI_QR' | 'UPI' | 'ONLINE' | 'CARD'>('UPI_QR');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittingLabel, setSubmittingLabel] = useState<string>('Placing Your Order...');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // UPI QR Modal state
+  const [upiQrModalOpen, setUpiQrModalOpen] = useState(false);
+  const [upiQrDetails, setUpiQrDetails] = useState<UpiQrModalDetails | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [lastInitResult, setLastInitResult] = useState<any>(null);
 
   // Mock modal state for testing/demo environments without live keys
   const [mockModalOpen, setMockModalOpen] = useState(false);
@@ -119,8 +130,8 @@ export function CheckoutClient({
 
   // Opens the official Razorpay Checkout modal
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const openRazorpayCheckout = async (initResult: any) => {
-    setSubmittingLabel('Launching Razorpay...');
+  const openRazorpayCheckout = async (initResult: any, isQrFocus = false) => {
+    setSubmittingLabel(isQrFocus ? 'Opening UPI QR Code...' : 'Launching Razorpay...');
     setIsSubmitting(true);
 
     try {
@@ -131,7 +142,7 @@ export function CheckoutClient({
         return;
       }
 
-      const options = {
+      const options: RazorpayOptions = {
         key: initResult.keyId || '',
         amount: initResult.amount || 0,
         currency: initResult.currency || 'INR',
@@ -180,10 +191,33 @@ export function CheckoutClient({
         theme: {
           color: '#ea580c', // Oven Xpress Brand Orange
         },
+        config: isQrFocus
+          ? {
+              display: {
+                blocks: {
+                  upi_qr: {
+                    name: 'Scan & Pay via UPI QR',
+                    instruments: [
+                      {
+                        method: 'upi',
+                        flows: ['qr', 'intent'],
+                      },
+                    ],
+                  },
+                },
+                sequence: ['block.upi_qr'],
+                preferences: {
+                  show_default_blocks: true,
+                },
+              },
+            }
+          : undefined,
         modal: {
           ondismiss: () => {
             setIsSubmitting(false);
-            toast.info('Payment was cancelled or dismissed. Your cart is preserved.');
+            if (!isQrFocus) {
+              toast.info('Payment was cancelled or dismissed. Your cart is preserved.');
+            }
           },
         },
       };
@@ -240,6 +274,7 @@ export function CheckoutClient({
           deliveryNotes: deliveryNotes || undefined,
           items: items.map((i) => ({ menuItemId: i.id, quantity: i.quantity })),
           couponCode: appliedCoupon?.code,
+          couponInstruction: appliedCoupon?.instruction,
           paymentMethod: 'CASH',
         });
 
@@ -265,7 +300,67 @@ export function CheckoutClient({
     }
 
     // ==========================================
-    // 2. RAZORPAY & UPI GATEWAY FLOW
+    // 2. UPI QR CODE FLOW
+    // ==========================================
+    if (paymentMethod === 'UPI_QR') {
+      setSubmittingLabel('Generating Secure UPI QR...');
+      try {
+        const initResult = await initiateRazorpayOrderAction({
+          branchId: branch.id,
+          orderType,
+          tableNumber: orderType === 'DINE_IN' ? tableNumber : undefined,
+          customerName,
+          customerPhone,
+          deliveryAddress: orderType === 'DELIVERY' ? finalAddress : undefined,
+          deliveryNotes: deliveryNotes || undefined,
+          items: items.map((i) => ({ menuItemId: i.id, quantity: i.quantity })),
+          couponCode: appliedCoupon?.code,
+          couponInstruction: appliedCoupon?.instruction,
+          paymentMethod: 'UPI',
+        });
+
+        if (!initResult.success || !initResult.razorpayOrderId || !initResult.orderId) {
+          setErrorMessage(initResult.error || 'Unable to connect to payment gateway.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        setIsSubmitting(false);
+        setLastInitResult(initResult);
+
+        if (initResult.isMock) {
+          setMockOrderDetails({
+            orderId: initResult.orderId,
+            orderNumber: initResult.orderNumber || '',
+            amount: (initResult.amount || 0) / 100,
+            razorpayOrderId: initResult.razorpayOrderId,
+            trackingToken: initResult.trackingToken,
+          });
+          setMockModalOpen(true);
+        } else {
+          setUpiQrDetails({
+            orderId: initResult.orderId,
+            orderNumber: initResult.orderNumber || '',
+            amount: (initResult.amount || 0) / 100,
+            razorpayOrderId: initResult.razorpayOrderId,
+            trackingToken: initResult.trackingToken,
+            customerName,
+            customerPhone,
+          });
+          setUpiQrModalOpen(true);
+          openRazorpayCheckout(initResult, true);
+        }
+        return;
+      } catch (err) {
+        console.error('UPI QR Error:', err);
+        setErrorMessage('Failed to generate UPI QR code. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    // ==========================================
+    // 3. RAZORPAY UPI / ONLINE CARD FLOW
     // ==========================================
     setSubmittingLabel('Initializing Payment Gateway...');
     try {
@@ -279,6 +374,7 @@ export function CheckoutClient({
         deliveryNotes: deliveryNotes || undefined,
         items: items.map((i) => ({ menuItemId: i.id, quantity: i.quantity })),
         couponCode: appliedCoupon?.code,
+        couponInstruction: appliedCoupon?.instruction,
         paymentMethod: paymentMethod === 'ONLINE' ? 'ONLINE' : 'UPI',
       });
 
@@ -558,8 +654,33 @@ export function CheckoutClient({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* UPI */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* UPI QR Code */}
+              <div
+                onClick={() => setPaymentMethod('UPI_QR')}
+                className={`p-3.5 rounded-xl border text-xs cursor-pointer flex flex-col justify-between space-y-2 transition-all ${
+                  paymentMethod === 'UPI_QR'
+                    ? 'bg-orange-500/10 border-orange-500 shadow-xs ring-2 ring-orange-500/30'
+                    : 'hover:bg-muted/40 border-border/70'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="size-8 rounded-lg bg-orange-500/15 text-orange-600 flex items-center justify-center">
+                    <QrCode className="size-4" />
+                  </div>
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-linear-to-r from-orange-600 to-amber-600 text-white rounded-full shadow-xs">
+                    Popular • Scan &amp; Pay
+                  </span>
+                </div>
+                <div>
+                  <span className="font-bold text-foreground block">UPI QR Code</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Scan via GPay, PhonePe, Paytm, CRED
+                  </span>
+                </div>
+              </div>
+
+              {/* UPI Direct App */}
               <div
                 onClick={() => setPaymentMethod('UPI')}
                 className={`p-3.5 rounded-xl border text-xs cursor-pointer flex flex-col justify-between space-y-2 transition-all ${
@@ -569,7 +690,7 @@ export function CheckoutClient({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="size-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center">
+                  <div className="size-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
                     <Smartphone className="size-4" />
                   </div>
                   <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-blue-600 text-white rounded">
@@ -577,8 +698,8 @@ export function CheckoutClient({
                   </span>
                 </div>
                 <div>
-                  <span className="font-bold text-foreground block">UPI (Razorpay)</span>
-                  <span className="text-[11px] text-muted-foreground">GPay, PhonePe, Paytm, BHIM</span>
+                  <span className="font-bold text-foreground block">UPI Direct</span>
+                  <span className="text-[11px] text-muted-foreground">Pay directly via UPI apps</span>
                 </div>
               </div>
 
@@ -600,7 +721,7 @@ export function CheckoutClient({
                   </span>
                 </div>
                 <div>
-                  <span className="font-bold text-foreground block">Cards & NetBanking</span>
+                  <span className="font-bold text-foreground block">Cards &amp; NetBanking</span>
                   <span className="text-[11px] text-muted-foreground">Visa, MasterCard, 50+ Banks</span>
                 </div>
               </div>
@@ -701,7 +822,9 @@ export function CheckoutClient({
                 <>
                   <span>
                     {paymentMethod === 'CASH'
-                      ? `Place Order • ₹${total.toFixed(2)}`
+                      ? `Place Cash Order • ₹${total.toFixed(2)}`
+                      : paymentMethod === 'UPI_QR'
+                      ? `Pay via UPI QR Code • ₹${total.toFixed(2)}`
                       : paymentMethod === 'UPI'
                       ? `Pay with UPI • ₹${total.toFixed(2)}`
                       : `Pay with Card / NetBanking • ₹${total.toFixed(2)}`}
@@ -719,6 +842,25 @@ export function CheckoutClient({
         </div>
       </form>
 
+
+      {/* UPI QR Payment Modal */}
+      {upiQrDetails && (
+        <UpiQrPaymentModal
+          isOpen={upiQrModalOpen}
+          onOpenChange={setUpiQrModalOpen}
+          details={upiQrDetails}
+          onPaymentSuccess={(trackingUrl) => {
+            clearCart();
+            setUpiQrModalOpen(false);
+            router.push(trackingUrl);
+          }}
+          onLaunchRazorpay={() => {
+            if (lastInitResult) {
+              openRazorpayCheckout(lastInitResult, true);
+            }
+          }}
+        />
+      )}
 
       {/* Razorpay Mock Sandbox Modal (active when real keys are not in .env) */}
       {mockOrderDetails && (

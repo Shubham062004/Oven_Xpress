@@ -36,21 +36,29 @@ export default function CartPage() {
     removeItem,
     clearCart,
     applyCoupon,
+    setCouponInstruction,
     removeCoupon,
   } = useCart();
 
   const [couponInput, setCouponInput] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponMessage, setCouponMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const handleApplyCoupon = (codeToApply?: string) => {
+  const handleApplyCoupon = async (codeToApply?: string) => {
     const code = codeToApply || couponInput;
     if (!code.trim()) return;
-    const result = applyCoupon(code);
-    if (result.success) {
-      setCouponMessage({ type: 'success', text: result.message });
-      setCouponInput('');
-    } else {
-      setCouponMessage({ type: 'error', text: result.message });
+    setIsApplyingCoupon(true);
+    setCouponMessage(null);
+    try {
+      const result = await applyCoupon(code);
+      if (result.success) {
+        setCouponMessage({ type: 'success', text: result.message });
+        setCouponInput('');
+      } else {
+        setCouponMessage({ type: 'error', text: result.message });
+      }
+    } finally {
+      setIsApplyingCoupon(false);
     }
   };
 
@@ -343,29 +351,49 @@ export default function CartPage() {
             </h3>
 
             {appliedCoupon ? (
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
-                    <Sparkles className="size-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="space-y-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
+                      <Sparkles className="size-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <span className="font-black text-xs tracking-wider uppercase block">
+                        {appliedCoupon.code}
+                      </span>
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        {appliedCoupon.freeItemName
+                          ? `Free Gift: ${appliedCoupon.freeItemName}`
+                          : appliedCoupon.discountType === 'percentage'
+                          ? `${appliedCoupon.discount}% discount applied`
+                          : `₹${appliedCoupon.discount} discount applied`}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-black text-xs tracking-wider uppercase block">
-                      {appliedCoupon.code}
-                    </span>
-                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                      {appliedCoupon.discountType === 'percentage'
-                        ? `${appliedCoupon.discount}% discount applied`
-                        : `₹${appliedCoupon.discount} discount applied`}
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={removeCoupon}
+                    className="text-xs font-bold text-destructive hover:underline cursor-pointer px-2 py-1"
+                  >
+                    Remove
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={removeCoupon}
-                  className="text-xs font-bold text-destructive hover:underline cursor-pointer px-2 py-1"
-                >
-                  Remove
-                </button>
+
+                {/* Birthday Cake Name Instruction Input */}
+                {(appliedCoupon.requiresInstruction || appliedCoupon.code === 'BIRTHDAY') && (
+                  <div className="pt-2 border-t border-emerald-500/20 space-y-1.5">
+                    <label className="block text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
+                      🎂 {appliedCoupon.instructionPrompt || 'Name / Message to write on Birthday Cake'}:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Happy Birthday Rahul!"
+                      value={appliedCoupon.instruction || ''}
+                      onChange={(e) => setCouponInstruction(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs bg-background border border-emerald-500/40 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -382,10 +410,11 @@ export default function CartPage() {
                   </div>
                   <button
                     type="button"
+                    disabled={isApplyingCoupon}
                     onClick={() => handleApplyCoupon()}
-                    className="px-4 py-2.5 rounded-xl bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-xs shadow-md shadow-orange-600/20 transition-all cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-xs shadow-md shadow-orange-600/20 transition-all cursor-pointer disabled:opacity-50"
                   >
-                    Apply
+                    {isApplyingCoupon ? 'Checking...' : 'Apply'}
                   </button>
                 </div>
 
@@ -405,19 +434,19 @@ export default function CartPage() {
                 <div className="flex flex-wrap gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => handleApplyCoupon('WELCOME50')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 text-xs font-bold text-primary transition-all cursor-pointer"
+                    onClick={() => handleApplyCoupon('FIRST50')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-orange-500/40 hover:border-orange-500 bg-orange-500/5 hover:bg-orange-500/10 text-xs font-bold text-orange-600 dark:text-orange-400 transition-all cursor-pointer"
                   >
-                    <span className="font-extrabold uppercase tracking-wider">WELCOME50</span>
-                    <span className="text-[10px] opacity-80">(₹50 OFF)</span>
+                    <span className="font-extrabold uppercase tracking-wider">FIRST50</span>
+                    <span className="text-[10px] opacity-80">(₹50 OFF • 1st Order &gt; ₹150)</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleApplyCoupon('PIZZA20')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 text-xs font-bold text-primary transition-all cursor-pointer"
+                    onClick={() => handleApplyCoupon('BIRTHDAY')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-pink-500/40 hover:border-pink-500 bg-pink-500/5 hover:bg-pink-500/10 text-xs font-bold text-pink-600 dark:text-pink-400 transition-all cursor-pointer"
                   >
-                    <span className="font-extrabold uppercase tracking-wider">PIZZA20</span>
-                    <span className="text-[10px] opacity-80">(20% OFF)</span>
+                    <span className="font-extrabold uppercase tracking-wider">🎂 BIRTHDAY</span>
+                    <span className="text-[10px] opacity-80">(FREE Cake &gt; ₹1500)</span>
                   </button>
                 </div>
               </div>

@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import type { OrderType, PaymentMethod } from '@prisma/client';
 import { publishOrderCreated, publishPaymentUpdated } from '@/lib/realtime/event-bus';
 import { generateTrackingToken, authorizeOrderAccess } from '@/lib/customer/tracking-token';
+import { validateCoupon, recordCouponUsage } from '@/lib/coupons/coupon-service';
 
 export interface CheckoutOrderItem {
   menuItemId: string;
@@ -22,6 +23,7 @@ export interface CheckoutPayload {
   deliveryNotes?: string;
   items: CheckoutOrderItem[];
   couponCode?: string;
+  couponInstruction?: string;
   paymentMethod: 'CASH' | 'UPI' | 'ONLINE' | 'CARD';
 }
 
@@ -48,6 +50,7 @@ export async function createCustomerOrderAction(
       deliveryNotes,
       items,
       couponCode,
+      couponInstruction,
       paymentMethod,
     } = payload;
 
@@ -132,18 +135,37 @@ export async function createCustomerOrderAction(
       });
     }
 
-    // 4. Calculate Tax, Delivery Charge, Discount
+    // 4. Authenticated User Check (Needed for both coupon checks and customer account linking)
+    const currentUser = await getCurrentUser();
+
+    // 5. Calculate Tax, Delivery Charge, Discount
     const taxAmount = Math.round(subtotal * 0.05 * 100) / 100; // 5% GST
     const deliveryCharge = orderType === 'DELIVERY' ? (subtotal >= 499 ? 0 : 40) : 0;
 
     let discountAmount = 0;
+    let validatedCouponData: { code: string; freeItemName?: string; instruction?: string } | null = null;
+
     if (couponCode) {
-      const cleanCode = couponCode.trim().toUpperCase();
-      if (cleanCode === 'WELCOME50' || cleanCode === 'FIRST50') {
-        discountAmount = Math.min(50, subtotal);
-      } else if (cleanCode === 'OVEN20' || cleanCode === 'PIZZA20') {
-        discountAmount = Math.min(Math.round(subtotal * 0.2 * 100) / 100, 150);
+      const couponValidation = await validateCoupon({
+        code: couponCode,
+        subtotal,
+        branchId,
+        userId: currentUser?.id,
+        customerPhone,
+        customerEmail: currentUser?.email,
+        instruction: couponInstruction,
+      });
+
+      if (!couponValidation.valid) {
+        return { success: false, error: couponValidation.message };
       }
+
+      discountAmount = couponValidation.discountAmount || 0;
+      validatedCouponData = {
+        code: couponValidation.code || couponCode.trim().toUpperCase(),
+        freeItemName: couponValidation.freeItemName,
+        instruction: couponInstruction || (couponValidation.freeItemName ? `Free Gift: ${couponValidation.freeItemName}` : undefined),
+      };
     }
 
     const totalAmount = Math.max(
@@ -151,8 +173,6 @@ export async function createCustomerOrderAction(
       Math.round((subtotal + taxAmount + deliveryCharge - discountAmount) * 100) / 100
     );
 
-    // 5. Check authenticated user
-    const currentUser = await getCurrentUser();
     let customerId: string | null = null;
 
     if (currentUser) {
@@ -245,6 +265,8 @@ export async function createCustomerOrderAction(
           deliveryCharge,
           totalAmount,
           notes: deliveryNotes || null,
+          couponCode: validatedCouponData?.code || null,
+          couponInstruction: validatedCouponData?.instruction || null,
           confirmedAt: new Date(),
           createdBy: currentUser ? currentUser.id : 'CUSTOMER_SELF_SERVICE',
           items: {
@@ -284,6 +306,22 @@ export async function createCustomerOrderAction(
 
       return order;
     });
+
+    // Record coupon usage in database
+    if (validatedCouponData) {
+      await recordCouponUsage({
+        couponCode: validatedCouponData.code,
+        userId: currentUser?.id,
+        customerId,
+        customerPhone,
+        customerEmail: currentUser?.email,
+        customerName,
+        orderId: createdOrder.id,
+        orderNumber: createdOrder.orderNumber,
+        discountAmount,
+        instruction: validatedCouponData.instruction,
+      });
+    }
 
     try {
       revalidatePath(`/track/${orderNumber}`);
@@ -529,6 +567,8 @@ export async function getCustomerOrderDetails(orderNumber: string, token?: strin
     customerPhone: order.customerPhone,
     deliveryAddress: order.deliveryAddress,
     deliveryNotes: order.deliveryNotes,
+    couponCode: order.couponCode,
+    couponInstruction: order.couponInstruction,
     branch: {
       id: order.branch.id,
       name: order.branch.name,

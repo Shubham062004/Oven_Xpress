@@ -12,6 +12,7 @@ import {
   getRazorpayKeyId,
 } from '@/lib/payments/razorpay';
 import type { CheckoutPayload } from '@/lib/customer/order-actions';
+import { validateCoupon, recordCouponUsage } from '@/lib/coupons/coupon-service';
 
 export interface InitiateRazorpayResult {
   success: boolean;
@@ -64,6 +65,7 @@ export async function initiateRazorpayOrderAction(
       deliveryNotes,
       items,
       couponCode,
+      couponInstruction,
       paymentMethod,
     } = payload;
 
@@ -149,20 +151,37 @@ export async function initiateRazorpayOrderAction(
 
     subtotal = Math.round(subtotal * 100) / 100;
 
-    // 4. Financial Calculations: GST (5%), Delivery charge
+    // 4. Authenticated User Check (Needed for coupon checks & customer account linking)
+    const currentUser = await getCurrentUser();
+
+    // 5. Financial Calculations: GST (5%), Delivery charge
     const taxAmount = Math.round(subtotal * 0.05 * 100) / 100;
-    const deliveryCharge = orderType === 'DELIVERY' ? (subtotal >= 499 ? 0 : 49) : 0;
+    const deliveryCharge = orderType === 'DELIVERY' ? (subtotal >= 499 ? 0 : 40) : 0;
 
     let discountAmount = 0;
+    let validatedCouponData: { code: string; freeItemName?: string; instruction?: string } | null = null;
+
     if (couponCode) {
-      const code = couponCode.trim().toUpperCase();
-      if (code === 'WELCOME50' && subtotal >= 200) {
-        discountAmount = Math.min(50, subtotal);
-      } else if (code === 'FREEDEL' && orderType === 'DELIVERY') {
-        discountAmount = deliveryCharge;
-      } else if (code === 'OVEN10') {
-        discountAmount = Math.round(subtotal * 0.1 * 100) / 100;
+      const couponValidation = await validateCoupon({
+        code: couponCode,
+        subtotal,
+        branchId,
+        userId: currentUser?.id,
+        customerPhone,
+        customerEmail: currentUser?.email,
+        instruction: couponInstruction,
+      });
+
+      if (!couponValidation.valid) {
+        return { success: false, error: couponValidation.message };
       }
+
+      discountAmount = couponValidation.discountAmount || 0;
+      validatedCouponData = {
+        code: couponValidation.code || couponCode.trim().toUpperCase(),
+        freeItemName: couponValidation.freeItemName,
+        instruction: couponInstruction || (couponValidation.freeItemName ? `Free Gift: ${couponValidation.freeItemName}` : undefined),
+      };
     }
 
     const totalAmount = Math.max(
@@ -170,8 +189,6 @@ export async function initiateRazorpayOrderAction(
       Math.round((subtotal + taxAmount + deliveryCharge - discountAmount) * 100) / 100
     );
 
-    // 5. Check authenticated user
-    const currentUser = await getCurrentUser();
     let customerId: string | null = null;
 
     if (currentUser) {
@@ -266,6 +283,8 @@ export async function initiateRazorpayOrderAction(
           deliveryCharge,
           totalAmount,
           notes: deliveryNotes || null,
+          couponCode: validatedCouponData?.code || null,
+          couponInstruction: validatedCouponData?.instruction || null,
           createdBy: currentUser ? currentUser.id : 'CUSTOMER_SELF_SERVICE',
           items: {
             create: validatedOrderItems.map((item) => ({
@@ -454,6 +473,21 @@ export async function verifyAndCompleteRazorpayPaymentAction(
         },
       });
     });
+
+    // Record coupon usage in database if coupon was used
+    if (existingOrder.couponCode) {
+      await recordCouponUsage({
+        couponCode: existingOrder.couponCode,
+        userId: existingOrder.customerId ? existingOrder.customer?.userId : null,
+        customerId: existingOrder.customerId,
+        customerPhone: existingOrder.customerPhone,
+        customerName: existingOrder.customerName,
+        orderId: existingOrder.id,
+        orderNumber: existingOrder.orderNumber,
+        discountAmount: Number(existingOrder.discountAmount),
+        instruction: existingOrder.couponInstruction,
+      });
+    }
 
     // 4. Revalidate cache
     try {
