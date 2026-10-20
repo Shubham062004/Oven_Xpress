@@ -16,6 +16,10 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -48,6 +52,13 @@ import { TableSkeleton } from '@/components/ui/loading-skeleton';
 
 import { EmployeeFormDialog } from '@/components/employees/employee-form-dialog';
 import { EmployeeDeleteDialog } from '@/components/employees/employee-delete-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -90,6 +101,21 @@ function SortIndicator({
   );
 }
 
+// ─── Pagination Range Helper ────────────────────────────────────────────────
+
+function getVisiblePages(current: number, total: number): (number | string)[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export function EmployeeListClient({
@@ -112,6 +138,10 @@ export function EmployeeListClient({
   // Sorting state (Default: Employee A–Z)
   const [sortColumn, setSortColumn] = useState<SortColumn>('employee');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Pagination state (Default: 10 items per page with 10, 25, 50 options)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Salary Privacy: Hidden by default (stores set of employee IDs with revealed salaries)
   const [revealedSalaries, setRevealedSalaries] = useState<Set<string>>(new Set());
@@ -158,6 +188,7 @@ export function EmployeeListClient({
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
+    setCurrentPage(1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchEmployees(value);
@@ -166,6 +197,7 @@ export function EmployeeListClient({
 
   const clearSearch = () => {
     setSearchQuery('');
+    setCurrentPage(1);
     fetchEmployees('');
   };
 
@@ -178,6 +210,7 @@ export function EmployeeListClient({
   // ─── Sorting Logic ────────────────────────────────────────────────────────
 
   const handleSort = (column: SortColumn) => {
+    setCurrentPage(1);
     if (sortColumn === column) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -238,11 +271,33 @@ export function EmployeeListClient({
     });
   }, [employees, sortColumn, sortDirection]);
 
+  // ─── Pagination Calculations ──────────────────────────────────────────────
+
+  const totalItems = sortedEmployees.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const activePage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = totalItems === 0 ? 0 : (activePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+  const paginatedEmployees = useMemo(() => {
+    return sortedEmployees.slice(startIndex, endIndex);
+  }, [sortedEmployees, startIndex, endIndex]);
+
+  const handlePageChange = (newPage: number) => {
+    const clamped = Math.max(1, Math.min(newPage, totalPages));
+    setCurrentPage(clamped);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
+
   // ─── Salary Visibility Logic ──────────────────────────────────────────────
 
   const allSalariesVisible =
-    sortedEmployees.length > 0 &&
-    sortedEmployees.every((emp) => revealedSalaries.has(emp.id));
+    paginatedEmployees.length > 0 &&
+    paginatedEmployees.every((emp) => revealedSalaries.has(emp.id));
 
   const toggleSingleSalary = (id: string) => {
     setRevealedSalaries((prev) => {
@@ -258,11 +313,19 @@ export function EmployeeListClient({
 
   const toggleAllSalaries = () => {
     if (allSalariesVisible) {
-      // Hiding globally hides all row salaries
-      setRevealedSalaries(new Set());
+      // Hiding row salaries for current visible page
+      setRevealedSalaries((prev) => {
+        const next = new Set(prev);
+        paginatedEmployees.forEach((emp) => next.delete(emp.id));
+        return next;
+      });
     } else {
-      // Revealing globally reveals all rows currently displayed
-      setRevealedSalaries(new Set(sortedEmployees.map((e) => e.id)));
+      // Revealing row salaries for current visible page
+      setRevealedSalaries((prev) => {
+        const next = new Set(prev);
+        paginatedEmployees.forEach((emp) => next.add(emp.id));
+        return next;
+      });
     }
   };
 
@@ -564,7 +627,7 @@ export function EmployeeListClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedEmployees.map((emp) => {
+              {paginatedEmployees.map((emp) => {
                 const isSalaryRevealed = revealedSalaries.has(emp.id);
 
                 return (
@@ -715,13 +778,132 @@ export function EmployeeListClient({
               })}
             </TableBody>
           </Table>
+
+          {/* Desktop Pagination Footer */}
+          <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span>
+                Showing{' '}
+                <span className="font-semibold text-foreground">
+                  {totalItems === 0 ? 0 : startIndex + 1}
+                </span>{' '}
+                to{' '}
+                <span className="font-semibold text-foreground">{endIndex}</span>{' '}
+                of{' '}
+                <span className="font-semibold text-foreground">{totalItems}</span>{' '}
+                employees
+              </span>
+            </div>
+
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <span>Rows per page:</span>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(val) => {
+                    if (val) handlePageSizeChange(Number(val));
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-18 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => handlePageChange(1)}
+                  disabled={activePage <= 1 || isPending}
+                  title="First page"
+                  aria-label="First page"
+                  className="size-8"
+                >
+                  <ChevronsLeft className="size-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => handlePageChange(activePage - 1)}
+                  disabled={activePage <= 1 || isPending}
+                  title="Previous page"
+                  aria-label="Previous page"
+                  className="size-8"
+                >
+                  <ChevronLeft className="size-3.5" />
+                </Button>
+
+                <div className="flex items-center gap-1 mx-1">
+                  {getVisiblePages(activePage, totalPages).map((p, idx) => {
+                    if (p === '...') {
+                      return (
+                        <span
+                          key={`dots-${idx}`}
+                          className="px-1 text-muted-foreground select-none"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    const pageNum = Number(p);
+                    const isActive = pageNum === activePage;
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={isActive ? 'default' : 'outline'}
+                        size="icon-sm"
+                        onClick={() => handlePageChange(pageNum)}
+                        disabled={isPending}
+                        className={`size-8 text-xs ${
+                          isActive
+                            ? 'font-semibold shadow-xs'
+                            : 'font-normal hover:bg-muted'
+                        }`}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => handlePageChange(activePage + 1)}
+                  disabled={activePage >= totalPages || isPending}
+                  title="Next page"
+                  aria-label="Next page"
+                  className="size-8"
+                >
+                  <ChevronRight className="size-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={activePage >= totalPages || isPending}
+                  title="Last page"
+                  aria-label="Last page"
+                  className="size-8"
+                >
+                  <ChevronsRight className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Mobile Cards Layout */}
       {sortedEmployees.length > 0 && (
         <div className="grid gap-3 md:hidden">
-          {sortedEmployees.map((emp) => {
+          {paginatedEmployees.map((emp) => {
             const isSalaryRevealed = revealedSalaries.has(emp.id);
 
             return (
@@ -829,6 +1011,66 @@ export function EmployeeListClient({
               </Card>
             );
           })}
+
+          {/* Mobile Pagination Card */}
+          <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 text-xs text-muted-foreground shadow-xs">
+            <div className="flex items-center justify-between">
+              <span>
+                Showing{' '}
+                <span className="font-semibold text-foreground">
+                  {totalItems === 0 ? 0 : startIndex + 1}
+                </span>
+                –
+                <span className="font-semibold text-foreground">{endIndex}</span>{' '}
+                of{' '}
+                <span className="font-semibold text-foreground">{totalItems}</span>
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span>Rows:</span>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(val) => {
+                    if (val) handlePageSizeChange(Number(val));
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-16 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(activePage - 1)}
+                disabled={activePage <= 1 || isPending}
+                className="h-8 gap-1 text-xs"
+              >
+                <ChevronLeft className="size-3.5" />
+                Prev
+              </Button>
+              <span className="font-medium text-foreground">
+                Page {activePage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(activePage + 1)}
+                disabled={activePage >= totalPages || isPending}
+                className="h-8 gap-1 text-xs"
+              >
+                Next
+                <ChevronRight className="size-3.5" />
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
