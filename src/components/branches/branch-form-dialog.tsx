@@ -75,8 +75,13 @@ export function BranchFormDialog({
     managerId: branch?.manager?.id ?? 'UNASSIGNED',
   });
 
-  // Re-sync form data when branch prop changes
-  useEffect(() => {
+  const [prevBranch, setPrevBranch] = useState(branch);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  // Adjust form state during render when branch or open changes
+  if (branch !== prevBranch || open !== prevOpen) {
+    setPrevBranch(branch);
+    setPrevOpen(open);
     if (branch) {
       setFormData({
         name: branch.name ?? '',
@@ -112,14 +117,16 @@ export function BranchFormDialog({
     }
     setFieldErrors({});
     setFormError(null);
-  }, [branch, open]);
+    if (open && !prevOpen) {
+      setLoadingManagers(true);
+    }
+  }
 
   // Load eligible managers when dialog opens
   useEffect(() => {
     if (!open) return;
 
     let isMounted = true;
-    setLoadingManagers(true);
 
     getEligibleBranchManagers()
       .then((res) => {

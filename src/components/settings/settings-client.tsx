@@ -27,9 +27,9 @@ import {
 } from 'lucide-react';
 import {
   SETTING_CATEGORIES,
-  SettingCategory,
+  type SettingCategory,
 } from '@/lib/settings/setting-definitions';
-import { ResolvedSettingItem } from '@/lib/settings/settings-service';
+import type { ResolvedSettingItem } from '@/lib/settings/settings-service';
 import {
   updateSettingAction,
   resetSettingAction,

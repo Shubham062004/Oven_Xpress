@@ -20,7 +20,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-import { isItemVeg, type BranchMenuData } from '@/lib/customer/menu-service';
+import { isItemVeg, type BranchMenuData } from '@/lib/customer/menu-utils';
 
 interface MenuClientProps {
   data: BranchMenuData;

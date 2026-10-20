@@ -1,3 +1,4 @@
+import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { getProductImage } from './menu-service';
 

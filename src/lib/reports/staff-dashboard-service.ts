@@ -1,3 +1,4 @@
+import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { OrderStatus } from '@prisma/client';
 import { getOrSetCache, CACHE_KEYS } from '@/lib/cache/cache-service';

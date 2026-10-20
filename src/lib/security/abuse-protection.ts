@@ -10,6 +10,9 @@
  */
 
 import { checkRateLimit, resetRateLimit, type RateLimitResult } from './rate-limit';
+import { HONEYPOT_FIELD_NAME } from './constants';
+
+export { HONEYPOT_FIELD_NAME };
 
 export interface AbuseCheckResult {
   allowed: boolean;
@@ -17,9 +20,6 @@ export interface AbuseCheckResult {
   retryAfterSeconds: number;
   remaining?: number;
 }
-
-// Default honeypot field name embedded in forms
-export const HONEYPOT_FIELD_NAME = '_hp_security_check';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. LOGIN ABUSE PROTECTION (Dual-Layer: Email + IP)

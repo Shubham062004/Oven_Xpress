@@ -1,3 +1,4 @@
+import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { Prisma } from '@prisma/client';
 import { resolveEligibleRecipients } from './recipient-resolver';

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Plus, Minus, Clock } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
 import { WishlistButton } from './wishlist-button';
-import { isItemVeg, type PublicMenuItem } from '@/lib/customer/menu-service';
+import { isItemVeg, type PublicMenuItem } from '@/lib/customer/menu-utils';
 
 interface ItemCardProps {
   item: PublicMenuItem;

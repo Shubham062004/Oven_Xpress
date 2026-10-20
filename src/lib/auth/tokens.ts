@@ -1,3 +1,4 @@
+import 'server-only';
 import crypto from 'crypto';
 import { prisma } from '@/lib/db/prisma';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';

@@ -18,7 +18,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useCart } from '@/context/cart-context';
-import { isItemVeg } from '@/lib/customer/menu-service';
+import { isItemVeg } from '@/lib/customer/menu-utils';
 
 export default function CartPage() {
   const {

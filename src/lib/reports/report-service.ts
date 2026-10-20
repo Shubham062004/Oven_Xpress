@@ -15,6 +15,7 @@
  * - Customers & Reviews (Customer directory, star ratings, moderation)
  */
 
+import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import type { AuthUser } from '@/lib/auth/types';
 import { hasPermission } from '@/lib/permissions/check';

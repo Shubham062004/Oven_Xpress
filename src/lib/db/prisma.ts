@@ -1,8 +1,9 @@
+import 'server-only';
 import { PrismaClient } from '@prisma/client';
 import { assertSecureEnvironment } from '@/lib/security/env-validation';
 
 // Enforce environment security (SSL connection, secret entropy, zero client leakage)
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
   assertSecureEnvironment();
 }
 

@@ -1,5 +1,7 @@
+import 'server-only';
+
 /**
- * Production Environment & Secrets Security Validator
+ * Production Environment & Secrets Security Validator (Server-Only)
  *
  * Validates that:
  * 1. Critical server secrets (DATABASE_URL, AUTH_SECRET) are configured with adequate entropy.
@@ -34,8 +36,18 @@ const SENSITIVE_KEYWORD_PATTERNS = [
 
 /**
  * Validates the runtime environment against production security benchmarks.
+ * Strictly runs on the server; returns early if invoked in a browser environment.
  */
 export function validateEnvironment(): EnvValidationResult {
+  if (typeof window !== 'undefined') {
+    return {
+      valid: true,
+      errors: [],
+      warnings: [],
+      environment: 'production',
+    };
+  }
+
   const env = (process.env.NODE_ENV || 'development') as 'development' | 'production' | 'test';
   const isProd = env === 'production';
   const errors: string[] = [];
@@ -61,11 +73,11 @@ export function validateEnvironment(): EnvValidationResult {
     }
   }
 
-  // 2. Validate AUTH_SECRET
-  const authSecret = process.env.AUTH_SECRET;
+  // 2. Validate AUTH_SECRET (supports AUTH_SECRET and NEXTAUTH_SECRET)
+  const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
   if (!authSecret || authSecret.trim().length === 0) {
     if (isProd) {
-      errors.push('AUTH_SECRET is required in production.');
+      errors.push('AUTH_SECRET (or NEXTAUTH_SECRET) is required in production.');
     } else {
       warnings.push('AUTH_SECRET is not set; using development fallback. Must configure before deployment.');
     }
@@ -115,8 +127,13 @@ export function validateEnvironment(): EnvValidationResult {
 
 /**
  * Asserts that the environment is secure. Throws in production if security invariants fail.
+ * Never throws or executes in browser contexts.
  */
 export function assertSecureEnvironment(): void {
+  if (typeof window !== 'undefined') {
+    return;
+  }
+
   const result = validateEnvironment();
 
   if (result.warnings.length > 0) {

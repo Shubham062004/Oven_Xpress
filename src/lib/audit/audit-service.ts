@@ -9,6 +9,7 @@
  * - No update or delete methods exist in this service or repository.
  */
 
+import 'server-only';
 import { headers } from 'next/headers';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';

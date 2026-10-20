@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { registerAction, type RegisterFormState } from '@/lib/auth/actions';
-import { HONEYPOT_FIELD_NAME } from '@/lib/security/abuse-protection';
+import { HONEYPOT_FIELD_NAME } from '@/lib/security/constants';
 
 const INITIAL_STATE: RegisterFormState = {
   success: false,

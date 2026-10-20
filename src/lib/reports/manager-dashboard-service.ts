@@ -1,3 +1,4 @@
+import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { OrderStatus } from '@prisma/client';
 import { calculateBatchStock } from '@/lib/inventory/actions';
