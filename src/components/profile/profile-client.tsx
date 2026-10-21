@@ -510,10 +510,10 @@ export function ProfileClient({
                   type="submit"
                   variant="outline"
                   size="sm"
-                  className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+                  className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20 font-medium cursor-pointer"
                 >
-                  <LogOut className="size-3.5" />
-                  Sign Out
+                  <LogOut className="size-4" />
+                  Logout
                 </Button>
               </form>
             </div>

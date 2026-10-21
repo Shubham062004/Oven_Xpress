@@ -16,7 +16,14 @@
  */
 
 import { prisma } from '../src/lib/db/prisma';
-import { SESSION_TTL_SECONDS, SESSION_COOKIE_NAME } from '../src/lib/auth/session';
+import {
+  SESSION_TTL_SECONDS,
+  STAFF_SESSION_TTL_SECONDS,
+  CUSTOMER_SESSION_TTL_SECONDS,
+  EXECUTIVE_SESSION_TTL_SECONDS,
+  getSessionTtlSeconds,
+  SESSION_COOKIE_NAME,
+} from '../src/lib/auth/session';
 import { AUDIT_ACTIONS } from '../src/lib/audit/audit-types';
 import { isSafeRedirectUrl, sanitizeRedirectUrl } from '../src/lib/security/url-validation';
 import crypto from 'crypto';
@@ -56,8 +63,23 @@ async function main() {
   console.log('▶ SUITE 1: Session Lifetime & Expiration Invariants');
 
   assert(
-    SESSION_TTL_SECONDS === 600,
-    'SESSION-02: SESSION_TTL_SECONDS is exactly 600 seconds (10 minutes)'
+    STAFF_SESSION_TTL_SECONDS === 12 * 60 * 60,
+    'SESSION-02: STAFF_SESSION_TTL_SECONDS is exactly 43,200 seconds (12 hours)'
+  );
+
+  assert(
+    getSessionTtlSeconds('STAFF') === 43200,
+    'SESSION-02b: getSessionTtlSeconds for STAFF returns 12 hours (43,200s)'
+  );
+
+  assert(
+    getSessionTtlSeconds('MANAGER') === 43200,
+    'SESSION-02c: getSessionTtlSeconds for MANAGER returns 12 hours (43,200s)'
+  );
+
+  assert(
+    getSessionTtlSeconds('OWNER') === 1800,
+    'SESSION-02d: getSessionTtlSeconds for OWNER returns 30 minutes (1,800s)'
   );
 
   assert(
@@ -65,10 +87,11 @@ async function main() {
     'SESSION-24: Session cookie name is ox_session'
   );
 
-  // Simulate creation of a 10-minute session
+  // Simulate creation of a 12-hour session for staff / branch manager
   const token = crypto.randomBytes(32).toString('hex');
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
+  const staffTtl = getSessionTtlSeconds(user.role.name);
+  const expiresAt = new Date(now.getTime() + staffTtl * 1000);
 
   const session = await prisma.session.create({
     data: {
@@ -83,24 +106,24 @@ async function main() {
   assert(Boolean(session.id), 'SESSION-01: Session created successfully in database');
   const diffSeconds = Math.round((session.expiresAt.getTime() - session.createdAt.getTime()) / 1000);
   assert(
-    diffSeconds === 600,
-    `SESSION-02: Session lifetime is exactly 600 seconds (actual: ${diffSeconds}s)`
+    diffSeconds === 43200,
+    `SESSION-02: Staff/Manager Session lifetime is exactly 43,200 seconds (12 hours) (actual: ${diffSeconds}s)`
   );
 
-  // Test request at 9 minutes (540 seconds elapsed) -> Should be VALID
-  const nineMinutesElapsed = new Date(session.createdAt.getTime() + 9 * 60 * 1000);
-  const isValidAt9Min = session.expiresAt > nineMinutesElapsed;
+  // Test request at 11 hours (39,600 seconds elapsed) -> Should be VALID
+  const elevenHoursElapsed = new Date(session.createdAt.getTime() + 11 * 60 * 60 * 1000);
+  const isValidAt11Hours = session.expiresAt > elevenHoursElapsed;
   assert(
-    isValidAt9Min,
-    'SESSION-03: Request at 9 minutes (before 10-minute cutoff) is authenticated and VALID'
+    isValidAt11Hours,
+    'SESSION-03: Request at 11 hours (before 12-hour cutoff) is authenticated and VALID'
   );
 
-  // Test request at 10 minutes + 1 second (601 seconds elapsed) -> Should be EXPIRED
-  const tenMinutesElapsed = new Date(session.createdAt.getTime() + 10 * 60 * 1000 + 1000);
-  const isExpiredAt10Min = session.expiresAt <= tenMinutesElapsed;
+  // Test request at 12 hours + 1 second (43,201 seconds elapsed) -> Should be EXPIRED
+  const twelveHoursElapsed = new Date(session.createdAt.getTime() + 12 * 60 * 60 * 1000 + 1000);
+  const isExpiredAt12Hours = session.expiresAt <= twelveHoursElapsed;
   assert(
-    isExpiredAt10Min,
-    'SESSION-04: Request at 10+ minutes is detected as EXPIRED by server'
+    isExpiredAt12Hours,
+    'SESSION-04: Request at 12+ hours is detected as EXPIRED by server'
   );
 
   // Clean up initial test session

@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
 
 import { cn } from 'cn';
 import { Button } from '@/components/ui/button';
+import { logoutAction } from '@/lib/auth/actions';
 import {
   Tooltip,
   TooltipContent,
@@ -161,6 +162,40 @@ export function Sidebar({ user }: SidebarProps) {
 
           return linkContent;
         })}
+
+        {/* Logout Button */}
+        {isCollapsed ? (
+          <form action={logoutAction} className="w-full mt-1">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="icon"
+                    className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Logout"
+                  >
+                    <LogOut className="size-4 shrink-0" />
+                  </Button>
+                }
+              />
+              <TooltipContent side="right">Logout</TooltipContent>
+            </Tooltip>
+          </form>
+        ) : (
+          <form action={logoutAction} className="w-full mt-1">
+            <Button
+              type="submit"
+              variant="ghost"
+              className="w-full justify-start gap-3 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive text-sm font-medium"
+              aria-label="Logout"
+            >
+              <LogOut className="size-4 shrink-0" />
+              <span>Logout</span>
+            </Button>
+          </form>
+        )}
 
         {/* Collapse Toggle */}
         <Tooltip>

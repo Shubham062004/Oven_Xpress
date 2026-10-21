@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,6 @@ import { ExecutiveKPIGrid } from './executive-kpi-grid';
 import { BranchPerformanceSection } from './branch-performance-section';
 import { OperationsSummaryGrid } from './operations-summary-grid';
 import { RecentActivityFeed } from './recent-activity-feed';
-import { DashboardAlertWidget } from '@/components/notifications/dashboard-alert-widget';
 
 // Lazy-load Recharts-based trend chart to minimize initial JS bundle
 const SalesTrendSection = dynamic(
@@ -35,6 +34,13 @@ import {
 } from '@/lib/reports/dashboard-service';
 import { downloadCSV } from '@/lib/reports/constants';
 import { useRealtime } from '@/lib/realtime/use-realtime';
+import type { RealtimeEventType } from '@/lib/realtime/types';
+
+const OWNER_DASHBOARD_EVENTS: RealtimeEventType[] = [
+  'order:created',
+  'order:status_changed',
+  'payment:updated',
+];
 
 interface OwnerDashboardClientProps {
   initialData: ExecutiveDashboardData;
@@ -113,12 +119,27 @@ export function OwnerDashboardClient({ initialData }: OwnerDashboardClientProps)
     });
   };
 
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   useRealtime({
-    eventTypes: ['order:created', 'order:status_changed', 'payment:updated'],
+    eventTypes: OWNER_DASHBOARD_EVENTS,
     onEvent: () => {
-      handleRefresh();
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      refreshTimerRef.current = setTimeout(() => {
+        handleRefresh();
+      }, 600);
     },
   });
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleExportCSV = async () => {
     const res = await exportDashboardSummaryCSV({
@@ -191,10 +212,6 @@ export function OwnerDashboardClient({ initialData }: OwnerDashboardClientProps)
         </div>
       )}
 
-      {/* ─── Operational Alerts Banner (Step 16) ───────────────────────────── */}
-      <DashboardAlertWidget
-        branchId={data.effectiveBranchId}
-      />
 
       {/* ─── Global Filters Bar ────────────────────────────────────────────── */}
       <DashboardFilterBar

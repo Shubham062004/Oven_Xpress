@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { User as UserIcon } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 import { cn } from 'cn';
+import { logoutAction } from '@/lib/auth/actions';
 import {
   Sheet,
   SheetContent,
@@ -102,21 +103,6 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
 
         <div className="px-3 pb-3">
           <Separator className="mb-3" />
-          {user ? (
-            <Link
-              href={`/${userRole}/profile`}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2.5 min-h-11 text-sm font-medium transition-colors mb-1',
-                pathname.startsWith(`/${userRole}/profile`)
-                  ? 'bg-accent text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              )}
-            >
-              <UserIcon className="size-4 shrink-0" />
-              <span>My Profile</span>
-            </Link>
-          ) : null}
           {visibleBottomNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -139,6 +125,18 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
               </Link>
             );
           })}
+
+          {/* Logout Button */}
+          <form action={logoutAction} className="w-full mt-1">
+            <button
+              type="submit"
+              onClick={() => setMobileOpen(false)}
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 min-h-11 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+            >
+              <LogOut className="size-4 shrink-0" />
+              <span>Logout</span>
+            </button>
+          </form>
         </div>
       </SheetContent>
     </Sheet>

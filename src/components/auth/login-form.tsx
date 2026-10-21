@@ -49,7 +49,7 @@ export function LoginForm() {
           <Clock className="size-4 text-amber-600 dark:text-amber-400" />
           <AlertTitle>Session Expired</AlertTitle>
           <AlertDescription className="text-xs">
-            Your session expired after 10 minutes for security. Please log in again to continue.
+            Your session expired for security. Please log in again to continue.
           </AlertDescription>
         </Alert>
       )}

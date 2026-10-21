@@ -10,12 +10,39 @@ import { logAuthAttempt } from '@/lib/security/security-logger';
 
 export const SESSION_COOKIE_NAME = 'ox_session';
 export const ROLE_COOKIE_NAME = 'ox_user_role';
-export const SESSION_TTL_SECONDS = 10 * 60; // Exactly 10 minutes (600 seconds) for ERP users
+export const STAFF_SESSION_TTL_SECONDS = 12 * 60 * 60; // 12 hours (43,200 seconds) for staff and branch managers
+export const EXECUTIVE_SESSION_TTL_SECONDS = 30 * 60; // 30 minutes for executive (owner / admin) sessions
 export const CUSTOMER_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days for customer users
+export const SESSION_TTL_SECONDS = STAFF_SESSION_TTL_SECONDS; // Default session TTL fallback
+
+/**
+ * Returns session TTL in seconds based on role.
+ * Operational roles (Staff, Branch Manager) get 12 hours.
+ * Customers get 7 days.
+ * Executive roles (Owner, Admin) get 30 minutes.
+ */
+export function getSessionTtlSeconds(roleName?: string | null): number {
+  const normalized = (roleName || '').toLowerCase().trim().replace(/[\s_-]+/g, '');
+  if (normalized === 'customer') {
+    return CUSTOMER_SESSION_TTL_SECONDS;
+  }
+  if (
+    normalized === 'staff' ||
+    normalized === 'manager' ||
+    normalized === 'branchmanager'
+  ) {
+    return STAFF_SESSION_TTL_SECONDS;
+  }
+  if (normalized === 'owner' || normalized === 'admin') {
+    return EXECUTIVE_SESSION_TTL_SECONDS;
+  }
+  return STAFF_SESSION_TTL_SECONDS;
+}
 
 /**
  * Creates a new session in the database and writes the secure HTTP-only cookies.
- * ERP users get a strict 10-minute absolute lifetime.
+ * Staff and Branch Managers receive a 12-hour session for full shifts.
+ * Executive users (Owner, Admin) get a 30-minute session.
  * Customer users get a 7-day session for comfortable browsing/ordering.
  */
 export async function createSession(
@@ -30,8 +57,7 @@ export async function createSession(
     select: { role: { select: { name: true } } },
   });
   const roleName = (userRecord?.role?.name || 'STAFF').toLowerCase();
-  const isCustomer = roleName === 'customer';
-  const ttlSeconds = isCustomer ? CUSTOMER_SESSION_TTL_SECONDS : SESSION_TTL_SECONDS;
+  const ttlSeconds = getSessionTtlSeconds(roleName);
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   // Store in database
@@ -127,7 +153,7 @@ export async function validateSession(): Promise<SessionValidationResult> {
       };
     }
 
-    // Check expiration (Strict 10 minutes enforced by server)
+    // Check expiration (Enforced by server based on role TTL)
     const now = new Date();
     if (sessionRecord.expiresAt <= now) {
       await prisma.session.deleteMany({ where: { sessionToken } });
@@ -140,7 +166,7 @@ export async function validateSession(): Promise<SessionValidationResult> {
           action: AUDIT_ACTIONS.AUTH_SESSION_EXPIRED,
           entityType: AUDIT_ENTITY_TYPES.SESSION,
           entityId: sessionRecord.userId,
-          description: `User session expired after 10 minutes for ${sessionRecord.user.name} (${sessionRecord.user.email})`,
+          description: `User session expired for ${sessionRecord.user.name} (${sessionRecord.user.email})`,
         });
       } catch (auditErr) {
         console.error('Failed to log session expiration audit:', auditErr);

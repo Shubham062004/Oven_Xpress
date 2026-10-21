@@ -1,4 +1,4 @@
-import BugReportsPage, { metadata } from '../../bug-reports/page';
+import BugReportsPage, { metadata } from '@/app/(dashboard)/bug-reports/page';
 
 export { metadata };
 export default BugReportsPage;

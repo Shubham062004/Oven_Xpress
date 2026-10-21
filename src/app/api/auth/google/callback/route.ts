@@ -4,10 +4,9 @@ import { prisma } from '@/lib/db/prisma';
 import { hashPassword } from '@/lib/auth/password';
 import {
   createSession,
-  CUSTOMER_SESSION_TTL_SECONDS,
   ROLE_COOKIE_NAME,
   SESSION_COOKIE_NAME,
-  SESSION_TTL_SECONDS,
+  getSessionTtlSeconds,
 } from '@/lib/auth/session';
 import {
   exchangeGoogleCodeForToken,
@@ -235,7 +234,7 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(new URL(destinationPath, request.url));
     const isProduction = process.env.NODE_ENV === 'production';
-    const ttl = isCustomer ? CUSTOMER_SESSION_TTL_SECONDS : SESSION_TTL_SECONDS;
+    const ttl = getSessionTtlSeconds(roleSlug);
     const expiresAt = new Date(Date.now() + ttl * 1000);
 
     // Set HTTP-only session cookies

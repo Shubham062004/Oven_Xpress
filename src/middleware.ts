@@ -122,11 +122,9 @@ const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
     'orders',
     'kitchen',
     'attendance',
-    'menu',
     'expenses',
     'bug-reports',
     'profile',
-    'notifications',
   ],
 };
 

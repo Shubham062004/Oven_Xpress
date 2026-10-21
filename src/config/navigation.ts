@@ -18,10 +18,10 @@ import {
   FileSpreadsheet,
   Star,
   MessageSquare,
-  Bell,
   ScrollText,
   Bug,
   Tag,
+  User,
 } from 'lucide-react';
 
 import { PERMISSIONS } from '@/lib/permissions/definitions';
@@ -39,12 +39,6 @@ export const mainNavItems: NavItem[] = [
     href: '/',
     icon: LayoutDashboard,
     requiredPermission: PERMISSIONS.DASHBOARD_READ,
-  },
-  {
-    label: 'Notifications',
-    href: '/notifications',
-    icon: Bell,
-    requiredPermission: PERMISSIONS.NOTIFICATION_READ,
   },
   {
     label: 'Branches',
@@ -175,6 +169,11 @@ export const mainNavItems: NavItem[] = [
 
 export const bottomNavItems: NavItem[] = [
   {
+    label: 'Profile',
+    href: '/profile',
+    icon: User,
+  },
+  {
     label: 'Settings',
     href: '/settings',
     icon: Settings,
@@ -256,12 +255,10 @@ export const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
     'orders',
     'kitchen',
     'attendance',
-    'menu',
     'inventory',
     'customers',
-    'payments',
     'expenses',
-    'notifications',
+    'bug-reports',
     'profile',
   ],
 };

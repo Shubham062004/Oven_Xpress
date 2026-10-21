@@ -29,6 +29,9 @@ import {
 } from '@/lib/notifications/actions';
 import type { NotificationItem, NotificationSeverity } from '@/lib/notifications/types';
 import { useRealtime } from '@/lib/realtime/use-realtime';
+import type { RealtimeEventType } from '@/lib/realtime/types';
+
+const NOTIF_BELL_EVENTS: RealtimeEventType[] = ['notification:new', 'bug_report:created'];
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -87,21 +90,22 @@ export function NotificationBell() {
   const [isPending, startTransition] = useTransition();
 
   const loadNotifications = async () => {
+    if (typeof window !== 'undefined' && window.__ox_session_expired) return;
     try {
       const res = await getRecentNotificationsAction(5);
       if (res.success && res.data) {
         setNotifications(res.data.notifications);
         setUnreadCount(res.data.unreadCount);
       }
-    } catch (err) {
-      console.error('Failed to load notifications:', err);
+    } catch {
+      // Quietly ignore if session has expired or aborted
     } finally {
       setIsLoading(false);
     }
   };
 
   useRealtime({
-    eventTypes: ['notification:new', 'bug_report:created'],
+    eventTypes: NOTIF_BELL_EVENTS,
     onEvent: () => {
       loadNotifications();
     },
@@ -109,25 +113,62 @@ export function NotificationBell() {
 
   useEffect(() => {
     let isMounted = true;
+    let interval: NodeJS.Timeout | null = null;
+
+    const stopPolling = () => {
+      isMounted = false;
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
     const fetchRecent = async () => {
+      if (!isMounted) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (typeof window !== 'undefined' && window.__ox_session_expired) {
+        stopPolling();
+        return;
+      }
+
       try {
         const res = await getRecentNotificationsAction(5);
         if (isMounted && res.success && res.data) {
           setNotifications(res.data.notifications);
           setUnreadCount(res.data.unreadCount);
         }
-      } catch (err) {
-        console.error('Failed to load notifications:', err);
+      } catch (err: unknown) {
+        if (typeof window !== 'undefined' && window.__ox_session_expired) {
+          stopPolling();
+          return;
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('NEXT_REDIRECT') || msg.includes('unexpected response') || msg.includes('Unauthorized')) {
+          stopPolling();
+          return;
+        }
+        console.warn('Failed to load notifications:', msg);
       } finally {
         if (isMounted) setIsLoading(false);
       }
     };
 
+    const onSessionExpired = () => {
+      stopPolling();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('ox:session-expired', onSessionExpired);
+    }
+
     fetchRecent();
-    const interval = setInterval(fetchRecent, 60000);
+    interval = setInterval(fetchRecent, 60000);
+
     return () => {
-      isMounted = false;
-      clearInterval(interval);
+      stopPolling();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('ox:session-expired', onSessionExpired);
+      }
     };
   }, []);
 

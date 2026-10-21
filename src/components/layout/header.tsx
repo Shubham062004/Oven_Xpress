@@ -202,7 +202,7 @@ export function Header({ user }: HeaderProps) {
                   className="relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-2 sm:py-1.5 min-h-11 sm:min-h-0 text-sm text-destructive outline-none transition-colors hover:bg-destructive/10 focus:bg-destructive/10 font-medium"
                 >
                   <LogOut className="size-4" />
-                  <span>Sign out</span>
+                  <span>Logout</span>
                 </button>
               </form>
             </DropdownMenuContent>

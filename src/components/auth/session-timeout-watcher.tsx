@@ -12,16 +12,13 @@ const BROADCAST_CHANNEL_NAME = 'ox_session_sync';
 const STORAGE_EVENT_KEY = 'ox_session_expired_event';
 
 export function SessionTimeoutWatcher() {
-  const { expiresAt } = useAuthContext();
-  const [isExpired, setIsExpired] = React.useState(() => {
-    return Boolean(expiresAt && Date.now() >= expiresAt);
-  });
+  const { user, expiresAt, isExpired, setExpired } = useAuthContext();
   const router = useRouter();
   const pathname = usePathname();
 
   // Helper to trigger expiration state and sync across browser tabs
   const triggerExpiration = React.useCallback(() => {
-    setIsExpired(true);
+    setExpired();
 
     // Notify other tabs via BroadcastChannel if available
     try {
@@ -36,11 +33,11 @@ export function SessionTimeoutWatcher() {
         localStorage.setItem(STORAGE_EVENT_KEY, Date.now().toString());
       } catch {}
     }
-  }, []);
+  }, [setExpired]);
 
   // 1. Primary timer based on server-provided session expiresAt timestamp
   React.useEffect(() => {
-    if (!expiresAt) return;
+    if (!expiresAt || isExpired) return;
 
     const remainingMs = expiresAt - Date.now();
 
@@ -49,14 +46,19 @@ export function SessionTimeoutWatcher() {
     }, Math.max(0, remainingMs));
 
     return () => clearTimeout(timer);
-  }, [expiresAt, triggerExpiration]);
+  }, [expiresAt, isExpired, triggerExpiration]);
 
   // 2. Visibility and tab focus watcher (Requirement 8)
   React.useEffect(() => {
     const handleCheck = async () => {
-      if (isExpired) return;
+      if (
+        isExpired ||
+        (typeof window !== 'undefined' && window.__ox_session_expired)
+      ) {
+        return;
+      }
 
-      // Quick local check if 10-minute window has passed
+      // Quick local check if session window has passed
       if (expiresAt && Date.now() >= expiresAt) {
         triggerExpiration();
         return;
@@ -109,7 +111,7 @@ export function SessionTimeoutWatcher() {
         channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
         channel.onmessage = (event) => {
           if (event.data?.type === 'SESSION_EXPIRED') {
-            setIsExpired(true);
+            triggerExpiration();
           } else if (event.data?.type === 'LOGOUT') {
             router.push('/login');
           }
@@ -119,7 +121,7 @@ export function SessionTimeoutWatcher() {
 
     const onStorage = (event: StorageEvent) => {
       if (event.key === STORAGE_EVENT_KEY) {
-        setIsExpired(true);
+        triggerExpiration();
       }
     };
 
@@ -129,21 +131,45 @@ export function SessionTimeoutWatcher() {
       channel?.close();
       window.removeEventListener('storage', onStorage);
     };
-  }, [router]);
+  }, [router, triggerExpiration]);
 
-  // 4. Global fetch interceptor to catch 401 AUTH_SESSION_EXPIRED responses (Requirement 9)
+  // 4. Global fetch interceptor to catch 401 AUTH_SESSION_EXPIRED responses and halt background calls
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
+      // Prevent background polling from hitting server once session is expired
+      if (window.__ox_session_expired) {
+        const url =
+          typeof args[0] === 'string'
+            ? args[0]
+            : (args[0] as Request)?.url || '';
+        if (url.includes('/api/') && !url.includes('/api/auth/login')) {
+          return new Response(
+            JSON.stringify({
+              code: 'AUTH_SESSION_EXPIRED',
+              error: 'Your session has expired. Please log in again.',
+            }),
+            {
+              status: 401,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+        }
+      }
+
       const response = await originalFetch(...args);
 
       if (response.status === 401) {
         try {
           const clone = response.clone();
           const json = await clone.json();
-          if (json?.code === 'AUTH_SESSION_EXPIRED' || json?.error?.includes('session has expired')) {
+          if (
+            json?.code === 'AUTH_SESSION_EXPIRED' ||
+            json?.error?.includes('session has expired') ||
+            json?.error?.includes('Unauthorized')
+          ) {
             triggerExpiration();
           }
         } catch {}
@@ -152,15 +178,8 @@ export function SessionTimeoutWatcher() {
       return response;
     };
 
-    const onCustomExpireEvent = () => {
-      triggerExpiration();
-    };
-
-    window.addEventListener('ox:session-expired', onCustomExpireEvent);
-
     return () => {
       window.fetch = originalFetch;
-      window.removeEventListener('ox:session-expired', onCustomExpireEvent);
     };
   }, [triggerExpiration]);
 
@@ -194,11 +213,17 @@ export function SessionTimeoutWatcher() {
 
         {/* Content */}
         <div className="mt-4 text-center space-y-2">
-          <h2 id="session-expired-title" className="text-xl font-semibold tracking-tight text-foreground">
+          <h2
+            id="session-expired-title"
+            className="text-xl font-semibold tracking-tight text-foreground"
+          >
             Session Expired
           </h2>
-          <p id="session-expired-description" className="text-sm text-muted-foreground leading-relaxed">
-            Your session expired after 10 minutes for security. Please log in again to continue.
+          <p
+            id="session-expired-description"
+            className="text-sm text-muted-foreground leading-relaxed"
+          >
+            Your session has expired for security. Please log in again to continue.
           </p>
         </div>
 
@@ -206,7 +231,11 @@ export function SessionTimeoutWatcher() {
         <div className="mt-5 rounded-lg border border-border/60 bg-muted/40 p-3 text-center">
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <Lock className="size-3.5 text-primary" />
-            <span>Strict multi-branch session timeout policy (10 mins)</span>
+            <span>
+              {user?.role?.toUpperCase() === 'STAFF' || user?.role?.toUpperCase() === 'MANAGER'
+                ? 'Operational shift session policy (12 hrs)'
+                : 'Secure executive session policy'}
+            </span>
           </div>
         </div>
 
