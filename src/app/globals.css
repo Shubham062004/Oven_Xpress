@@ -54,6 +54,11 @@
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
 
+  /* Scrollbar */
+  --color-scrollbar-track: var(--scrollbar-track);
+  --color-scrollbar-thumb: var(--scrollbar-thumb);
+  --color-scrollbar-thumb-hover: var(--scrollbar-thumb-hover);
+
   /* Radius */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -120,6 +125,11 @@
   --sidebar-accent-foreground: oklch(0.25 0.01 75);
   --sidebar-border: oklch(0.91 0.005 75);
   --sidebar-ring: oklch(0.52 0.12 45);
+
+  /* Scrollbar */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: oklch(0.25 0.01 75 / 22%);
+  --scrollbar-thumb-hover: oklch(0.52 0.12 45 / 75%);
 }
 
 /* Dark theme — warm dark neutral base */
@@ -176,11 +186,18 @@
   --sidebar-accent-foreground: oklch(0.93 0.005 75);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.7 0.13 45);
+
+  /* Scrollbar */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: oklch(1 0 0 / 22%);
+  --scrollbar-thumb-hover: oklch(0.7 0.13 45 / 80%);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
   body {
     @apply bg-background text-foreground;
@@ -188,4 +205,39 @@
   html {
     @apply font-sans;
   }
+
+  /* Custom WebKit/Blink Scrollbar (Chrome, Edge, Safari, Opera) */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Utility to cleanly hide scrollbars where horizontal chip carousels are used */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
