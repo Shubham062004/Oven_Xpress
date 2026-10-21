@@ -13,13 +13,13 @@ export const metadata = {
 export default function RegisterPage() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8 sm:px-6 lg:px-8">
-      {/* Top right theme switcher & back to store */}
+      {/* Top right theme switcher & back   */}
       <div className="absolute top-4 inset-x-4 flex justify-between items-center max-w-4xl mx-auto">
         <Link
           href="/"
           className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
         >
-          &larr; Back to Store
+          &larr; Back
         </Link>
         <ThemeToggle />
       </div>

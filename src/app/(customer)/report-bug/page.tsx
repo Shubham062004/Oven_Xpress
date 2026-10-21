@@ -23,7 +23,7 @@ export default async function ReportBugPage() {
             className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-            <span>Back to Store</span>
+            <span>Back</span>
           </Link>
 
           <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 bg-background px-3 py-1 rounded-full border border-border/60">

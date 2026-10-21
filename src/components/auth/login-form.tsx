@@ -234,7 +234,7 @@ export function LoginForm() {
       </div>
 
       {/* Development Quick-Fill Helper */}
-      <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs space-y-2">
+      {/* <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs space-y-2">
         <div className="flex items-center gap-1.5 font-medium text-muted-foreground">
           <ShieldCheck className="size-3.5" />
           <span>Quick-Fill Demo Credentials (Testing)</span>
@@ -289,7 +289,7 @@ export function LoginForm() {
             Fill Inactive User
           </Button>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

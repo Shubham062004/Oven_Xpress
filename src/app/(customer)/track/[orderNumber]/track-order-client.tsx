@@ -306,7 +306,7 @@ export function TrackOrderClient({ initialOrder, token }: TrackOrderClientProps)
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-4" />
-          Back to Storefront
+          Back
         </Link>
 
         <div className="flex items-center gap-3">

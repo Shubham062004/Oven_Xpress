@@ -19,7 +19,7 @@ export default function LoginPage() {
           href="/"
           className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
         >
-          &larr; Back to Store
+          &larr; Back
         </Link>
         <ThemeToggle />
       </div>
