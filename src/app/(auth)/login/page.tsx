@@ -69,9 +69,9 @@ export default function LoginPage() {
         {/* Customer Registration Callout */}
         <div className="text-center space-y-2">
           <p className="text-xs text-muted-foreground">
-            Hungry customer?{' '}
+            Hungry?{' '}
             <Link href="/register" className="font-semibold text-primary hover:underline">
-              Create a free customer account &rarr;
+              Create a free account &rarr;
             </Link>
           </p>
         </div>
