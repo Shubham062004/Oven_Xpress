@@ -4,7 +4,6 @@ import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
-  Bug,
   Clock,
   RotateCw,
   CheckCircle2,
@@ -12,7 +11,6 @@ import {
   User,
   Mail,
   Phone,
-  Globe,
   Monitor,
   Calendar,
   Image as ImageIcon,
@@ -24,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
@@ -43,10 +41,12 @@ import { updateBugReportStatusAction } from '@/lib/bug-reports/actions';
 
 interface OwnerBugReportDetailClientProps {
   report: BugReportItem;
+  isOwner?: boolean;
 }
 
 export function OwnerBugReportDetailClient({
   report: initialReport,
+  isOwner = true,
 }: OwnerBugReportDetailClientProps) {
   const [report, setReport] = useState<BugReportItem>(initialReport);
   const [selectedStatus, setSelectedStatus] = useState<BugReportStatus>(
@@ -122,11 +122,11 @@ export function OwnerBugReportDetailClient({
       {/* ─── Back & Header ──────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <Link
-          href="/owner/bug-reports"
+          href={isOwner ? '/owner/bug-reports' : '/bug-reports'}
           className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-          <span>Back to All Reports</span>
+          <span>{isOwner ? 'Back to All Reports' : 'Back to My Reports'}</span>
         </Link>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -307,88 +307,124 @@ export function OwnerBugReportDetailClient({
 
         {/* Right Column: Status Update + Reporter Details (1 col) */}
         <div className="space-y-6">
-          {/* Status Management Form */}
+          {/* Status Management Form (Owner) / Status Overview (User) */}
           <Card className="rounded-2xl border border-border/80 shadow-xs">
             <CardHeader className="pb-3 border-b border-border/40">
               <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-primary" />
-                <span>Manage Report Status</span>
+                <span>{isOwner ? 'Manage Report Status' : 'Status & Resolution'}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
-              <form onSubmit={handleStatusUpdate} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="status" className="text-xs font-semibold">
-                    Change Status
-                  </Label>
-                  <Select
-                    value={selectedStatus}
-                    onValueChange={(val) => setSelectedStatus(val as BugReportStatus)}
-                  >
-                    <SelectTrigger id="status" className="h-10 rounded-xl text-xs">
-                      <SelectValue placeholder="Select Status" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="OPEN">Open</SelectItem>
-                      <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                      <SelectItem value="RESOLVED">Resolved</SelectItem>
-                      <SelectItem value="CLOSED">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="resolutionNote" className="text-xs font-semibold">
-                    Resolution Note / Comment
-                  </Label>
-                  <Textarea
-                    id="resolutionNote"
-                    placeholder="Describe how the bug was fixed, deploy reference, or closing reason..."
-                    rows={3}
-                    value={resolutionNote}
-                    onChange={(e) => setResolutionNote(e.target.value)}
-                    className="rounded-xl text-xs resize-none"
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={isPending}
-                  className="w-full h-10 rounded-xl text-xs font-semibold shadow-xs gap-1.5"
-                >
-                  {isPending ? (
-                    <>
-                      <RotateCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Updating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Save Status Update</span>
-                    </>
-                  )}
-                </Button>
-
-                {report.resolvedAt && (
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-800 dark:text-emerald-300 space-y-1">
-                    <span className="font-bold block">Resolution Details:</span>
-                    <p>Resolved by: {report.resolvedBy || 'Owner'}</p>
-                    <p>
-                      Date:{' '}
-                      {new Date(report.resolvedAt).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                    {report.resolutionNote && (
-                      <p className="italic pt-1 font-normal">&quot;{report.resolutionNote}&quot;</p>
-                    )}
+              {isOwner ? (
+                <form onSubmit={handleStatusUpdate} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="status" className="text-xs font-semibold">
+                      Change Status
+                    </Label>
+                    <Select
+                      value={selectedStatus}
+                      onValueChange={(val) => setSelectedStatus(val as BugReportStatus)}
+                    >
+                      <SelectTrigger id="status" className="h-10 rounded-xl text-xs">
+                        <SelectValue placeholder="Select Status" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="OPEN">Open</SelectItem>
+                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                        <SelectItem value="RESOLVED">Resolved</SelectItem>
+                        <SelectItem value="CLOSED">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
-              </form>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="resolutionNote" className="text-xs font-semibold">
+                      Resolution Note / Comment
+                    </Label>
+                    <Textarea
+                      id="resolutionNote"
+                      placeholder="Describe how the bug was fixed, deploy reference, or closing reason..."
+                      rows={3}
+                      value={resolutionNote}
+                      onChange={(e) => setResolutionNote(e.target.value)}
+                      className="rounded-xl text-xs resize-none"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isPending}
+                    className="w-full h-10 rounded-xl text-xs font-semibold shadow-xs gap-1.5"
+                  >
+                    {isPending ? (
+                      <>
+                        <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save Status Update</span>
+                      </>
+                    )}
+                  </Button>
+
+                  {report.resolvedAt && (
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-800 dark:text-emerald-300 space-y-1">
+                      <span className="font-bold block">Resolution Details:</span>
+                      <p>Resolved by: {report.resolvedBy || 'Owner'}</p>
+                      <p>
+                        Date:{' '}
+                        {new Date(report.resolvedAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                      {report.resolutionNote && (
+                        <p className="italic pt-1 font-normal">&quot;{report.resolutionNote}&quot;</p>
+                      )}
+                    </div>
+                  )}
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-medium text-muted-foreground block">
+                      Current Status
+                    </span>
+                    <div>{getStatusBadge(report.status)}</div>
+                  </div>
+
+                  {report.resolvedAt ? (
+                    <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300 space-y-1.5">
+                      <span className="font-bold block text-xs">Resolution Note:</span>
+                      {report.resolutionNote ? (
+                        <p className="leading-relaxed">&quot;{report.resolutionNote}&quot;</p>
+                      ) : (
+                        <p className="italic text-[11px]">This issue has been marked resolved by engineering.</p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground pt-1">
+                        Resolved on {new Date(report.resolvedAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-xl bg-muted/40 border border-border/50 text-xs text-muted-foreground space-y-1">
+                      <p className="font-medium text-foreground">Under Review</p>
+                      <p className="text-[11px] leading-relaxed">
+                        Our engineering team has received your report. You will receive an alert in your notifications as soon as a fix is deployed.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

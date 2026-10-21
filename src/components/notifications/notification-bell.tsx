@@ -13,6 +13,7 @@ import {
   Banknote,
   Info,
   Calendar,
+  Bug,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,6 +72,8 @@ function getTypeIcon(type: string) {
       return <CreditCard className="w-3.5 h-3.5" />;
     case 'ATTENDANCE_ALERT':
       return <Calendar className="w-3.5 h-3.5" />;
+    case 'BUG_REPORT':
+      return <Bug className="w-3.5 h-3.5" />;
     default:
       return <Info className="w-3.5 h-3.5" />;
   }

@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Bell,
   Calendar,
+  Bug,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -65,6 +66,8 @@ function getTypeIcon(type: string) {
       return <CreditCard className="w-3.5 h-3.5" />;
     case 'ATTENDANCE_ALERT':
       return <Calendar className="w-3.5 h-3.5" />;
+    case 'BUG_REPORT':
+      return <Bug className="w-3.5 h-3.5" />;
     default:
       return <Bell className="w-3.5 h-3.5" />;
   }

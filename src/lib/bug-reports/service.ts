@@ -208,8 +208,24 @@ export async function createBugReport(
         message: `[${created.category}] ${created.title}`,
         entityType: 'BugReport',
         entityId: created.id,
-        actionUrl: `/owner/bug-reports/${created.id}`,
+        actionUrl: `/bug-reports/${created.id}`,
         dedupeKey: `bug-report:${created.id}:${owner.id}`,
+      });
+    }
+
+    // Also notify the reporting user so it shows up in their Notification section
+    if (currentUserId) {
+      await createNotification({
+        recipientUserId: currentUserId,
+        branchId: null,
+        type: NotificationType.BUG_REPORT,
+        severity: NotificationSeverity.INFO,
+        title: `Bug Report Submitted: ${created.reportNumber}`,
+        message: `Your bug report "${created.title}" has been submitted successfully to technical support.`,
+        entityType: 'BugReport',
+        entityId: created.id,
+        actionUrl: `/bug-reports/${created.id}`,
+        dedupeKey: `bug-report-submit:${created.id}:${currentUserId}`,
       });
     }
 
@@ -237,15 +253,19 @@ export async function createBugReport(
 }
 
 /**
- * Retrieves paginated bug reports for the Owner dashboard.
- * Requires caller to be an active OWNER.
+ * Retrieves paginated bug reports.
+ * If filterInput.userId is provided, scopes results exclusively to that user.
  */
-export async function getBugReportsForOwner(
+export async function getBugReports(
   filterInput: Partial<BugReportFilterInput>
 ): Promise<BugReportListResponse> {
   const filter = bugReportFilterSchema.parse(filterInput);
 
-  const whereClause: any = {};
+  const whereClause: Record<string, unknown> = {};
+
+  if (filter.userId) {
+    whereClause.userId = filter.userId;
+  }
 
   if (filter.status && filter.status !== 'ALL') {
     whereClause.status = filter.status;
@@ -266,6 +286,8 @@ export async function getBugReportsForOwner(
     ];
   }
 
+  const baseStatsWhere = filter.userId ? { userId: filter.userId } : {};
+
   const [total, reports, openCount, inProgressCount, resolvedCount, closedCount] =
     await Promise.all([
       prisma.bugReport.count({ where: whereClause }),
@@ -284,10 +306,10 @@ export async function getBugReportsForOwner(
         skip: (filter.page - 1) * filter.limit,
         take: filter.limit,
       }),
-      prisma.bugReport.count({ where: { status: 'OPEN' } }),
-      prisma.bugReport.count({ where: { status: 'IN_PROGRESS' } }),
-      prisma.bugReport.count({ where: { status: 'RESOLVED' } }),
-      prisma.bugReport.count({ where: { status: 'CLOSED' } }),
+      prisma.bugReport.count({ where: { ...baseStatsWhere, status: 'OPEN' } }),
+      prisma.bugReport.count({ where: { ...baseStatsWhere, status: 'IN_PROGRESS' } }),
+      prisma.bugReport.count({ where: { ...baseStatsWhere, status: 'RESOLVED' } }),
+      prisma.bugReport.count({ where: { ...baseStatsWhere, status: 'CLOSED' } }),
     ]);
 
   const totalAll = openCount + inProgressCount + resolvedCount + closedCount;
@@ -310,12 +332,15 @@ export async function getBugReportsForOwner(
   };
 }
 
+export const getBugReportsForOwner = getBugReports;
+
 /**
  * Retrieves details for a specific bug report.
- * Requires caller to be an active OWNER.
+ * If user is not an OWNER, ensures the user is the original author of the report.
  */
 export async function getBugReportDetails(
-  idOrReportNumber: string
+  idOrReportNumber: string,
+  user?: { id: string; role: string } | null
 ): Promise<BugReportItem | null> {
   const report = await prisma.bugReport.findFirst({
     where: {
@@ -333,6 +358,12 @@ export async function getBugReportDetails(
   });
 
   if (!report) return null;
+
+  // Authorization check: OWNER can view all; regular users can strictly only view their own reports
+  if (user && user.role !== 'OWNER' && report.userId !== user.id) {
+    return null;
+  }
+
   return mapBugReportToItem(report);
 }
 
@@ -382,6 +413,27 @@ export async function updateBugReportStatus(
       },
     },
   });
+
+  // Notify the reporting user of resolution or status change
+  if (updated.userId) {
+    try {
+      const isResolved = status === 'RESOLVED';
+      await createNotification({
+        recipientUserId: updated.userId,
+        branchId: null,
+        type: NotificationType.BUG_REPORT,
+        severity: isResolved ? NotificationSeverity.INFO : NotificationSeverity.WARNING,
+        title: `Bug Report ${isResolved ? 'Resolved' : 'Updated'}: ${updated.reportNumber}`,
+        message: `Your report status was updated to "${status}".${resolutionNote ? ` Note: ${resolutionNote}` : ''}`,
+        entityType: 'BugReport',
+        entityId: updated.id,
+        actionUrl: `/bug-reports/${updated.id}`,
+        dedupeKey: `bug-report-status:${updated.id}:${status}`,
+      });
+    } catch (err) {
+      console.error('[BugReport] Failed to notify reporting user of status update:', err);
+    }
+  }
 
   return {
     success: true,

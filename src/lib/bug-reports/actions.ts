@@ -6,7 +6,7 @@ import { getCurrentUser } from '@/lib/auth/guards';
 import { ROLES } from '@/lib/permissions/definitions';
 import {
   createBugReport,
-  getBugReportsForOwner,
+  getBugReports,
   getBugReportDetails,
   updateBugReportStatus,
   type BugReportItem,
@@ -106,21 +106,30 @@ export async function submitBugReportAction(
 }
 
 /**
- * Server action: Retrieve bug reports for Owner only.
+ * Server action: Retrieve bug reports.
+ * Owners can view all bug reports across the system.
+ * Regular users (staff, manager, admin, customer) can strictly only see their own reported bugs.
  */
-export async function getOwnerBugReportsAction(
+export async function getBugReportsAction(
   filterInput?: Partial<BugReportFilterInput>
 ): Promise<ActionResponse<BugReportListResponse>> {
   try {
     const user = await getCurrentUser();
-    if (!user || user.role !== ROLES.OWNER) {
+    if (!user) {
       return {
         success: false,
-        error: 'Forbidden: Only the restaurant Owner can access system bug reports.',
+        error: 'Unauthorized: Please sign in to view bug reports.',
       };
     }
 
-    const data = await getBugReportsForOwner(filterInput || {});
+    const isOwner = user.role === ROLES.OWNER;
+    const filter: Partial<BugReportFilterInput> = {
+      ...filterInput,
+      // Non-owners are strictly locked to their own user ID
+      userId: isOwner ? filterInput?.userId : user.id,
+    };
+
+    const data = await getBugReports(filter);
     return { success: true, data };
   } catch (error: any) {
     console.error('[BugReportAction] fetch error:', error);
@@ -128,24 +137,28 @@ export async function getOwnerBugReportsAction(
   }
 }
 
+// Backwards-compatibility alias
+export const getOwnerBugReportsAction = getBugReportsAction;
+
 /**
- * Server action: Retrieve details for a single bug report (Owner only).
+ * Server action: Retrieve details for a single bug report.
+ * Accessible by Owner or by the user who created the report.
  */
 export async function getBugReportDetailsAction(
   id: string
 ): Promise<ActionResponse<BugReportItem>> {
   try {
     const user = await getCurrentUser();
-    if (!user || user.role !== ROLES.OWNER) {
+    if (!user) {
       return {
         success: false,
-        error: 'Forbidden: Only the restaurant Owner can view bug report details.',
+        error: 'Unauthorized: Please sign in to view bug report details.',
       };
     }
 
-    const report = await getBugReportDetails(id);
+    const report = await getBugReportDetails(id, user);
     if (!report) {
-      return { success: false, error: 'Bug report not found.' };
+      return { success: false, error: 'Bug report not found or access denied.' };
     }
 
     return { success: true, data: report };
@@ -181,6 +194,8 @@ export async function updateBugReportStatusAction(
       return { success: false, error: res.error };
     }
 
+    revalidatePath('/bug-reports');
+    revalidatePath(`/bug-reports/${id}`);
     revalidatePath('/owner/bug-reports');
     revalidatePath(`/owner/bug-reports/${id}`);
     revalidatePath('/notifications');

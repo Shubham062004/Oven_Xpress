@@ -15,6 +15,7 @@ import {
   XCircle,
   User,
   Globe,
+  Plus,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -37,9 +38,13 @@ import { getOwnerBugReportsAction } from '@/lib/bug-reports/actions';
 
 interface OwnerBugReportsClientProps {
   initialData: BugReportListResponse;
+  isOwner?: boolean;
 }
 
-export function OwnerBugReportsClient({ initialData }: OwnerBugReportsClientProps) {
+export function OwnerBugReportsClient({
+  initialData,
+  isOwner = true,
+}: OwnerBugReportsClientProps) {
   const [data, setData] = useState<BugReportListResponse>(initialData);
   const [isPending, startTransition] = useTransition();
 
@@ -139,25 +144,41 @@ export function OwnerBugReportsClient({ initialData }: OwnerBugReportsClientProp
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Customer Bug Reports
+                {isOwner ? 'Customer Bug Reports' : 'My Reported Bugs'}
               </h1>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Technical issues, errors and glitches submitted by customers and guests.
+                {isOwner
+                  ? 'Technical issues, errors and glitches submitted by customers and guests.'
+                  : 'Track the status and resolution notes of issues you have submitted.'}
               </p>
             </div>
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fetchReports()}
-          disabled={isPending}
-          className="rounded-xl h-9 gap-1.5 text-xs font-semibold self-start sm:self-auto"
-        >
-          <RotateCw className={`w-3.5 h-3.5 ${isPending ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Link
+            href="/report-bug"
+            className={buttonVariants({
+              variant: 'default',
+              size: 'sm',
+              className: 'rounded-xl h-9 gap-1.5 text-xs font-semibold shadow-xs',
+            })}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Report a Bug</span>
+          </Link>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchReports()}
+            disabled={isPending}
+            className="rounded-xl h-9 gap-1.5 text-xs font-semibold"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isPending ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </Button>
+        </div>
       </div>
 
       {/* ─── Status Tabs ─────────────────────────────────────────────────── */}
@@ -257,11 +278,28 @@ export function OwnerBugReportsClient({ initialData }: OwnerBugReportsClientProp
                 <Bug className="w-6 h-6 opacity-40" />
               </div>
               <p className="text-sm font-semibold text-foreground">
-                No bug reports found
+                {isOwner ? 'No bug reports found' : 'No reported bugs found'}
               </p>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                No technical issues match your selected filters.
+                {isOwner
+                  ? 'No technical issues match your selected filters.'
+                  : "You haven't submitted any bug reports matching your filters."}
               </p>
+              {!isOwner && (
+                <div className="pt-2">
+                  <Link
+                    href="/report-bug"
+                    className={buttonVariants({
+                      variant: 'outline',
+                      size: 'sm',
+                      className: 'rounded-xl h-9 text-xs font-semibold gap-1.5',
+                    })}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Report a New Bug</span>
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-border/40">
@@ -343,7 +381,7 @@ export function OwnerBugReportsClient({ initialData }: OwnerBugReportsClientProp
 
                   <div className="shrink-0 self-end sm:self-center">
                     <Link
-                      href={`/owner/bug-reports/${report.id}`}
+                      href={isOwner ? `/owner/bug-reports/${report.id}` : `/bug-reports/${report.id}`}
                       className={buttonVariants({
                         variant: 'outline',
                         size: 'sm',

@@ -170,7 +170,6 @@ export const mainNavItems: NavItem[] = [
     label: 'Bug Reports',
     href: '/bug-reports',
     icon: Bug,
-    requiredPermission: PERMISSIONS.BUG_REPORT_READ,
   },
 ];
 

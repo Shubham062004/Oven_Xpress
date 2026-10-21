@@ -108,6 +108,7 @@ export const bugReportFilterSchema = z.object({
   status: z.nativeEnum(BugReportStatus).or(z.literal('ALL')).optional().default('ALL'),
   category: z.nativeEnum(BugReportCategory).or(z.literal('ALL')).optional().default('ALL'),
   search: z.string().trim().optional(),
+  userId: z.string().optional(),
   page: z.number().int().positive().optional().default(1),
   limit: z.number().int().positive().max(100).optional().default(20),
 });
