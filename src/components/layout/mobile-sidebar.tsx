@@ -3,18 +3,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LogOut } from 'lucide-react';
-
 import { cn } from 'cn';
-import { logoutAction } from '@/lib/auth/actions';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { mainNavItems, bottomNavItems, getRoleNavItems } from '@/config/navigation';
+import { mainNavItems, getRoleNavItems } from '@/config/navigation';
 import { useSidebar } from '@/providers/sidebar-provider';
 import type { AuthUser } from '@/lib/auth/types';
 import { hasPermission } from '@/lib/permissions/check';
@@ -29,14 +25,8 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
   const userRole = (user?.role || 'staff').toLowerCase();
 
   const roleMainNav = getRoleNavItems(userRole, mainNavItems);
-  const roleBottomNav = getRoleNavItems(userRole, bottomNavItems);
 
   const visibleMainNavItems = roleMainNav.filter((item) => {
-    if (!item.requiredPermission) return true;
-    return hasPermission(user, item.requiredPermission);
-  });
-
-  const visibleBottomNavItems = roleBottomNav.filter((item) => {
     if (!item.requiredPermission) return true;
     return hasPermission(user, item.requiredPermission);
   });
@@ -100,44 +90,6 @@ export function MobileSidebar({ user }: MobileSidebarProps) {
             );
           })}
         </nav>
-
-        <div className="px-3 pb-3">
-          <Separator className="mb-3" />
-          {visibleBottomNavItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2.5 min-h-11 text-sm font-medium transition-colors',
-                  'hover:bg-accent hover:text-accent-foreground',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  isActive
-                    ? 'bg-accent text-primary'
-                    : 'text-muted-foreground'
-                )}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <item.icon className="size-4 shrink-0" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-
-          {/* Logout Button */}
-          <form action={logoutAction} className="w-full mt-1">
-            <button
-              type="submit"
-              onClick={() => setMobileOpen(false)}
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 min-h-11 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-            >
-              <LogOut className="size-4 shrink-0" />
-              <span>Logout</span>
-            </button>
-          </form>
-        </div>
       </SheetContent>
     </Sheet>
   );

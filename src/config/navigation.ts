@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Package,
   Receipt,
-  Settings,
   Shield,
   ShoppingBag,
   ShoppingCart,
@@ -21,7 +20,6 @@ import {
   ScrollText,
   Bug,
   Tag,
-  User,
 } from 'lucide-react';
 
 import { PERMISSIONS } from '@/lib/permissions/definitions';
@@ -167,19 +165,7 @@ export const mainNavItems: NavItem[] = [
   },
 ];
 
-export const bottomNavItems: NavItem[] = [
-  {
-    label: 'Profile',
-    href: '/profile',
-    icon: User,
-  },
-  {
-    label: 'Settings',
-    href: '/settings',
-    icon: Settings,
-    requiredPermission: PERMISSIONS.SETTINGS_READ,
-  },
-];
+export const bottomNavItems: NavItem[] = [];
 
 /**
  * Authoritative mapping of permitted subpaths for each role workspace.

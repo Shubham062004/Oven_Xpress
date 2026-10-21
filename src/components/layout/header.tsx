@@ -2,27 +2,21 @@
 
 import {
   Building2,
-  Lock,
   LogOut,
   Menu,
   Search,
   Settings as SettingsIcon,
-  Sliders,
   User as UserIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSidebar } from '@/providers/sidebar-provider';
 import type { AuthUser } from '@/lib/auth/types';
@@ -45,17 +39,6 @@ function getInitials(name?: string): string {
 export function Header({ user }: HeaderProps) {
   const { setMobileOpen } = useSidebar();
   const rolePrefix = `/${(user?.role || 'staff').toLowerCase()}`;
-
-  const getRoleVariant = (role?: string) => {
-    switch (role) {
-      case 'OWNER':
-        return 'default';
-      case 'MANAGER':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-1.5 sm:gap-2 border-b bg-background/95 px-2 sm:px-4 backdrop-blur-sm supports-backdrop-filter:bg-background/60">
@@ -82,7 +65,7 @@ export function Header({ user }: HeaderProps) {
       <div className="flex-1" />
 
       {/* Right side controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         {/* Search placeholder */}
         <Button
           variant="ghost"
@@ -96,120 +79,92 @@ export function Header({ user }: HeaderProps) {
         {/* Notifications */}
         {user ? <NotificationBell /> : null}
 
-        {/* Theme toggle */}
+        {/* Theme toggle (Dark Mode logo) */}
         <ThemeToggle />
 
-        {/* User Account Menu */}
+        {/* Settings icon next to dark mode */}
         {user ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger
+          <Tooltip>
+            <TooltipTrigger
               render={
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-2 pl-1.5 pr-2.5 h-9 rounded-full hover:bg-accent border border-transparent hover:border-border transition-colors"
-                  aria-label="User account menu"
-                />
-              }
-            >
-              <div className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-semibold overflow-hidden">
-                {user.avatarUrl ? (
-                  <Image
-                    src={user.avatarUrl}
-                    alt={user.name}
-                    width={28}
-                    height={28}
-                    className="size-full object-cover"
-                    unoptimized
-                  />
-                ) : (
-                  getInitials(user.name)
-                )}
-              </div>
-              <div className="hidden flex-col text-left sm:flex max-w-36 md:max-w-44">
-                <span className="text-xs font-semibold leading-tight truncate">{user.name}</span>
-                <span className="text-[10px] text-muted-foreground uppercase leading-tight font-medium mt-0.5 truncate">
-                  {user.designation || user.role} {user.branchName ? `• ${user.branchName}` : ''}
-                </span>
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-1rem)] p-2">
-              <DropdownMenuLabel className="font-normal px-2 py-1.5">
-                <div className="flex flex-col space-y-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-sm font-semibold overflow-hidden border">
-                      {user.avatarUrl ? (
-                        <Image
-                          src={user.avatarUrl}
-                          alt={user.name}
-                          width={40}
-                          height={40}
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        getInitials(user.name)
-                      )}
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <p className="text-sm font-semibold leading-tight truncate">{user.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 pt-0.5">
-                    <Badge variant={getRoleVariant(user.role)} className="text-[10px] px-1.5 py-0 font-medium">
-                      {user.role}
-                    </Badge>
-                    {user.branchName ? (
-                      <span className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
-                        <Building2 className="size-3 shrink-0" />
-                        <span className="truncate">{user.branchName}</span>
-                      </span>
-                    ) : user.role === 'OWNER' ? (
-                      <span className="text-[11px] text-muted-foreground">Universal Access</span>
-                    ) : null}
-                  </div>
-                </div>
-              </DropdownMenuLabel>
-
-              <DropdownMenuSeparator className="my-1.5" />
-
-              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-2 sm:py-1.5 rounded-md min-h-11 sm:min-h-0" />}>
-                <UserIcon className="size-4 text-muted-foreground" />
-                <span className="text-sm">Profile</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile?tab=account`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-2 sm:py-1.5 rounded-md min-h-11 sm:min-h-0" />}>
-                <SettingsIcon className="size-4 text-muted-foreground" />
-                <span className="text-sm">Account Settings</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile/password`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-2 sm:py-1.5 rounded-md min-h-11 sm:min-h-0" />}>
-                <Lock className="size-4 text-muted-foreground" />
-                <span className="text-sm">Change Password</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem render={<Link href={`${rolePrefix}/profile?tab=preferences`} className="flex items-center gap-2.5 w-full cursor-pointer px-2 py-2 sm:py-1.5 rounded-md min-h-11 sm:min-h-0" />}>
-                <Sliders className="size-4 text-muted-foreground" />
-                <span className="text-sm">Preferences</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator className="my-1.5" />
-
-              <form action={logoutAction} className="w-full">
-                <button
-                  type="submit"
-                  className="relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-2 sm:py-1.5 min-h-11 sm:min-h-0 text-sm text-destructive outline-none transition-colors hover:bg-destructive/10 focus:bg-destructive/10 font-medium"
+                <Link
+                  href={`${rolePrefix}/settings`}
+                  className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  aria-label="Settings"
                 >
-                  <LogOut className="size-4" />
-                  <span>Logout</span>
-                </button>
-              </form>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <SettingsIcon className="size-4" />
+                </Link>
+              }
+            />
+            <TooltipContent side="bottom">Settings</TooltipContent>
+          </Tooltip>
+        ) : null}
+
+        {/* User Account / Profile Link (landing on /profile) */}
+        {user ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link
+                  href={`${rolePrefix}/profile`}
+                  className="flex items-center gap-2 pl-1.5 pr-2 sm:pr-2.5 h-9 rounded-full hover:bg-muted border border-transparent hover:border-border transition-colors group cursor-pointer"
+                  aria-label="View user profile"
+                >
+                  <div className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-semibold overflow-hidden">
+                    {user.avatarUrl ? (
+                      <Image
+                        src={user.avatarUrl}
+                        alt={user.name}
+                        width={28}
+                        height={28}
+                        className="size-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      getInitials(user.name)
+                    )}
+                  </div>
+                  <div className="hidden flex-col text-left sm:flex max-w-36 md:max-w-44">
+                    <span className="text-xs font-semibold leading-tight truncate group-hover:text-primary transition-colors">
+                      {user.name}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground uppercase leading-tight font-medium mt-0.5 truncate">
+                      {user.designation || user.role} {user.branchName ? `• ${user.branchName}` : ''}
+                    </span>
+                  </div>
+                </Link>
+              }
+            />
+            <TooltipContent side="bottom">View Profile</TooltipContent>
+          </Tooltip>
         ) : (
           <Button variant="ghost" size="icon" className="rounded-full" aria-label="User profile">
             <UserIcon className="size-4" />
           </Button>
         )}
+
+        {/* Logout button next to name */}
+        {user ? (
+          <form action={logoutAction} className="inline-flex items-center">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5 px-2.5 text-xs font-medium text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+                    aria-label="Logout"
+                  >
+                    <LogOut className="size-3.5 shrink-0" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </Button>
+                }
+              />
+              <TooltipContent side="bottom">Logout</TooltipContent>
+            </Tooltip>
+          </form>
+        ) : null}
       </div>
     </header>
   );
