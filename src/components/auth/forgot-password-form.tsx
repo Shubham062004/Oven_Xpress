@@ -72,7 +72,7 @@ export function ForgotPasswordForm() {
                 required
                 value={emailValue}
                 onChange={(e) => setEmailValue(e.target.value)}
-                placeholder="name@restaurant.com"
+                // placeholder="example@ovenxpress.com"
                 className="pl-9"
                 aria-describedby={state?.fieldErrors?.email ? 'email-error' : undefined}
               />
