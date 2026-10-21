@@ -147,7 +147,7 @@ export async function getAuditLogs(
     }
     where.branchId = userBranchId;
   } else {
-    // Owner or Admin
+    // Owner
     if (params.branchId && params.branchId !== 'all') {
       where.branchId = params.branchId;
     }

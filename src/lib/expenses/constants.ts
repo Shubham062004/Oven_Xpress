@@ -20,7 +20,7 @@ export const EXPENSE_STATUS_META: Record<ExpenseStatus, ExpenseStatusMeta> = {
   },
   [ExpenseStatus.PENDING_APPROVAL]: {
     label: 'Pending Approval',
-    description: 'Awaiting manager or admin review and verification.',
+    description: 'Awaiting manager or owner review and verification.',
     badgeClass: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
     allowedTransitions: [
       ExpenseStatus.APPROVED,

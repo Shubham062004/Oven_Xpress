@@ -57,7 +57,7 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
   const canExport = hasPermission(user, PERMISSIONS.AUDIT_EXPORT);
 
   // If user only has access to 1 branch, lock branch selection
-  const isBranchRestricted = user.role !== 'OWNER' && user.role !== 'ADMIN' && branches.length === 1;
+  const isBranchRestricted = user.role !== 'OWNER' && branches.length === 1;
   const selectedBranchId = resolved.branchId || (isBranchRestricted && branches[0] ? branches[0].id : 'all');
 
   return (

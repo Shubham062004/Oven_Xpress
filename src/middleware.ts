@@ -72,32 +72,6 @@ const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
     'notifications',
     'profile',
   ],
-  admin: [
-    'branches',
-    'employees',
-    'users',
-    'attendance',
-    'menu',
-    'orders',
-    'payments',
-    'kitchen',
-    'inventory',
-    'purchases',
-    'suppliers',
-    'expenses',
-    'salary',
-    'salaries',
-    'customers',
-    'reviews',
-    'feedback',
-    'sales',
-    'bug-reports',
-    'reports',
-    'audit-logs',
-    'settings',
-    'notifications',
-    'profile',
-  ],
   manager: [
     'orders',
     'payments',
@@ -129,7 +103,7 @@ const ROLE_ALLOWED_SUBPATHS: Record<string, string[]> = {
 };
 
 // ERP internal roles (non-customer)
-const ERP_ROLES = new Set(['owner', 'admin', 'manager', 'staff']);
+const ERP_ROLES = new Set(['owner', 'manager', 'staff']);
 
 export function middleware(request: NextRequest) {
   try {
@@ -442,9 +416,16 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
+    // Redirect any legacy /admin routes to /owner
+    if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+      const subpath = pathname.replace(/^\/admin\/?/, '');
+      const target = subpath ? `/owner/${subpath}` : '/owner';
+      return NextResponse.redirect(new URL(target, request.nextUrl.origin));
+    }
+
     // D. Block CUSTOMER role from accessing ERP routes
     if (sessionCookie && isCustomerRole) {
-      const rolePageMatch = pathname.match(/^\/(owner|admin|manager|staff)(?:\/(.*))?$/);
+      const rolePageMatch = pathname.match(/^\/(owner|manager|staff)(?:\/(.*))?$/);
       if (rolePageMatch) {
         // Customer trying to access an ERP dashboard — send to homepage
         return NextResponse.redirect(new URL('/', request.nextUrl.origin));
@@ -452,7 +433,7 @@ export function middleware(request: NextRequest) {
     }
 
     // E. Role-based API authorization (/api/owner/..., /api/staff/...)
-    const roleApiMatch = pathname.match(/^\/api\/(owner|admin|manager|staff)(?:\/(.*))?$/);
+    const roleApiMatch = pathname.match(/^\/api\/(owner|manager|staff)(?:\/(.*))?$/);
     if (roleApiMatch) {
       // Block customers from ERP API endpoints
       if (isCustomerRole) {
@@ -466,7 +447,7 @@ export function middleware(request: NextRequest) {
       const isRoleAllowed =
         userRole === 'owner' ||
         userRole === targetApiRole ||
-        (targetApiRole === 'staff' && (userRole === 'manager' || userRole === 'admin' || userRole === 'owner')) ||
+        (targetApiRole === 'staff' && (userRole === 'manager' || userRole === 'owner')) ||
         (targetApiRole === 'manager' && userRole === 'owner');
 
       if (!isRoleAllowed) {
@@ -481,7 +462,7 @@ export function middleware(request: NextRequest) {
     }
 
     // F. Role-prefixed page routing (/owner, /owner/branches, /staff/orders)
-    const rolePageMatch = pathname.match(/^\/(owner|admin|manager|staff)(?:\/(.*))?$/);
+    const rolePageMatch = pathname.match(/^\/(owner|manager|staff)(?:\/(.*))?$/);
     if (rolePageMatch) {
       // Block customers from ERP workspaces
       if (isCustomerRole) {
@@ -522,7 +503,7 @@ export function middleware(request: NextRequest) {
         });
       }
 
-      // If subpath is empty (e.g. /owner, /staff, /manager, /admin), allow request to proceed to dedicated dashboard page!
+      // If subpath is empty (e.g. /owner, /staff, /manager), allow request to proceed to dedicated dashboard page!
     }
 
     // G. Un-prefixed page access (e.g. /branches, /orders, /kitchen directly entered)

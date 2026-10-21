@@ -328,7 +328,7 @@ export async function recordPayment(
 
 /**
  * Creates a refund against a successful payment.
- * Requires PAYMENT_REFUND permission (Restricted to OWNER and ADMIN).
+ * Requires PAYMENT_REFUND permission (Restricted to OWNER).
  */
 export async function createPaymentRefund(
   input: CreateRefundInput

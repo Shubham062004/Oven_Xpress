@@ -398,8 +398,6 @@ export function ProfileClient({
     switch (role) {
       case 'OWNER':
         return 'default';
-      case 'ADMIN':
-        return 'secondary';
       case 'MANAGER':
         return 'outline';
       default:
@@ -694,9 +692,9 @@ export function ProfileClient({
                       <Shield className="size-6" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold">Corporate Administrator Profile</h2>
+                      <h2 className="text-sm font-semibold">Corporate Owner Profile</h2>
                       <p className="text-xs text-muted-foreground max-w-xs mx-auto mt-1">
-                        Your account operates as an organization-level administrator with universal multi-branch authority. No localized employee record is linked.
+                        Your account operates as an organization-level owner with universal multi-branch authority. No localized employee record is linked.
                       </p>
                     </div>
                   </div>

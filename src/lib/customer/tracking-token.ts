@@ -69,7 +69,7 @@ export interface OrderAuthorizationSubject {
  * Authorizes access to an order.
  *
  * Access is granted if and only if:
- * 1. User has Executive role (OWNER, ADMIN, SUPER_ADMIN).
+ * 1. User has Executive role (OWNER).
  * 2. User is branch staff/manager assigned to the order's branch.
  * 3. User is an authenticated customer who owns this order (via Customer profile or createdBy).
  * 4. A valid guest tracking token matching the stored token hash is provided.
@@ -84,7 +84,7 @@ export async function authorizeOrderAccess(
   // 1. Executive Roles have global access
   if (user) {
     const roleUpper = user.role.toUpperCase();
-    if (roleUpper === 'OWNER' || roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN') {
+    if (roleUpper === 'OWNER') {
       return { authorized: true, reason: 'EXECUTIVE_ROLE' };
     }
 

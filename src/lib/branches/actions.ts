@@ -205,10 +205,10 @@ export async function getEligibleBranchManagers(): Promise<
 > {
   try {
     const user = await requirePermission(PERMISSIONS.BRANCH_READ);
-    if (user.role !== 'OWNER' && user.role !== 'ADMIN') {
+    if (user.role !== 'OWNER') {
       return {
         success: false,
-        error: 'Forbidden: Requires OWNER or ADMIN role privileges.',
+        error: 'Forbidden: Requires OWNER role privileges.',
       };
     }
 

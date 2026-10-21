@@ -64,8 +64,6 @@ export default async function UsersPage() {
     switch (roleName) {
       case 'OWNER':
         return 'default';
-      case 'ADMIN':
-        return 'secondary';
       case 'MANAGER':
         return 'outline';
       default:

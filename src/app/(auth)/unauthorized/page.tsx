@@ -24,7 +24,7 @@ export default function UnauthorizedPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center text-sm text-muted-foreground">
-          If you believe you should have access to this section, please contact your restaurant owner or system administrator to adjust your role permissions.
+          If you believe you should have access to this section, please contact your restaurant owner to adjust your role permissions.
         </CardContent>
         <CardFooter className="flex flex-col gap-2 sm:flex-row">
           <Link href="/" className="w-full sm:w-1/2">

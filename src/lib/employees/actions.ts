@@ -1214,7 +1214,7 @@ export async function deleteEmployee(
 
 /**
  * Resets the password for an employee's linked system user account.
- * Requires Owner or Admin authority. Hashes password with bcrypt,
+ * Requires Owner authority. Hashes password with bcrypt,
  * invalidates existing sessions, and writes audit record.
  */
 export async function resetEmployeePassword(
@@ -1225,10 +1225,10 @@ export async function resetEmployeePassword(
   try {
     const currentUser = await requireAuthentication();
 
-    if (currentUser.role !== 'OWNER' && currentUser.role !== 'ADMIN') {
+    if (currentUser.role !== 'OWNER') {
       return {
         success: false,
-        error: 'Unauthorized: Only restaurant owners and administrators can reset employee login credentials.',
+        error: 'Unauthorized: Only restaurant owners can reset employee login credentials.',
       };
     }
 
@@ -1318,10 +1318,10 @@ export async function createLoginAccountForExistingEmployee(
   try {
     const currentUser = await requireAuthentication();
 
-    if (currentUser.role !== 'OWNER' && currentUser.role !== 'ADMIN') {
+    if (currentUser.role !== 'OWNER') {
       return {
         success: false,
-        error: 'Unauthorized: Only restaurant owners and administrators can create employee login credentials.',
+        error: 'Unauthorized: Only restaurant owners can create employee login credentials.',
       };
     }
 

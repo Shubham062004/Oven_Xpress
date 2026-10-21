@@ -13,7 +13,7 @@ export interface EligibleRecipient {
  * 1. Required RBAC permission code.
  * 2. Active user account status.
  * 3. Branch-level isolation:
- *    - OWNER and ADMIN receive alerts globally across all branches.
+ *    - OWNER receives alerts globally across all branches.
  *    - MANAGER and STAFF receive alerts only for their assigned active branch.
  *    - Sensitive financial/salary/bonus alerts are never resolved for users lacking permission.
  */
@@ -42,8 +42,8 @@ export async function resolveEligibleRecipients(
 
   return users
     .filter((user) => {
-      // OWNER and ADMIN receive alerts across all branches
-      if (user.role.name === 'OWNER' || user.role.name === 'ADMIN') {
+      // OWNER receives alerts across all branches
+      if (user.role.name === 'OWNER') {
         return true;
       }
 
@@ -87,7 +87,7 @@ export async function getUserBranchScope(userId: string): Promise<{
     return { isAllBranches: false, role: '', branchIds: [] };
   }
 
-  if (user.role.name === 'OWNER' || user.role.name === 'ADMIN') {
+  if (user.role.name === 'OWNER') {
     return { isAllBranches: true, role: user.role.name, branchIds: [] };
   }
 

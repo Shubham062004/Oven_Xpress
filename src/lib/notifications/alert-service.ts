@@ -20,7 +20,7 @@ import { getSetting } from '@/lib/settings/settings-service';
 
 /**
  * Centralized, idempotent, permission-aware operational alert evaluation engine.
- * Scans operational records within the target branch (or all branches for owner/admin),
+ * Scans operational records within the target branch (or all branches for owner),
  * derives active alerts, prevents duplicates via deterministic keys,
  * and auto-resolves cleared alerts.
  */

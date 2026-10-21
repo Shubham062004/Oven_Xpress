@@ -494,7 +494,7 @@ export async function toggleCustomerStatus(id: string): Promise<ActionResult<{ s
     const user = await getCurrentUser();
     if (!user) return { success: false, error: 'Unauthorized' };
     if (!hasPermission(user, PERMISSIONS.CUSTOMER_DEACTIVATE)) {
-      return { success: false, error: 'Forbidden: Only owners and admins can deactivate customers' };
+      return { success: false, error: 'Forbidden: Only owners can deactivate customers' };
     }
 
     const current = await prisma.customer.findUnique({

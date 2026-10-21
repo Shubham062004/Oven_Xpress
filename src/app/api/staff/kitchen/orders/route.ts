@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Any authenticated user with staff/manager/admin/owner role can view their kitchen queue
+  // Any authenticated user with staff/manager/owner role can view their kitchen queue
   const { searchParams } = new URL(request.url);
   const branchId = searchParams.get('branchId') || undefined;
   const orderType = searchParams.get('orderType') || undefined;

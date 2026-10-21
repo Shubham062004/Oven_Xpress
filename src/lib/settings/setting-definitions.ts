@@ -469,7 +469,7 @@ export const SETTING_DEFINITIONS: Record<string, SettingDefinition> = {
   ALERT_PENDING_BONUS_ENABLED: {
     key: 'ALERT_PENDING_BONUS_ENABLED',
     name: 'Pending Bonus Approval Alerts',
-    description: 'Notify owners/admins when employee bonuses are recommended for authorization.',
+    description: 'Notify owners when employee bonuses are recommended for authorization.',
     category: 'NOTIFICATIONS',
     dataType: 'BOOLEAN',
     allowedScopes: ['GLOBAL', 'BRANCH'],
@@ -555,7 +555,7 @@ export const SETTING_DEFINITIONS: Record<string, SettingDefinition> = {
   EXPENSE_APPROVAL_REQUIRED: {
     key: 'EXPENSE_APPROVAL_REQUIRED',
     name: 'Expense Approval Required',
-    description: 'Whether branch expenses require explicit manager or admin approval before payout.',
+    description: 'Whether branch expenses require explicit manager or owner approval before payout.',
     category: 'EXPENSES',
     dataType: 'BOOLEAN',
     allowedScopes: ['GLOBAL', 'BRANCH'],
@@ -565,7 +565,7 @@ export const SETTING_DEFINITIONS: Record<string, SettingDefinition> = {
   EXPENSE_APPROVAL_THRESHOLD: {
     key: 'EXPENSE_APPROVAL_THRESHOLD',
     name: 'Expense Auto-Approval Ceiling',
-    description: 'Expense amounts at or below this threshold may bypass secondary admin approval if configured.',
+    description: 'Expense amounts at or below this threshold may bypass secondary approval if configured.',
     category: 'EXPENSES',
     dataType: 'NUMBER',
     allowedScopes: ['GLOBAL', 'BRANCH'],

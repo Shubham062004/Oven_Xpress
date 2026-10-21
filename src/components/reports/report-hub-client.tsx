@@ -190,12 +190,11 @@ export const ALL_REPORTS: ReportHubCardDef[] = [
 
 interface ReportHubClientProps {
   userPermissions: string[];
-  isOwnerOrAdmin?: boolean;
   isOwner?: boolean;
 }
 
-export function ReportHubClient({ userPermissions, isOwnerOrAdmin, isOwner }: ReportHubClientProps) {
-  const isSuper = Boolean(isOwnerOrAdmin || isOwner);
+export function ReportHubClient({ userPermissions, isOwner }: ReportHubClientProps) {
+  const isSuper = Boolean(isOwner);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 

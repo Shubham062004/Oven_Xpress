@@ -112,7 +112,7 @@ export async function updateSettingAction(
     const { key, value, scope, branchId } = parseResult.data;
     const branchScope = await getAuthorizedBranchScope(user);
 
-    // Global settings require elevated authorization (OWNER or ADMIN)
+    // Global settings require elevated authorization (OWNER)
     if (scope === 'GLOBAL') {
       if (!branchScope.isAllBranches) {
         return { success: false, error: 'Access denied: Branch managers cannot modify global settings.' };

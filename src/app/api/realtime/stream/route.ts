@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
  *
  * Provides live, low-latency push updates to authorized clients.
  * Authorization & scoping are strictly enforced server-side from session:
- * - OWNER / ADMIN: authorized for 'owner', 'all-branches', and specific branch channels.
+ * - OWNER: authorized for 'owner', 'all-branches', and specific branch channels.
  * - BRANCH_MANAGER / STAFF: authorized strictly for their assigned branch and personal user channel.
  * - CUSTOMER: authorized strictly for their personal user channel and their verified orders.
  * - GUEST TRACKING: authorized strictly for the single orderNumber requested if verified with tracking token.
@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
 
     const roleUpper = user.role.toUpperCase();
 
-    // 2. Executive / Admin channels
-    if (roleUpper === 'OWNER' || roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN') {
+    // 2. Executive / Owner channels
+    if (roleUpper === 'OWNER') {
       channels.push('owner');
       channels.push('all-branches');
       if (requestedBranch && requestedBranch !== 'ALL' && requestedBranch !== 'all') {

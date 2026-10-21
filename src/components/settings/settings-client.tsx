@@ -107,7 +107,7 @@ export function SettingsClient({
   const [resetTarget, setResetTarget] = useState<ResolvedSettingItem | null>(null);
 
   // Check if current user has update permission
-  const canUpdate = userPermissions.includes('settings.update') || userRole === 'OWNER' || userRole === 'ADMIN';
+  const canUpdate = userPermissions.includes('settings.update') || userRole === 'OWNER';
 
   // Handle branch change: navigates and reloads settings for that branch
   const handleBranchChange = (branchId: string | 'GLOBAL') => {

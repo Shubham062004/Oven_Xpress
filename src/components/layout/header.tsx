@@ -50,8 +50,6 @@ export function Header({ user }: HeaderProps) {
     switch (role) {
       case 'OWNER':
         return 'default';
-      case 'ADMIN':
-        return 'secondary';
       case 'MANAGER':
         return 'outline';
       default:
@@ -165,7 +163,7 @@ export function Header({ user }: HeaderProps) {
                         <Building2 className="size-3 shrink-0" />
                         <span className="truncate">{user.branchName}</span>
                       </span>
-                    ) : user.role === 'OWNER' || user.role === 'ADMIN' ? (
+                    ) : user.role === 'OWNER' ? (
                       <span className="text-[11px] text-muted-foreground">Universal Access</span>
                     ) : null}
                   </div>

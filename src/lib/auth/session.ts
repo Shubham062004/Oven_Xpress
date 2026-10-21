@@ -11,7 +11,7 @@ import { logAuthAttempt } from '@/lib/security/security-logger';
 export const SESSION_COOKIE_NAME = 'ox_session';
 export const ROLE_COOKIE_NAME = 'ox_user_role';
 export const STAFF_SESSION_TTL_SECONDS = 12 * 60 * 60; // 12 hours (43,200 seconds) for staff and branch managers
-export const EXECUTIVE_SESSION_TTL_SECONDS = 30 * 60; // 30 minutes for executive (owner / admin) sessions
+export const EXECUTIVE_SESSION_TTL_SECONDS = 30 * 60; // 30 minutes for executive (owner) sessions
 export const CUSTOMER_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days for customer users
 export const SESSION_TTL_SECONDS = STAFF_SESSION_TTL_SECONDS; // Default session TTL fallback
 
@@ -19,7 +19,7 @@ export const SESSION_TTL_SECONDS = STAFF_SESSION_TTL_SECONDS; // Default session
  * Returns session TTL in seconds based on role.
  * Operational roles (Staff, Branch Manager) get 12 hours.
  * Customers get 7 days.
- * Executive roles (Owner, Admin) get 30 minutes.
+ * Executive role (Owner) gets 30 minutes.
  */
 export function getSessionTtlSeconds(roleName?: string | null): number {
   const normalized = (roleName || '').toLowerCase().trim().replace(/[\s_-]+/g, '');
@@ -33,7 +33,7 @@ export function getSessionTtlSeconds(roleName?: string | null): number {
   ) {
     return STAFF_SESSION_TTL_SECONDS;
   }
-  if (normalized === 'owner' || normalized === 'admin') {
+  if (normalized === 'owner') {
     return EXECUTIVE_SESSION_TTL_SECONDS;
   }
   return STAFF_SESSION_TTL_SECONDS;
@@ -42,7 +42,7 @@ export function getSessionTtlSeconds(roleName?: string | null): number {
 /**
  * Creates a new session in the database and writes the secure HTTP-only cookies.
  * Staff and Branch Managers receive a 12-hour session for full shifts.
- * Executive users (Owner, Admin) get a 30-minute session.
+ * Executive user (Owner) gets a 30-minute session.
  * Customer users get a 7-day session for comfortable browsing/ordering.
  */
 export async function createSession(

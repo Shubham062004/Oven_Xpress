@@ -108,7 +108,7 @@ export async function submitBugReportAction(
 /**
  * Server action: Retrieve bug reports.
  * Owners can view all bug reports across the system.
- * Regular users (staff, manager, admin, customer) can strictly only see their own reported bugs.
+ * Regular users (staff, manager, customer) can strictly only see their own reported bugs.
  */
 export async function getBugReportsAction(
   filterInput?: Partial<BugReportFilterInput>

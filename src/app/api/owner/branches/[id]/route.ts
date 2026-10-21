@@ -13,9 +13,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (user.role !== 'OWNER' && user.role !== 'ADMIN') {
+  if (user.role !== 'OWNER') {
     return NextResponse.json(
-      { success: false, error: 'Forbidden: Requires OWNER or ADMIN role privileges' },
+      { success: false, error: 'Forbidden: Requires OWNER role privileges' },
       { status: 403 }
     );
   }

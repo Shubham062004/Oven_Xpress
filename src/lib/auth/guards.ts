@@ -113,13 +113,13 @@ export interface AuthorizedBranchScope {
 
 /**
  * Resolves the authoritative branch scope for the authenticated user.
- * - OWNER and ADMIN have universal access across all branches.
+ * - OWNER has universal access across all branches.
  * - MANAGER and STAFF are restricted strictly to their assigned active branch.
  */
 export async function getAuthorizedBranchScope(
   user: AuthUser
 ): Promise<AuthorizedBranchScope> {
-  if (user.role === 'OWNER' || user.role === 'ADMIN') {
+  if (user.role === 'OWNER') {
     return { isAllBranches: true, branchIds: [] };
   }
 

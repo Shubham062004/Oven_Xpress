@@ -258,15 +258,6 @@ export function LoginForm() {
           >
             Owner
           </Button>
-          {/* <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            onClick={() => fillCredentials('admin@ovenxpress.com', 'Admin123!')}
-            className="text-[11px]"
-          >
-            Admin
-          </Button> */}
           <Button
             type="button"
             variant="outline"

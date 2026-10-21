@@ -46,7 +46,7 @@ export async function validateCustomerCouponAction(
 }
 
 /**
- * Owner & Admin action: Fetch all coupons with usage statistics.
+ * Owner action: Fetch all coupons with usage statistics.
  */
 export async function getOwnerCouponsAction(): Promise<{
   success: boolean;
@@ -144,7 +144,7 @@ export async function getOwnerCouponsAction(): Promise<{
 
 
 /**
- * Owner & Admin action: Create a new coupon with all restrictions.
+ * Owner action: Create a new coupon with all restrictions.
  */
 export async function createCouponAction(input: CreateCouponInput): Promise<{
   success: boolean;
@@ -207,7 +207,7 @@ export async function createCouponAction(input: CreateCouponInput): Promise<{
 }
 
 /**
- * Owner & Admin action: Toggle coupon active/inactive status.
+ * Owner action: Toggle coupon active/inactive status.
  */
 export async function toggleCouponStatusAction(
   couponId: string,
@@ -233,7 +233,7 @@ export async function toggleCouponStatusAction(
 }
 
 /**
- * Owner & Admin action: Delete a coupon.
+ * Owner action: Delete a coupon.
  */
 export async function deleteCouponAction(
   couponId: string
