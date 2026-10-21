@@ -206,7 +206,7 @@ export function WishlistClient() {
               className={cn(buttonVariants({ size: 'default' }), 'font-bold text-xs shadow-md inline-flex items-center gap-2')}
             >
               <ShoppingBag className="size-4" />
-              <span>Explore Oven Express Menu</span>
+              <span>Explore Oven Xpress Menu</span>
             </Link>
           </div>
         </div>

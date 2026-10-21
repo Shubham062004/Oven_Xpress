@@ -75,7 +75,7 @@ export function Sidebar({ user }: SidebarProps) {
               <div className="relative flex size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-white/90 dark:bg-zinc-900 border border-sidebar-border">
                 <Image
                   src="/logo.png"
-                  alt="Oven Express"
+                  alt="Oven Xpress"
                   fill
                   sizes="32px"
                   className="object-contain p-0.5"
@@ -84,7 +84,7 @@ export function Sidebar({ user }: SidebarProps) {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-semibold text-sidebar-foreground truncate">
-                  Oven Express
+                  Oven Xpress
                 </span>
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                   {user?.role || 'Portal'}

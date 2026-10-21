@@ -14,13 +14,13 @@ export function CustomerFooter({ branches = [] }: { branches?: PublicBranch[] })
             <div className="relative size-8 rounded-lg overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border/60 shadow-sm flex items-center justify-center">
               <Image
                 src="/logo.png"
-                alt="Oven Express"
+                alt="Oven Xpress"
                 fill
                 sizes="32px"
                 className="object-contain p-0.5"
               />
             </div>
-            <span className="font-extrabold text-base tracking-tight">Oven Express</span>
+            <span className="font-extrabold text-base tracking-tight">Oven Xpress</span>
           </div>
           <p className="text-muted-foreground leading-relaxed">
             Artisanal sourdough pizzas, wood-fired gourmet burgers, and fresh baked goods delivered fast and hot.

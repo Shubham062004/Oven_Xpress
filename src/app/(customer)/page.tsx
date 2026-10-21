@@ -26,7 +26,7 @@ import { CustomerFooter } from '@/components/customer/customer-footer';
 export const metadata = {
   title: 'Oven Xpress — Good food. Less waiting.',
   description:
-    'Artisanal sourdough pizzas, wood-fired breads, and gourmet burgers baked fresh in 450°C stone ovens. Order ahead for instant express counter pickup.',
+    'Artisanal sourdough pizzas, wood-fired breads, and gourmet burgers baked fresh in 450°C stone ovens. Order ahead for xpress counter pickup.',
 };
 
 export default async function CustomerHomePage() {
@@ -86,7 +86,7 @@ export default async function CustomerHomePage() {
               </div>
               <div>
                 <span className="block text-lg sm:text-xl font-black text-foreground">Zero Line</span>
-                <span className="text-[11px] text-muted-foreground">Express Pickup</span>
+                <span className="text-[11px] text-muted-foreground">Xpress Pickup</span>
               </div>
             </div>
           </div>
@@ -123,14 +123,14 @@ export default async function CustomerHomePage() {
           <div className="max-w-3xl space-y-2 mb-8">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
               <Clock className="size-3" />
-              <span>Express Pickup Experience</span>
+              <span>Xpress Pickup Experience</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
               Order Ahead. Skip the Wait.
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
               Place your order before your class ends, during your commute, or on your way. Collect
-              piping-hot food straight from our dedicated express pickup counter without standing in
+              piping-hot food straight from our dedicated xpress pickup counter without standing in
               line.
             </p>
           </div>
@@ -194,7 +194,7 @@ export default async function CustomerHomePage() {
                 <div className="size-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-black text-sm">
                   4
                 </div>
-                <h3 className="font-bold text-sm text-foreground">Express Counter Pickup</h3>
+                <h3 className="font-bold text-sm text-foreground">Xpress Counter Pickup</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Walk in, show your order number at the designated pickup counter, and grab your hot food.
                 </p>
@@ -295,7 +295,7 @@ export default async function CustomerHomePage() {
         <div className="rounded-3xl bg-neutral-900 text-white p-6 sm:p-10 border border-white/10 shadow-xl overflow-hidden relative">
           <div className="relative z-10 max-w-2xl space-y-4">
             <span className="text-amber-400 font-extrabold text-xs uppercase tracking-widest">
-              The Oven Express Standard
+              The Oven Xpress Standard
             </span>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
               Real Food Quality. No Shortcuts.
@@ -322,7 +322,7 @@ export default async function CustomerHomePage() {
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 className="size-4 text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-white">Dedicated Express Pickup</strong> — Freshly boxed and staged for immediate pickup.
+                  <strong className="text-white">Dedicated Xpress Pickup</strong> — Freshly boxed and staged for immediate pickup.
                 </span>
               </div>
             </div>
@@ -332,7 +332,7 @@ export default async function CustomerHomePage() {
           <div className="hidden lg:flex absolute right-10 top-1/2 -translate-y-1/2 size-40 items-center justify-center pointer-events-none">
             <Image
               src="/logo.png"
-              alt="Oven Express Official Brand Seal"
+              alt="Oven Xpress Official Brand Seal"
               width={160}
               height={160}
               className="object-contain filter drop-shadow-[0_10px_25px_rgba(249,115,22,0.35)] opacity-95"

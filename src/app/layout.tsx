@@ -20,11 +20,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Oven Express',
-    template: '%s | Oven Express',
+    default: 'Oven Xpress',
+    template: '%s | Oven Xpress',
   },
   description:
-    'Oven Express - Artisanal kitchen & multi-branch restaurant management and ordering system.',
+    'Oven Xpress - Artisanal kitchen & multi-branch restaurant management and ordering system.',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },

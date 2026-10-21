@@ -599,13 +599,13 @@ export function CheckoutClient({
             </div>
           )}
 
-          {/* Express Pickup Details (for TAKEAWAY mode) */}
+          {/* Xpress Pickup Details (for TAKEAWAY mode) */}
           {orderType === 'TAKEAWAY' && (
             <div className="bg-card rounded-2xl border border-primary/30 p-4 sm:p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
                   <PackageCheck className="size-4 text-primary" />
-                  <span>Express Counter Pickup</span>
+                  <span>Xpress Counter Pickup</span>
                 </h2>
                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">
                   ZERO QUEUE
@@ -623,7 +623,7 @@ export function CheckoutClient({
                   </p>
                 )}
                 <p className="text-muted-foreground pl-5 text-[11px] pt-1">
-                  When your live order status reaches <strong className="text-foreground">READY</strong>, walk in directly to the Express Pickup counter to collect your fresh box.
+                  When your live order status reaches <strong className="text-foreground">READY</strong>, walk in directly to the Xpress Pickup counter to collect your fresh box.
                 </p>
               </div>
 

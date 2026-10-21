@@ -208,7 +208,7 @@ export function ReportBugForm({ initialUser }: ReportBugFormProps) {
             Bug Report Submitted!
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Thank you for helping us improve Oven Express. Our engineering team has been
+            Thank you for helping us improve Oven Xpress. Our engineering team has been
             notified directly and will investigate the issue promptly.
           </p>
         </div>

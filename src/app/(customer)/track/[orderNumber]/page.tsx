@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: TrackOrderPageProps): Promise
   const { orderNumber } = await params;
   return {
     title: `Track Order ${orderNumber}`,
-    description: `Live tracking for order ${orderNumber} in Oven Express.`,
+    description: `Live tracking for order ${orderNumber} in Oven Xpress.`,
     referrer: 'no-referrer',
   };
 }

@@ -178,7 +178,7 @@ async function main() {
     {
       id: 'DEMO-BR-02',
       code: 'DEMO-BR-02',
-      name: 'Andheri West Express & Delivery',
+      name: 'Andheri West Xpress & Delivery',
       description: 'High-volume urban kitchen specializing in fast-casual dine-in and rapid delivery.',
       address: 'Unit 8, Infinity Mall Hub, Link Road, Andheri West',
       city: 'Mumbai',

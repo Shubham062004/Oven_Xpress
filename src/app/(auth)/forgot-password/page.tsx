@@ -8,7 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
   title: 'Forgot Password',
-  description: 'Request a password reset link for your Oven Express account',
+  description: 'Request a password reset link for your Oven Xpress account',
 };
 
 export default function ForgotPasswordPage() {
@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
             <div className="relative flex size-14 items-center justify-center rounded-2xl overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border/60 shadow-lg shadow-orange-500/10 group-hover:scale-105 transition-transform p-1">
               <Image
                 src="/logo.png"
-                alt="Oven Express"
+                alt="Oven Xpress"
                 fill
                 sizes="56px"
                 className="object-contain p-1"
@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
               />
             </div>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Oven Express</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Oven Xpress</h1>
           <p className="text-sm text-muted-foreground">
             Multi-Branch Restaurant Management
           </p>

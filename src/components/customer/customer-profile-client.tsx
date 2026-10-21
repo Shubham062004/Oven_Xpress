@@ -309,7 +309,7 @@ export function CustomerProfileClient({ initialData }: CustomerProfileClientProp
               My Orders
             </h3>
             <p className="text-xs text-muted-foreground">
-              {profile.ordersCount} previous {profile.ordersCount === 1 ? 'order' : 'orders'} placed with Oven Express
+              {profile.ordersCount} previous {profile.ordersCount === 1 ? 'order' : 'orders'} placed with Oven Xpress
             </p>
           </div>
         </Link>

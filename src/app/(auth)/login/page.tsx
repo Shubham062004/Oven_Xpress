@@ -7,7 +7,7 @@ import Image from 'next/image';
 
 export const metadata = {
   title: 'Sign In',
-  description: 'Sign in to your Oven Express customer account or operational dashboard',
+  description: 'Sign in to your Oven Xpress customer account or operational dashboard',
 };
 
 export default function LoginPage() {
@@ -31,7 +31,7 @@ export default function LoginPage() {
             <div className="relative flex size-14 items-center justify-center rounded-2xl overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border/60 shadow-lg shadow-orange-500/10 group-hover:scale-105 transition-transform p-1">
               <Image
                 src="/logo.png"
-                alt="Oven Express"
+                alt="Oven Xpress"
                 fill
                 sizes="56px"
                 className="object-contain p-1"
@@ -39,7 +39,7 @@ export default function LoginPage() {
               />
             </div>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Oven Express</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Oven Xpress</h1>
           <p className="text-xs text-muted-foreground">
             Sign in to order food or track deliveries
           </p>

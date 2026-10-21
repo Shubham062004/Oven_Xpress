@@ -86,7 +86,7 @@ export function BranchSelectorModal({
             <div className="relative size-9 rounded-xl overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border/60 shadow-sm flex items-center justify-center shrink-0">
               <Image
                 src="/logo.png"
-                alt="Oven Express"
+                alt="Oven Xpress"
                 fill
                 sizes="36px"
                 className="object-contain p-0.5"
@@ -95,7 +95,7 @@ export function BranchSelectorModal({
             <div>
               <h2 className="text-base sm:text-lg font-bold">Select Branch</h2>
               <p className="text-xs text-muted-foreground">
-                Choose an Oven Express branch near you
+                Choose an Oven Xpress branch near you
               </p>
             </div>
           </div>

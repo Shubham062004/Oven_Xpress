@@ -54,7 +54,7 @@ export function CustomerHeader({ branches, user }: CustomerHeaderProps) {
                 <div className="relative size-9 sm:size-10 rounded-xl overflow-hidden shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform bg-white/90 dark:bg-zinc-900 border border-border/40 flex items-center justify-center">
                   <Image
                     src="/logo.png"
-                    alt="Oven Express"
+                    alt="Oven Xpress"
                     fill
                     sizes="40px"
                     className="object-contain p-0.5"
@@ -63,7 +63,7 @@ export function CustomerHeader({ branches, user }: CustomerHeaderProps) {
                 </div>
                 <div className="hidden xs:block">
                   <span className="font-extrabold text-base sm:text-lg tracking-tight text-foreground flex items-center gap-1">
-                    Oven<span className="text-primary font-black">Express</span>
+                    Oven<span className="text-primary font-black">Xpress</span>
                   </span>
                   <span className="block text-[10px] text-muted-foreground uppercase tracking-widest -mt-1 font-semibold">
                     Artisanal Kitchen

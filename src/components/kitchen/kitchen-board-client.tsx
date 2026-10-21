@@ -344,7 +344,7 @@ export function KitchenBoardClient({
             <div className="relative size-8 rounded-lg overflow-hidden bg-white/95 dark:bg-zinc-900 border border-border shadow-xs shrink-0 flex items-center justify-center">
               <Image
                 src="/logo.png"
-                alt="Oven Express"
+                alt="Oven Xpress"
                 fill
                 sizes="32px"
                 className="object-contain p-0.5"
@@ -354,7 +354,7 @@ export function KitchenBoardClient({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-sm sm:text-base font-black tracking-tight uppercase">
-                  Oven Express
+                  Oven Xpress
                 </span>
                 <span className="text-[10px] sm:text-[11px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 uppercase">
                   KDS Live
