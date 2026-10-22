@@ -40,10 +40,10 @@ export default function RegisterPage() {
             </div>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Join Oven Xpress
+            Oven Xpress
           </h1>
           <p className="text-xs text-muted-foreground max-w-xs">
-            Create an account to track your orders, save delivery addresses, and unlock member specials.
+            Create an account to place orders.
           </p>
         </div>
 

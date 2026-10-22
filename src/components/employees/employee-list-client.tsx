@@ -16,10 +16,6 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,6 +45,7 @@ import {
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 import { EmployeeFormDialog } from '@/components/employees/employee-form-dialog';
 import { EmployeeDeleteDialog } from '@/components/employees/employee-delete-dialog';
@@ -101,20 +98,6 @@ function SortIndicator({
   );
 }
 
-// ─── Pagination Range Helper ────────────────────────────────────────────────
-
-function getVisiblePages(current: number, total: number): (number | string)[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-  if (current <= 4) {
-    return [1, 2, 3, 4, 5, '...', total];
-  }
-  if (current >= total - 3) {
-    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
-  }
-  return [1, '...', current - 1, current, current + 1, '...', total];
-}
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
@@ -780,123 +763,17 @@ export function EmployeeListClient({
           </Table>
 
           {/* Desktop Pagination Footer */}
-          <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span>
-                Showing{' '}
-                <span className="font-semibold text-foreground">
-                  {totalItems === 0 ? 0 : startIndex + 1}
-                </span>{' '}
-                to{' '}
-                <span className="font-semibold text-foreground">{endIndex}</span>{' '}
-                of{' '}
-                <span className="font-semibold text-foreground">{totalItems}</span>{' '}
-                employees
-              </span>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <span>Rows per page:</span>
-                <Select
-                  value={pageSize.toString()}
-                  onValueChange={(val) => {
-                    if (val) handlePageSizeChange(Number(val));
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-18 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => handlePageChange(1)}
-                  disabled={activePage <= 1 || isPending}
-                  title="First page"
-                  aria-label="First page"
-                  className="size-8"
-                >
-                  <ChevronsLeft className="size-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => handlePageChange(activePage - 1)}
-                  disabled={activePage <= 1 || isPending}
-                  title="Previous page"
-                  aria-label="Previous page"
-                  className="size-8"
-                >
-                  <ChevronLeft className="size-3.5" />
-                </Button>
-
-                <div className="flex items-center gap-1 mx-1">
-                  {getVisiblePages(activePage, totalPages).map((p, idx) => {
-                    if (p === '...') {
-                      return (
-                        <span
-                          key={`dots-${idx}`}
-                          className="px-1 text-muted-foreground select-none"
-                        >
-                          ...
-                        </span>
-                      );
-                    }
-                    const pageNum = Number(p);
-                    const isActive = pageNum === activePage;
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={isActive ? 'default' : 'outline'}
-                        size="icon-sm"
-                        onClick={() => handlePageChange(pageNum)}
-                        disabled={isPending}
-                        className={`size-8 text-xs ${
-                          isActive
-                            ? 'font-semibold shadow-xs'
-                            : 'font-normal hover:bg-muted'
-                        }`}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => handlePageChange(activePage + 1)}
-                  disabled={activePage >= totalPages || isPending}
-                  title="Next page"
-                  aria-label="Next page"
-                  className="size-8"
-                >
-                  <ChevronRight className="size-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={() => handlePageChange(totalPages)}
-                  disabled={activePage >= totalPages || isPending}
-                  title="Last page"
-                  aria-label="Last page"
-                  className="size-8"
-                >
-                  <ChevronsRight className="size-3.5" />
-                </Button>
-              </div>
-            </div>
-          </div>
+          <DataTablePagination
+            currentPage={activePage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            pageSizeOptions={[10, 25, 50]}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={isPending}
+            itemLabel="employees"
+          />
         </div>
       )}
 
@@ -1013,63 +890,18 @@ export function EmployeeListClient({
           })}
 
           {/* Mobile Pagination Card */}
-          <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 text-xs text-muted-foreground shadow-xs">
-            <div className="flex items-center justify-between">
-              <span>
-                Showing{' '}
-                <span className="font-semibold text-foreground">
-                  {totalItems === 0 ? 0 : startIndex + 1}
-                </span>
-                –
-                <span className="font-semibold text-foreground">{endIndex}</span>{' '}
-                of{' '}
-                <span className="font-semibold text-foreground">{totalItems}</span>
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span>Rows:</span>
-                <Select
-                  value={pageSize.toString()}
-                  onValueChange={(val) => {
-                    if (val) handlePageSizeChange(Number(val));
-                  }}
-                >
-                  <SelectTrigger className="h-7 w-16 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between border-t pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(activePage - 1)}
-                disabled={activePage <= 1 || isPending}
-                className="h-8 gap-1 text-xs"
-              >
-                <ChevronLeft className="size-3.5" />
-                Prev
-              </Button>
-              <span className="font-medium text-foreground">
-                Page {activePage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(activePage + 1)}
-                disabled={activePage >= totalPages || isPending}
-                className="h-8 gap-1 text-xs"
-              >
-                Next
-                <ChevronRight className="size-3.5" />
-              </Button>
-            </div>
+          <div className="rounded-xl border bg-card shadow-xs">
+            <DataTablePagination
+              currentPage={activePage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              pageSizeOptions={[10, 25, 50]}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              isLoading={isPending}
+              itemLabel="employees"
+            />
           </div>
         </div>
       )}

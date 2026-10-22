@@ -8,8 +8,6 @@ import {
   Search,
   Plus,
   RotateCcw,
-  ChevronLeft,
-  ChevronRight,
   UserCheck,
   UserX,
   Eye,
@@ -33,6 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface CustomerListClientProps {
   initialCustomers: CustomerListItem[];
@@ -75,6 +74,9 @@ export function CustomerListClient({
     if (b) params.set('branchId', b);
     if (s) params.set('status', s);
     if (q.trim()) params.set('search', q.trim());
+    if (initialPagination.pageSize !== 20) {
+      params.set('pageSize', initialPagination.pageSize.toString());
+    }
 
     startTransition(() => {
       router.push(`/customers?${params.toString()}`);
@@ -96,6 +98,22 @@ export function CustomerListClient({
     if (statusFilter) params.set('status', statusFilter);
     if (search.trim()) params.set('search', search.trim());
     params.set('page', newPage.toString());
+    if (initialPagination.pageSize !== 20) {
+      params.set('pageSize', initialPagination.pageSize.toString());
+    }
+
+    startTransition(() => {
+      router.push(`/customers?${params.toString()}`);
+    });
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    const params = new URLSearchParams();
+    if (branchFilter) params.set('branchId', branchFilter);
+    if (statusFilter) params.set('status', statusFilter);
+    if (search.trim()) params.set('search', search.trim());
+    params.set('page', '1');
+    params.set('pageSize', newPageSize.toString());
 
     startTransition(() => {
       router.push(`/customers?${params.toString()}`);
@@ -571,51 +589,17 @@ export function CustomerListClient({
           </div>
 
           {/* Pagination Controls */}
-          {initialPagination.totalPages > 1 && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t px-4 py-3">
-              <p className="text-xs text-muted-foreground">
-                Showing{' '}
-                <span className="font-medium">
-                  {(initialPagination.page - 1) * initialPagination.pageSize + 1}
-                </span>{' '}
-                to{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    initialPagination.page * initialPagination.pageSize,
-                    initialPagination.total
-                  )}
-                </span>{' '}
-                of <span className="font-medium">{initialPagination.total}</span> customers
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(initialPagination.page - 1)}
-                  disabled={initialPagination.page <= 1 || isPending}
-                  className="gap-1 min-h-9 text-xs"
-                >
-                  <ChevronLeft className="size-3.5" />
-                  Previous
-                </Button>
-                <span className="text-xs font-medium px-1">
-                  {initialPagination.page} / {initialPagination.totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(initialPagination.page + 1)}
-                  disabled={
-                    initialPagination.page >= initialPagination.totalPages || isPending
-                  }
-                  className="gap-1 min-h-9 text-xs"
-                >
-                  Next
-                  <ChevronRight className="size-3.5" />
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="border-t p-4">
+            <DataTablePagination
+              currentPage={initialPagination.page}
+              totalPages={initialPagination.totalPages}
+              totalItems={initialPagination.total}
+              pageSize={initialPagination.pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              isLoading={isPending}
+            />
+          </div>
         </CardContent>
       </Card>
 

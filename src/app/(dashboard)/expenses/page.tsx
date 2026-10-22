@@ -39,6 +39,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
   const endDate = resolvedParams.endDate;
   const search = resolvedParams.search;
   const page = resolvedParams.page ? parseInt(resolvedParams.page, 10) : 1;
+  const pageSize = resolvedParams.pageSize ? parseInt(resolvedParams.pageSize, 10) : 20;
 
   const [expensesRes, statsRes, branchesRes, categoriesRes] = await Promise.all([
     getExpenses({
@@ -50,7 +51,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
       endDate,
       search,
       page: isNaN(page) ? 1 : page,
-      pageSize: 20,
+      pageSize: isNaN(pageSize) ? 20 : pageSize,
     }),
     getExpenseStats(branchId === 'all' ? undefined : branchId),
     getBranches({ status: 'ACTIVE' }),

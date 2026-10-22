@@ -18,8 +18,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ChefHat,
-  ChevronLeft,
-  ChevronRight,
   Pencil,
   Trash2,
   Filter,
@@ -45,6 +43,7 @@ import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import {
   Card,
   CardContent,
@@ -140,6 +139,7 @@ export function OrderListClient({
   const [orders, setOrders] = useState<OrderListItem[]>(initialOrders);
   const [stats, setStats] = useState<OrderStats>(initialStats);
   const [pagination, setPagination] = useState(initialPagination);
+  const [pageSize, setPageSize] = useState(20);
   const [isLoading, setIsLoading] = useState(false);
 
   // Filter States (defaults to today's orders)
@@ -180,6 +180,7 @@ export function OrderListClient({
         status?: string;
         date?: 'today' | 'all';
         search?: string;
+        limit?: number;
       }
     ) => {
       setIsLoading(true);
@@ -189,6 +190,7 @@ export function OrderListClient({
         const statusVal = overrides?.status !== undefined ? overrides.status : selectedStatus;
         const dateVal = overrides?.date !== undefined ? overrides.date : dateFilter;
         const searchVal = overrides?.search !== undefined ? overrides.search : search;
+        const limitVal = overrides?.limit !== undefined ? overrides.limit : pageSize;
 
         const todayStr = new Date().toISOString().split('T')[0];
 
@@ -201,7 +203,7 @@ export function OrderListClient({
             startDate: dateVal === 'today' ? todayStr : undefined,
             endDate: dateVal === 'today' ? todayStr : undefined,
             page,
-            limit: 20,
+            limit: limitVal,
           }),
           getOrderStats(branchVal === 'ALL' ? undefined : branchVal),
         ]);
@@ -223,7 +225,7 @@ export function OrderListClient({
         setIsLoading(false);
       }
     },
-    [selectedBranch, selectedType, selectedStatus, search, dateFilter]
+    [selectedBranch, selectedType, selectedStatus, search, dateFilter, pageSize]
   );
 
   // Subscribe to live order updates
@@ -1182,36 +1184,20 @@ export function OrderListClient({
               </div>
 
               {/* Pagination Bar */}
-              {pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-border/50 text-xs text-muted-foreground">
-                  <div>
-                    Showing page <span className="font-medium text-foreground">{pagination.page}</span> of{' '}
-                    <span className="font-medium text-foreground">{pagination.totalPages}</span> ({pagination.total} total)
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fetchOrders(pagination.page - 1)}
-                      disabled={pagination.page <= 1 || isLoading}
-                      className="h-9 sm:h-7 px-3 sm:px-2"
-                    >
-                      <ChevronLeft className="size-3.5" />
-                      Prev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fetchOrders(pagination.page + 1)}
-                      disabled={pagination.page >= pagination.totalPages || isLoading}
-                      className="h-9 sm:h-7 px-3 sm:px-2"
-                    >
-                      Next
-                      <ChevronRight className="size-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <DataTablePagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                pageSize={pageSize}
+                totalItems={pagination.total}
+                onPageChange={(page) => fetchOrders(page)}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  fetchOrders(1, { limit: newSize });
+                }}
+                pageSizeOptions={[10, 20, 50, 100]}
+                disabled={isLoading}
+                itemLabel="orders"
+              />
             </>
           )}
         </CardContent>

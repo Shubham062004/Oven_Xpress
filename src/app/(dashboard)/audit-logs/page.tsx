@@ -25,6 +25,7 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
 
   const resolved = await searchParams;
   const page = resolved.page ? parseInt(resolved.page, 10) : 1;
+  const limit = resolved.limit ? parseInt(resolved.limit, 10) : 25;
   const preset = (resolved.preset as AuditDatePreset) || (!resolved.startDate && !resolved.endDate ? 'today' : 'custom');
 
   const [logsRes, filterOptsRes] = await Promise.all([
@@ -36,8 +37,8 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
       preset,
       startDate: resolved.startDate,
       endDate: resolved.endDate,
-      page,
-      limit: 25,
+      page: isNaN(page) ? 1 : page,
+      limit: isNaN(limit) ? 25 : limit,
     }),
     getAuditFilterOptionsAction(),
   ]);

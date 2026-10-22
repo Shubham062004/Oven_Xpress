@@ -35,6 +35,7 @@ export default async function BonusesPage({ searchParams }: BonusesPageProps) {
   const status = resolvedParams.status as BonusStatus | undefined;
   const search = resolvedParams.search;
   const page = resolvedParams.page ? parseInt(resolvedParams.page, 10) : 1;
+  const pageSize = resolvedParams.pageSize ? parseInt(resolvedParams.pageSize, 10) : 20;
 
   const [bonusesRes, branchesRes] = await Promise.all([
     getBonuses({
@@ -42,7 +43,7 @@ export default async function BonusesPage({ searchParams }: BonusesPageProps) {
       status,
       search,
       page: isNaN(page) ? 1 : page,
-      pageSize: 20,
+      pageSize: isNaN(pageSize) ? 20 : pageSize,
     }),
     getBranches({ status: 'ACTIVE' }),
   ]);
@@ -52,8 +53,8 @@ export default async function BonusesPage({ searchParams }: BonusesPageProps) {
     bonusesRes.success && bonusesRes.data
       ? bonusesRes.data.pagination
       : {
-          page: 1,
-          pageSize: 20,
+          page: isNaN(page) ? 1 : page,
+          pageSize: isNaN(pageSize) ? 20 : pageSize,
           totalItems: 0,
           totalPages: 1,
           hasNextPage: false,

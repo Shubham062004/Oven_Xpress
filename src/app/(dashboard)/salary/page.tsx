@@ -35,6 +35,7 @@ export default async function SalaryPage({ searchParams }: SalaryPageProps) {
   const status = resolvedParams.status as SalaryRecordStatus | undefined;
   const search = resolvedParams.search;
   const page = resolvedParams.page ? parseInt(resolvedParams.page, 10) : 1;
+  const pageSize = resolvedParams.pageSize ? parseInt(resolvedParams.pageSize, 10) : 15;
 
   const [recordsRes, statsRes, branchesRes] = await Promise.all([
     getSalaryRecords({
@@ -42,7 +43,7 @@ export default async function SalaryPage({ searchParams }: SalaryPageProps) {
       status,
       search,
       page: isNaN(page) ? 1 : page,
-      pageSize: 15,
+      pageSize: isNaN(pageSize) ? 15 : pageSize,
     }),
     getSalaryDashboardStats(branchId === 'all' ? undefined : branchId),
     getBranches({ status: 'ACTIVE' }),
@@ -53,8 +54,8 @@ export default async function SalaryPage({ searchParams }: SalaryPageProps) {
     recordsRes.success && recordsRes.data
       ? recordsRes.data.pagination
       : {
-          page: 1,
-          pageSize: 15,
+          page: isNaN(page) ? 1 : page,
+          pageSize: isNaN(pageSize) ? 15 : pageSize,
           totalItems: 0,
           totalPages: 1,
           hasNextPage: false,

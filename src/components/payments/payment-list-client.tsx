@@ -8,8 +8,6 @@ import {
   RotateCcw,
   Building2,
   Calendar,
-  ChevronLeft,
-  ChevronRight,
   ExternalLink,
   Banknote,
   Smartphone,
@@ -18,6 +16,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 import { useAuth } from '@/providers/auth-provider';
 import { hasPermission } from '@/lib/permissions/check';
@@ -32,7 +31,7 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Card,
@@ -88,6 +87,7 @@ export function PaymentListClient({
   const [payments, setPayments] = useState<PaymentRecord[]>(initialPayments);
   const [stats, setStats] = useState<PaymentStats>(initialStats);
   const [pagination, setPagination] = useState(initialPagination);
+  const [pageSize, setPageSize] = useState(pagination.limit || 20);
   const [loading, setLoading] = useState(false);
 
   // Filters state
@@ -138,7 +138,8 @@ export function PaymentListClient({
       branchId: string = selectedBranch,
       method: string = selectedMethod,
       status: string = selectedStatus,
-      range: string = dateRange
+      range: string = dateRange,
+      limitSize: number = pageSize
     ) => {
       setLoading(true);
       try {
@@ -147,7 +148,7 @@ export function PaymentListClient({
         const [paymentsRes, statsRes] = await Promise.all([
           getPayments({
             page: pageNumber,
-            limit: pagination.limit,
+            limit: limitSize,
             search: searchTerm || undefined,
             branchId: branchId === 'all' ? undefined : branchId,
             method: method === 'all' ? undefined : (method as PaymentMethod),
@@ -176,7 +177,7 @@ export function PaymentListClient({
         setLoading(false);
       }
     },
-    [pagination.limit, search, selectedBranch, selectedMethod, selectedStatus, dateRange]
+    [pageSize, search, selectedBranch, selectedMethod, selectedStatus, dateRange]
   );
 
   const handleSearchChange = (value: string) => {
@@ -209,12 +210,6 @@ export function PaymentListClient({
   const handleDateRangeChange = (value: string) => {
     setDateRange(value);
     fetchFilteredPayments(1, search, selectedBranch, selectedMethod, selectedStatus, value);
-  };
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      fetchFilteredPayments(newPage);
-    }
   };
 
   return (
@@ -636,36 +631,38 @@ export function PaymentListClient({
               </div>
 
               {/* Pagination Controls */}
-              <div className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 border-t bg-muted/10 text-xs gap-3">
-                <span className="text-muted-foreground text-center sm:text-left">
-                  Showing {payments.length} of {pagination.total} transaction{pagination.total === 1 ? '' : 's'}
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(pagination.page - 1)}
-                    disabled={pagination.page <= 1 || loading}
-                    className="h-8 gap-1"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    Previous
-                  </Button>
-                  <span className="font-medium text-foreground px-2 whitespace-nowrap">
-                    Page {pagination.page} of {pagination.totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(pagination.page + 1)}
-                    disabled={pagination.page >= pagination.totalPages || loading}
-                    className="h-8 gap-1"
-                  >
-                    Next
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
+              <DataTablePagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                pageSize={pageSize}
+                totalItems={pagination.total}
+                onPageChange={(page) =>
+                  fetchFilteredPayments(
+                    page,
+                    search,
+                    selectedBranch,
+                    selectedMethod,
+                    selectedStatus,
+                    dateRange,
+                    pageSize
+                  )
+                }
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  fetchFilteredPayments(
+                    1,
+                    search,
+                    selectedBranch,
+                    selectedMethod,
+                    selectedStatus,
+                    dateRange,
+                    newSize
+                  );
+                }}
+                pageSizeOptions={[10, 20, 50, 100]}
+                disabled={loading}
+                itemLabel="transactions"
+              />
             </>
           )}
         </CardContent>

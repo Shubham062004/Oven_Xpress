@@ -149,7 +149,7 @@ export function VerifyEmailContent({ token }: VerifyEmailContentProps) {
                 required
                 value={resendEmail}
                 onChange={(e) => setResendEmail(e.target.value)}
-                placeholder="name@restaurant.com"
+                placeholder="example@gmail.com"
                 className="pl-9"
               />
             </div>

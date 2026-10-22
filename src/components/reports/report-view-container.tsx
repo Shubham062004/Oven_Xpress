@@ -9,8 +9,6 @@ import {
   RefreshCw,
   Building2,
   Calendar,
-  ChevronLeft,
-  ChevronRight,
   ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { downloadCSV } from '@/lib/reports/constants';
 import type { PaginationMeta, DateRangePreset } from '@/lib/reports/types';
 
@@ -48,6 +47,7 @@ export interface ReportViewContainerProps {
   summaryCards?: SummaryCardItem[];
   pagination?: PaginationMeta;
   onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
   onExportCSV?: () => Promise<string | { csv: string; filename?: string } | null>;
   csvFilename?: string;
   children: React.ReactNode;
@@ -75,6 +75,7 @@ export function ReportViewContainer({
   summaryCards = [],
   pagination,
   onPageChange,
+  onPageSizeChange,
   onExportCSV,
   csvFilename = 'report.csv',
   children,
@@ -376,36 +377,38 @@ export function ReportViewContainer({
       </div>
 
       {/* ─── PAGINATION CONTROLS ─── */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="print:hidden flex items-center justify-between p-3 border rounded-xl bg-card text-xs text-muted-foreground">
-          <span>
-            Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total records)
-          </span>
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange?.(pagination.page - 1)}
-              disabled={pagination.page <= 1 || isPending}
-              className="h-8 gap-1 text-xs"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              Previous
-            </Button>
-            <span className="font-semibold text-foreground px-2">
-              {pagination.page} / {pagination.totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange?.(pagination.page + 1)}
-              disabled={pagination.page >= pagination.totalPages || isPending}
-              className="h-8 gap-1 text-xs"
-            >
-              Next
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+      {pagination && (
+        <div className="print:hidden border rounded-xl bg-card p-4">
+          <DataTablePagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.total}
+            pageSize={pagination.limit || 20}
+            onPageChange={(page) => {
+              if (onPageChange) {
+                onPageChange(page);
+              } else {
+                const params = new URLSearchParams(searchParams?.toString() || '');
+                params.set('page', page.toString());
+                startTransition(() => {
+                  router.push(`${pathname}?${params.toString()}`);
+                });
+              }
+            }}
+            onPageSizeChange={(newSize) => {
+              if (onPageSizeChange) {
+                onPageSizeChange(newSize);
+              } else {
+                const params = new URLSearchParams(searchParams?.toString() || '');
+                params.set('page', '1');
+                params.set('pageSize', newSize.toString());
+                startTransition(() => {
+                  router.push(`${pathname}?${params.toString()}`);
+                });
+              }
+            }}
+            isLoading={isPending}
+          />
         </div>
       )}
     </div>

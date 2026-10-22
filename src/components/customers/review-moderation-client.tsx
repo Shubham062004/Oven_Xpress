@@ -7,8 +7,6 @@ import {
   Star,
   Search,
   RotateCcw,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   EyeOff,
   CheckCircle2,
@@ -32,6 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ReviewDialog } from '@/components/customers/review-dialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface ReviewModerationClientProps {
   initialReviews: ReviewItem[];
@@ -83,6 +82,9 @@ export function ReviewModerationClient({
     if (s) params.set('status', s);
     if (r) params.set('rating', r);
     if (q.trim()) params.set('search', q.trim());
+    if (initialPagination.pageSize !== 20) {
+      params.set('pageSize', initialPagination.pageSize.toString());
+    }
 
     startTransition(() => {
       router.push(`/reviews?${params.toString()}`);
@@ -106,6 +108,23 @@ export function ReviewModerationClient({
     if (ratingFilter) params.set('rating', ratingFilter);
     if (search.trim()) params.set('search', search.trim());
     params.set('page', newPage.toString());
+    if (initialPagination.pageSize !== 20) {
+      params.set('pageSize', initialPagination.pageSize.toString());
+    }
+
+    startTransition(() => {
+      router.push(`/reviews?${params.toString()}`);
+    });
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    const params = new URLSearchParams();
+    if (branchFilter) params.set('branchId', branchFilter);
+    if (statusFilter) params.set('status', statusFilter);
+    if (ratingFilter) params.set('rating', ratingFilter);
+    if (search.trim()) params.set('search', search.trim());
+    params.set('page', '1');
+    params.set('pageSize', newPageSize.toString());
 
     startTransition(() => {
       router.push(`/reviews?${params.toString()}`);
@@ -506,51 +525,18 @@ export function ReviewModerationClient({
           </div>
 
           {/* Pagination Controls */}
-          {initialPagination.totalPages > 1 && (
-            <div className="flex items-center justify-between border-t px-4 py-3">
-              <p className="text-xs text-muted-foreground">
-                Showing{' '}
-                <span className="font-medium">
-                  {(initialPagination.page - 1) * initialPagination.pageSize + 1}
-                </span>{' '}
-                to{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    initialPagination.page * initialPagination.pageSize,
-                    initialPagination.total
-                  )}
-                </span>{' '}
-                of <span className="font-medium">{initialPagination.total}</span> reviews
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(initialPagination.page - 1)}
-                  disabled={initialPagination.page <= 1 || isPending}
-                  className="gap-1 h-8"
-                >
-                  <ChevronLeft className="size-3.5" />
-                  Previous
-                </Button>
-                <span className="text-xs font-medium">
-                  {initialPagination.page} / {initialPagination.totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(initialPagination.page + 1)}
-                  disabled={
-                    initialPagination.page >= initialPagination.totalPages || isPending
-                  }
-                  className="gap-1 h-8"
-                >
-                  Next
-                  <ChevronRight className="size-3.5" />
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="border-t p-4">
+            <DataTablePagination
+              currentPage={initialPagination.page}
+              totalPages={initialPagination.totalPages}
+              totalItems={initialPagination.total}
+              pageSize={initialPagination.pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              isLoading={isPending}
+              itemLabel="reviews"
+            />
+          </div>
         </CardContent>
       </Card>
 

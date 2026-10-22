@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition, useCallback } from 'react';
+import { useState, useTransition, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import {
   Package,
   AlertTriangle,
@@ -139,6 +140,14 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
     setItemConfigOpen(true);
   };
 
+  // Pagination State - Stock tab
+  const [stockPage, setStockPage] = useState(1);
+  const [stockPageSize, setStockPageSize] = useState(10);
+
+  // Pagination State - Ledger tab
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerPageSize, setLedgerPageSize] = useState(10);
+
   // Filter items
   const filteredItems = items.filter((item) => {
     const matchesSearch =
@@ -167,6 +176,22 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
 
     return matchesBranch && matchesType && matchesSearch;
   });
+
+  // Stock Pagination Calculations
+  const totalStockPages = Math.max(1, Math.ceil(filteredItems.length / stockPageSize));
+  const activeStockPage = Math.min(Math.max(1, stockPage), totalStockPages);
+  const paginatedItems: InventoryItemListItem[] = useMemo(() => {
+    const start = (activeStockPage - 1) * stockPageSize;
+    return filteredItems.slice(start, start + stockPageSize);
+  }, [filteredItems, activeStockPage, stockPageSize]);
+
+  // Ledger Pagination Calculations
+  const totalLedgerPages = Math.max(1, Math.ceil(filteredTransactions.length / ledgerPageSize));
+  const activeLedgerPage = Math.min(Math.max(1, ledgerPage), totalLedgerPages);
+  const paginatedTransactions = useMemo(() => {
+    const start = (activeLedgerPage - 1) * ledgerPageSize;
+    return filteredTransactions.slice(start, start + ledgerPageSize);
+  }, [filteredTransactions, activeLedgerPage, ledgerPageSize]);
 
   return (
     <div className="space-y-6">
@@ -365,7 +390,11 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
             <Input
               placeholder="Search ingredient or branch..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setStockPage(1);
+                setLedgerPage(1);
+              }}
               className="pl-8 text-sm"
             />
           </div>
@@ -374,7 +403,11 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
             <Select
               value={branchFilter}
               onValueChange={(val) => {
-                if (val) setBranchFilter(val);
+                if (val) {
+                  setBranchFilter(val);
+                  setStockPage(1);
+                  setLedgerPage(1);
+                }
               }}
             >
               <SelectTrigger className="w-full sm:w-44 min-h-9 sm:min-h-0">
@@ -396,7 +429,10 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
               <Select
                 value={healthFilter}
                 onValueChange={(val) => {
-                  if (val) setHealthFilter(val as 'ALL' | StockHealthStatus);
+                  if (val) {
+                    setHealthFilter(val as 'ALL' | StockHealthStatus);
+                    setStockPage(1);
+                  }
                 }}
               >
                 <SelectTrigger className="w-full sm:w-40 min-h-9 sm:min-h-0">
@@ -413,7 +449,10 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
               <Select
                 value={statusFilter}
                 onValueChange={(val) => {
-                  if (val) setStatusFilter(val as 'ALL' | 'ACTIVE' | 'INACTIVE');
+                  if (val) {
+                    setStatusFilter(val as 'ALL' | 'ACTIVE' | 'INACTIVE');
+                    setStockPage(1);
+                  }
                 }}
               >
                 <SelectTrigger className="w-full sm:w-32 min-h-9 sm:min-h-0">
@@ -430,7 +469,10 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
             <Select
               value={ledgerTypeFilter}
               onValueChange={(val) => {
-                if (val) setLedgerTypeFilter(val);
+                if (val) {
+                  setLedgerTypeFilter(val);
+                  setLedgerPage(1);
+                }
               }}
             >
               <SelectTrigger className="w-full sm:w-48 min-h-9 sm:min-h-0">
@@ -494,7 +536,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredItems.map((item) => (
+                    {paginatedItems.map((item) => (
                       <TableRow key={item.id} className="hover:bg-muted/30">
                         <TableCell className="font-semibold text-foreground">
                           <Link
@@ -644,7 +686,7 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
 
               {/* Mobile Cards */}
               <div className="grid grid-cols-1 gap-3 lg:hidden">
-                {filteredItems.map((item) => (
+                {paginatedItems.map((item) => (
                   <Card key={item.id} className="p-4 border border-border shadow-xs">
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -736,6 +778,20 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
                   </Card>
                 ))}
               </div>
+
+              {/* Stock Items Pagination */}
+              <DataTablePagination
+                currentPage={activeStockPage}
+                totalPages={totalStockPages}
+                pageSize={stockPageSize}
+                totalItems={filteredItems.length}
+                onPageChange={setStockPage}
+                onPageSizeChange={(newSize) => {
+                  setStockPageSize(newSize);
+                  setStockPage(1);
+                }}
+                itemLabel="inventory items"
+              />
             </>
           )}
         </>
@@ -751,82 +807,97 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
               description="Inventory transactions such as receipts, wastage, and transfers will appear in this immutable audit ledger."
             />
           ) : (
-            <div className="rounded-lg border border-border bg-card shadow-sm overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead>Time</TableHead>
-                    <TableHead className="hidden sm:table-cell">Branch</TableHead>
-                    <TableHead>Ingredient</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="hidden md:table-cell">Operator</TableHead>
-                    <TableHead className="hidden lg:table-cell">Notes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTransactions.map((tx) => (
-                    <TableRow key={tx.id} className="hover:bg-muted/30">
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap font-mono">
-                        {new Date(tx.createdAt).toLocaleString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </TableCell>
-
-                      <TableCell className="hidden sm:table-cell text-xs font-medium text-foreground">
-                        {tx.branchName}
-                      </TableCell>
-
-                      <TableCell className="font-semibold text-xs text-foreground">
-                        {tx.ingredientName}
-                      </TableCell>
-
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`text-[11px] font-medium ${
-                            tx.direction === 'IN'
-                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
-                              : 'bg-destructive/10 text-destructive border-destructive/20'
-                          }`}
-                        >
-                          {tx.direction === 'IN' ? '+' : '-'} {tx.typeLabel}
-                        </Badge>
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        <span
-                          className={`font-mono text-xs font-bold ${
-                            tx.direction === 'IN'
-                              ? 'text-emerald-700 dark:text-emerald-400'
-                              : 'text-destructive'
-                          }`}
-                        >
-                          {tx.direction === 'IN' ? '+' : '-'}
-                          {tx.quantity} {tx.unit}
-                        </span>
-                      </TableCell>
-
-                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                        {tx.performedBy}
-                      </TableCell>
-
-                      <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-xs truncate">
-                        {tx.reasonLabel ? (
-                          <span className="font-medium text-foreground mr-1">
-                            [{tx.reasonLabel}]
-                          </span>
-                        ) : null}
-                        {tx.note || (tx.referenceId ? `Ref: ${tx.referenceId}` : '—')}
-                      </TableCell>
+            <>
+              <div className="rounded-lg border border-border bg-card shadow-sm overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead>Time</TableHead>
+                      <TableHead className="hidden sm:table-cell">Branch</TableHead>
+                      <TableHead>Ingredient</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="hidden md:table-cell">Operator</TableHead>
+                      <TableHead className="hidden lg:table-cell">Notes</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedTransactions.map((tx) => (
+                      <TableRow key={tx.id} className="hover:bg-muted/30">
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap font-mono">
+                          {new Date(tx.createdAt).toLocaleString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </TableCell>
+
+                        <TableCell className="hidden sm:table-cell text-xs font-medium text-foreground">
+                          {tx.branchName}
+                        </TableCell>
+
+                        <TableCell className="font-semibold text-xs text-foreground">
+                          {tx.ingredientName}
+                        </TableCell>
+
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`text-[11px] font-medium ${
+                              tx.direction === 'IN'
+                                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
+                                : 'bg-destructive/10 text-destructive border-destructive/20'
+                            }`}
+                          >
+                            {tx.direction === 'IN' ? '+' : '-'} {tx.typeLabel}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <span
+                            className={`font-mono text-xs font-bold ${
+                              tx.direction === 'IN'
+                                ? 'text-emerald-700 dark:text-emerald-400'
+                                : 'text-destructive'
+                            }`}
+                          >
+                            {tx.direction === 'IN' ? '+' : '-'}
+                            {tx.quantity} {tx.unit}
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                          {tx.performedBy}
+                        </TableCell>
+
+                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-xs truncate">
+                          {tx.reasonLabel ? (
+                            <span className="font-medium text-foreground mr-1">
+                              [{tx.reasonLabel}]
+                            </span>
+                          ) : null}
+                          {tx.note || (tx.referenceId ? `Ref: ${tx.referenceId}` : '—')}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <DataTablePagination
+                currentPage={activeLedgerPage}
+                totalPages={totalLedgerPages}
+                pageSize={ledgerPageSize}
+                totalItems={filteredTransactions.length}
+                onPageChange={setLedgerPage}
+                onPageSizeChange={(newSize) => {
+                  setLedgerPageSize(newSize);
+                  setLedgerPage(1);
+                }}
+                itemLabel="transactions"
+              />
+            </>
           )}
         </>
       )}

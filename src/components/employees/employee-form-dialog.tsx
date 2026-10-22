@@ -812,7 +812,7 @@ export function EmployeeFormDialog({
                           type="email"
                           value={loginEmail}
                           onChange={(e) => setLoginEmail(e.target.value)}
-                          placeholder="e.g. firstname.lastname@ovenxpress.com"
+                          placeholder="example@gmail.com"
                           className="font-mono text-xs"
                           aria-invalid={!!fieldErrors.loginEmail}
                         />
@@ -1107,7 +1107,7 @@ export function EmployeeFormDialog({
                                 type="email"
                                 value={existingLoginEmail}
                                 onChange={(e) => setExistingLoginEmail(e.target.value)}
-                                placeholder="name@ovenxpress.com"
+                                placeholder="example@gmail.com"
                                 className="font-mono text-xs"
                               />
                             </div>

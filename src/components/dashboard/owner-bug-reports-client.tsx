@@ -7,8 +7,6 @@ import {
   Search,
   RotateCw,
   Image as ImageIcon,
-  ChevronLeft,
-  ChevronRight,
   ExternalLink,
   CheckCircle2,
   Clock,
@@ -33,6 +31,7 @@ import {
   type BugReportCategory,
   type BugReportStatus,
 } from '@/lib/validations/bug-reports';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import type { BugReportListResponse } from '@/lib/bug-reports/service';
 import { getOwnerBugReportsAction } from '@/lib/bug-reports/actions';
 
@@ -50,19 +49,21 @@ export function OwnerBugReportsClient({
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<BugReportStatus | 'ALL'>('ALL');
-  const [categoryFilter, setCategoryFilter] = useState<BugReportCategory | 'ALL'>('ALL');
   const [page, setPage] = useState(initialData.pagination.page);
+  const [pageSize, setPageSize] = useState(initialData.pagination.limit || 15);
 
   const fetchReports = (overrides?: {
     status?: BugReportStatus | 'ALL';
     category?: BugReportCategory | 'ALL';
     search?: string;
     page?: number;
+    limit?: number;
   }) => {
     const s = overrides?.status ?? statusFilter;
     const c = overrides?.category ?? categoryFilter;
     const q = overrides?.search !== undefined ? overrides.search : search;
     const p = overrides?.page ?? page;
+    const l = overrides?.limit ?? pageSize;
 
     startTransition(async () => {
       const res = await getOwnerBugReportsAction({
@@ -70,7 +71,7 @@ export function OwnerBugReportsClient({
         category: c,
         search: q,
         page: p,
-        limit: 15,
+        limit: l,
       });
 
       if (res.success && res.data) {
@@ -400,45 +401,24 @@ export function OwnerBugReportsClient({
       </Card>
 
       {/* ─── Pagination ───────────────────────────────────────────────────── */}
-      {data.pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-          <span>
-            Page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total} reports)
-          </span>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1 || isPending}
-              onClick={() => {
-                const prev = Math.max(1, page - 1);
-                setPage(prev);
-                fetchReports({ page: prev });
-              }}
-              className="rounded-xl h-8 px-2.5 text-xs gap-1"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Previous</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= data.pagination.totalPages || isPending}
-              onClick={() => {
-                const next = Math.min(data.pagination.totalPages, page + 1);
-                setPage(next);
-                fetchReports({ page: next });
-              }}
-              className="rounded-xl h-8 px-2.5 text-xs gap-1"
-            >
-              <span>Next</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <DataTablePagination
+        currentPage={data.pagination.page}
+        totalPages={data.pagination.totalPages}
+        totalItems={data.pagination.total}
+        pageSize={pageSize}
+        pageSizeOptions={[10, 15, 25, 50]}
+        onPageChange={(newPage) => {
+          setPage(newPage);
+          fetchReports({ page: newPage });
+        }}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setPage(1);
+          fetchReports({ page: 1, limit: newSize });
+        }}
+        isLoading={isPending}
+        itemLabel="reports"
+      />
     </div>
   );
 }

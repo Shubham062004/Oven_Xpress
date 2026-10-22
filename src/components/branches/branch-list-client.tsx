@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, useTransition } from 'react';
+import { useState, useCallback, useEffect, useRef, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Building2,
@@ -58,6 +58,7 @@ import {
 
 import { BranchFormDialog } from '@/components/branches/branch-form-dialog';
 import { BranchDeleteDialog } from '@/components/branches/branch-delete-dialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,10 @@ export function BranchListClient({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -134,6 +139,7 @@ export function BranchListClient({
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
+    setCurrentPage(1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchBranches(value, statusFilter);
@@ -151,6 +157,7 @@ export function BranchListClient({
   const handleStatusFilter = (value: string | null) => {
     const val = value ?? 'ALL';
     setStatusFilter(val);
+    setCurrentPage(1);
     fetchBranches(searchQuery, val);
   };
 
@@ -226,6 +233,15 @@ export function BranchListClient({
     if (branch.state) parts.push(branch.state);
     return parts.join(', ');
   };
+
+  // ─── Pagination Calculations ────────────────────────────────────────────
+
+  const totalPages = Math.max(1, Math.ceil(branches.length / pageSize));
+  const activePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedBranches: BranchWithManager[] = useMemo(() => {
+    const start = (activePage - 1) * pageSize;
+    return branches.slice(start, start + pageSize);
+  }, [branches, activePage, pageSize]);
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
@@ -343,7 +359,7 @@ export function BranchListClient({
           <>
             {/* Mobile Card List */}
             <div className="sm:hidden space-y-3">
-              {branches.map((branch) => (
+              {paginatedBranches.map((branch) => (
                 <Card key={branch.id} className="border-border/60 shadow-xs">
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -437,7 +453,7 @@ export function BranchListClient({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {branches.map((branch) => (
+                  {paginatedBranches.map((branch) => (
                     <TableRow key={branch.id}>
                       <TableCell className="font-medium">
                         <button
@@ -539,6 +555,20 @@ export function BranchListClient({
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination Controls */}
+            <DataTablePagination
+              currentPage={activePage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={branches.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+              itemLabel="branches"
+            />
           </>
         )}
 

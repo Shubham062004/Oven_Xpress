@@ -21,6 +21,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 import {
   getAttendanceRecords,
@@ -158,6 +159,10 @@ export function AttendanceListClient({
   const [sortColumn, setSortColumn] = useState<AttendanceSortColumn>('employee');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // KPI Modal State
   const [kpiModalType, setKpiModalType] = useState<KpiType>(null);
   const [kpiModalOpen, setKpiModalOpen] = useState(false);
@@ -217,12 +222,14 @@ export function AttendanceListClient({
     const day = String(dateObj.getDate()).padStart(2, '0');
     const newDateStr = `${year}-${month}-${day}`;
     setDateFilter(newDateStr);
+    setCurrentPage(1);
     refreshAttendance(newDateStr);
   };
 
   const handleSetToday = () => {
     const today = getLocalTodayDate();
     setDateFilter(today);
+    setCurrentPage(1);
     refreshAttendance(today);
   };
 
@@ -242,6 +249,7 @@ export function AttendanceListClient({
   // ─── Filter & Sorting Logic ─────────────────────────────────────────────
 
   const handleSort = (column: AttendanceSortColumn) => {
+    setCurrentPage(1);
     if (sortColumn === column) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -335,6 +343,13 @@ export function AttendanceListClient({
       return sortDirection === 'asc' ? comparison : -comparison;
     });
   }, [filteredAttendance, sortColumn, sortDirection]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedAttendance.length / pageSize));
+  const activePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedAttendance: AttendanceItem[] = useMemo(() => {
+    const start = (activePage - 1) * pageSize;
+    return sortedAttendance.slice(start, start + pageSize);
+  }, [sortedAttendance, activePage, pageSize]);
 
   // Open KPI Modal
   const openKpiModal = (type: KpiType) => {
@@ -618,7 +633,10 @@ export function AttendanceListClient({
             id="attendance-search"
             placeholder="Search employee name, code, designation, or branch..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="pl-9 h-9 text-sm"
           />
         </div>
@@ -626,7 +644,10 @@ export function AttendanceListClient({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setSearchQuery('')}
+            onClick={() => {
+              setSearchQuery('');
+              setCurrentPage(1);
+            }}
             className="text-xs"
           >
             Clear
@@ -749,7 +770,7 @@ export function AttendanceListClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedAttendance.map((record) => {
+                {paginatedAttendance.map((record) => {
                   const isCheckedInWithoutOut =
                     record.checkIn && !record.checkOut && record.status === 'PRESENT';
 
@@ -875,7 +896,7 @@ export function AttendanceListClient({
 
           {/* Mobile Card List (Shift row removed) */}
           <div className="space-y-3 md:hidden">
-            {sortedAttendance.map((record) => {
+            {paginatedAttendance.map((record) => {
               const isCheckedInWithoutOut =
                 record.checkIn && !record.checkOut && record.status === 'PRESENT';
 
@@ -981,6 +1002,19 @@ export function AttendanceListClient({
               );
             })}
           </div>
+
+          <DataTablePagination
+            currentPage={activePage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={sortedAttendance.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
+            itemLabel="records"
+          />
         </>
       )}
 

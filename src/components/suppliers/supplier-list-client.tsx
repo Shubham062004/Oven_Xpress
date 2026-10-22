@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, useTransition } from 'react';
+import { useState, useCallback, useEffect, useRef, useTransition, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Truck,
@@ -62,6 +62,7 @@ import {
 
 import { SupplierFormDialog } from '@/components/suppliers/supplier-form-dialog';
 import { SupplierStatusDialog } from '@/components/suppliers/supplier-status-dialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface SupplierListClientProps {
   initialSuppliers: SupplierListItem[];
@@ -81,6 +82,10 @@ export function SupplierListClient({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -119,6 +124,7 @@ export function SupplierListClient({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
+    setCurrentPage(1);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -129,6 +135,7 @@ export function SupplierListClient({
   const handleStatusChange = (val: string | null) => {
     const nextStatus = val ?? 'ALL';
     setStatusFilter(nextStatus);
+    setCurrentPage(1);
     fetchSuppliers(searchQuery, nextStatus);
   };
 
@@ -147,6 +154,14 @@ export function SupplierListClient({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
+
+  // ─── Pagination Calculations ────────────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(suppliers.length / pageSize));
+  const activePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedSuppliers: SupplierListItem[] = useMemo(() => {
+    const start = (activePage - 1) * pageSize;
+    return suppliers.slice(start, start + pageSize);
+  }, [suppliers, activePage, pageSize]);
 
   return (
     <div className="space-y-6">
@@ -299,7 +314,7 @@ export function SupplierListClient({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {suppliers.map((sup) => (
+                  {paginatedSuppliers.map((sup) => (
                     <TableRow key={sup.id} className="hover:bg-muted/40 transition-colors">
                       <TableCell>
                         <div className="font-medium text-foreground">
@@ -426,7 +441,7 @@ export function SupplierListClient({
 
             {/* Mobile Cards */}
             <div className="md:hidden divide-y divide-border/60">
-              {suppliers.map((sup) => (
+              {paginatedSuppliers.map((sup) => (
                 <div key={sup.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -507,6 +522,20 @@ export function SupplierListClient({
                 </div>
               ))}
             </div>
+
+            {/* Pagination Controls */}
+            <DataTablePagination
+              currentPage={activePage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={suppliers.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+              itemLabel="suppliers"
+            />
           </>
         )}
       </Card>
@@ -521,7 +550,7 @@ export function SupplierListClient({
       <SupplierFormDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        supplier={selectedSupplier}
+        supplier={selectedSupplier ?? undefined}
         onSuccess={() => fetchSuppliers(searchQuery, statusFilter)}
       />
 

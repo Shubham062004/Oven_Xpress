@@ -125,7 +125,7 @@ export function RegisterForm() {
               id="email"
               name="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder="example@gmail.com"
               required
               disabled={isPending}
               className="pl-9 h-11 text-sm"
@@ -148,7 +148,7 @@ export function RegisterForm() {
               id="password"
               name="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Min. 8 chars, 1 uppercase, 1 symbol"
+              placeholder="Create a Password"
               required
               disabled={isPending}
               value={passwordValue}
@@ -205,7 +205,7 @@ export function RegisterForm() {
               id="confirmPassword"
               name="confirmPassword"
               type={showConfirmPassword ? 'text' : 'password'}
-              placeholder="Re-enter your password"
+              placeholder="Confirm password"
               required
               disabled={isPending}
               className="pl-9 pr-10 h-11 text-sm"

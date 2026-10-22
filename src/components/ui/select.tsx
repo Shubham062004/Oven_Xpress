@@ -5,7 +5,131 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "cn"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+interface ElementWithChildrenProps {
+  children?: React.ReactNode
+  value?: unknown
+  label?: string
+}
+
+// Helper to extract plain text string from arbitrary React nodes
+function getElementText(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node)
+  }
+  if (!node) {
+    return ""
+  }
+  if (Array.isArray(node)) {
+    return node.map(getElementText).join("")
+  }
+  if (React.isValidElement(node)) {
+    const props = node.props as ElementWithChildrenProps
+    if (props && props.children) {
+      return getElementText(props.children)
+    }
+  }
+  return ""
+}
+
+// Helper to recursively walk children elements and find items
+function extractItemMap(
+  children: React.ReactNode,
+  map: Record<string, React.ReactNode> = {}
+): Record<string, React.ReactNode> {
+  React.Children.forEach(children, (child) => {
+    if (!React.isValidElement(child)) return
+    const props = child.props as ElementWithChildrenProps
+    if (props) {
+      if (props.value !== undefined && props.value !== null) {
+        const text = getElementText(props.children)
+        const label =
+          props.label ?? (text.trim().length > 0 ? text : props.children)
+        map[String(props.value)] = label
+      }
+      if (props.children) {
+        extractItemMap(props.children, map)
+      }
+    }
+  })
+  return map
+}
+
+interface SelectContextValue {
+  registerItem: (value: unknown, label: React.ReactNode) => void
+  unregisterItem: (value: unknown) => void
+  items: Record<string, React.ReactNode>
+}
+
+const SelectContext = React.createContext<SelectContextValue | null>(null)
+
+function Select<Value = unknown, Multiple extends boolean | undefined = false>({
+  items: userItems,
+  children,
+  ...props
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
+  const [dynamicItems, setDynamicItems] = React.useState<
+    Record<string, React.ReactNode>
+  >({})
+
+  const registerItem = React.useCallback(
+    (val: unknown, label: React.ReactNode) => {
+      if (val !== undefined && val !== null) {
+        const key = String(val)
+        setDynamicItems((prev) => {
+          if (prev[key] === label) return prev
+          return { ...prev, [key]: label }
+        })
+      }
+    },
+    []
+  )
+
+  const unregisterItem = React.useCallback((val: unknown) => {
+    if (val !== undefined && val !== null) {
+      const key = String(val)
+      setDynamicItems((prev) => {
+        if (!(key in prev)) return prev
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    }
+  }, [])
+
+  const extractedItems = React.useMemo(() => {
+    const map: Record<string, React.ReactNode> = {}
+    extractItemMap(children, map)
+    return map
+  }, [children])
+
+  const mergedItems = React.useMemo(() => {
+    const map: Record<string, React.ReactNode> = {
+      ...extractedItems,
+      ...dynamicItems,
+    }
+    if (userItems && !Array.isArray(userItems)) {
+      Object.assign(map, userItems)
+    }
+    return map
+  }, [extractedItems, dynamicItems, userItems])
+
+  const contextValue = React.useMemo(
+    () => ({
+      registerItem,
+      unregisterItem,
+      items: mergedItems,
+    }),
+    [registerItem, unregisterItem, mergedItems]
+  )
+
+  return (
+    <SelectContext.Provider value={contextValue}>
+      <SelectPrimitive.Root items={mergedItems} {...props}>
+        {children}
+      </SelectPrimitive.Root>
+    </SelectContext.Provider>
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -17,13 +141,33 @@ function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   )
 }
 
-function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
+function SelectValue({
+  className,
+  children,
+  placeholder,
+  ...props
+}: SelectPrimitive.Value.Props) {
+  const context = React.useContext(SelectContext)
+
   return (
     <SelectPrimitive.Value
       data-slot="select-value"
       className={cn("flex flex-1 text-left", className)}
+      placeholder={placeholder}
       {...props}
-    />
+    >
+      {children ??
+        ((val: unknown) => {
+          if (val === null || val === undefined || val === "") {
+            return placeholder
+          }
+          const strVal = String(val)
+          if (context?.items && Object.hasOwn(context.items, strVal)) {
+            return context.items[strVal]
+          }
+          return strVal
+        })}
+    </SelectPrimitive.Value>
   )
 }
 
@@ -110,11 +254,28 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
+  value,
+  label: labelProp,
   ...props
 }: SelectPrimitive.Item.Props) {
+  const context = React.useContext(SelectContext)
+
+  React.useEffect(() => {
+    if (value !== undefined && value !== null && context?.registerItem) {
+      const text = getElementText(children)
+      const label = labelProp ?? (text.trim().length > 0 ? text : children)
+      context.registerItem(value, label)
+      return () => {
+        context.unregisterItem(value)
+      }
+    }
+  }, [value, labelProp, children, context])
+
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
+      value={value}
+      label={labelProp}
       className={cn(
         "relative flex w-full cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className

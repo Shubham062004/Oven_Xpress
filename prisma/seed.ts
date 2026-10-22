@@ -446,7 +446,7 @@ async function main() {
 
   const usersToSeed = [
     {
-      name: 'Sarah Jenkins (Owner)',
+      name: 'Sarah Jenkins',
       email: process.env.SEED_OWNER_EMAIL || 'owner@ovenxpress.com',
       password: process.env.SEED_OWNER_PASSWORD || 'Owner123!',
       roleName: 'OWNER',
@@ -465,14 +465,7 @@ async function main() {
       password: process.env.SEED_STAFF_PASSWORD || 'Staff123!',
       roleName: 'STAFF',
       isActive: true,
-    },
-    {
-      name: 'Inactive User (Test)',
-      email: process.env.SEED_INACTIVE_EMAIL || 'inactive@ovenxpress.com',
-      password: process.env.SEED_INACTIVE_PASSWORD || 'Inactive123!',
-      roleName: 'STAFF',
-      isActive: false,
-    },
+    }
   ];
 
   console.log('  → Seeding development users...');

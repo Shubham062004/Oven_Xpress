@@ -9,8 +9,6 @@ import {
   Calendar,
   Building2,
   Printer,
-  ChevronLeft,
-  ChevronRight,
   ExternalLink,
   RotateCcw,
   Activity,
@@ -39,6 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { exportAuditLogsCSVAction } from '@/lib/audit/actions';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import type {
   AuditLogListItem,
   AuditSummaryStats,
@@ -123,6 +122,15 @@ export function AuditLogsClient({
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('page', String(newPage));
+    startTransition(() => {
+      router.push(`/audit-logs?${params.toString()}`);
+    });
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('page', '1');
+    params.set('limit', String(newPageSize));
     startTransition(() => {
       router.push(`/audit-logs?${params.toString()}`);
     });
@@ -593,47 +601,18 @@ export function AuditLogsClient({
         </Table>
 
         {/* Server-side Pagination Toolbar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border/40 bg-muted/10 print:hidden">
-          <div className="text-xs text-muted-foreground">
-            Showing{' '}
-            <span className="font-medium text-foreground">
-              {pagination.total > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0}
-            </span>{' '}
-            to{' '}
-            <span className="font-medium text-foreground">
-              {Math.min(pagination.page * pagination.limit, pagination.total)}
-            </span>{' '}
-            of <span className="font-medium text-foreground">{pagination.total.toLocaleString()}</span> entries
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.page - 1)}
-              disabled={pagination.page <= 1 || isPending}
-              className="h-8 text-xs flex items-center gap-1"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Previous</span>
-            </Button>
-
-            <span className="text-xs text-muted-foreground px-2">
-              Page {pagination.page} of {pagination.totalPages || 1}
-            </span>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.page + 1)}
-              disabled={pagination.page >= pagination.totalPages || isPending}
-              className="h-8 text-xs flex items-center gap-1"
-            >
-              <span>Next</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
+        <DataTablePagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.total}
+          pageSize={pagination.limit}
+          pageSizeOptions={[10, 25, 50, 100]}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+          isLoading={isPending}
+          itemLabel="log records"
+          className="print:hidden"
+        />
       </div>
     </div>
   );

@@ -17,14 +17,13 @@ import {
   Repeat,
   RotateCcw,
   Paperclip,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Check,
   Ban,
   Filter,
 } from 'lucide-react';
 import { ExpenseStatus } from '@prisma/client';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 import type {
   ExpenseListItem,
@@ -168,6 +167,15 @@ export function ExpenseListClient({
     setPage(newPage);
     const params = new URLSearchParams(window.location.search);
     params.set('page', String(newPage));
+    startTransition(() => {
+      router.push(`/expenses?${params.toString()}`);
+    });
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', '1');
+    params.set('pageSize', String(newSize));
     startTransition(() => {
       router.push(`/expenses?${params.toString()}`);
     });
@@ -731,33 +739,17 @@ export function ExpenseListClient({
               </div>
 
               {/* Pagination */}
-              {initialPagination.totalPages > 1 && (
-                <div className="p-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                  <div>
-                    Page {initialPagination.page} of {initialPagination.totalPages} ({initialPagination.total} total expenses)
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      disabled={initialPagination.page <= 1 || isPending}
-                      onClick={() => handlePageChange(initialPagination.page - 1)}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      disabled={initialPagination.page >= initialPagination.totalPages || isPending}
-                      onClick={() => handlePageChange(initialPagination.page + 1)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <DataTablePagination
+                currentPage={initialPagination.page}
+                totalPages={initialPagination.totalPages}
+                pageSize={initialPagination.pageSize || 20}
+                totalItems={initialPagination.total}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                pageSizeOptions={[10, 20, 50, 100]}
+                disabled={isPending}
+                itemLabel="expenses"
+              />
             </>
           )}
         </CardContent>

@@ -9,8 +9,6 @@ import {
   Gift,
   Search,
   RotateCcw,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 
 import type { IncrementItem, PaginationMeta } from '@/lib/salary/types';
@@ -25,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { SalaryRevisionDialog } from '@/components/salary/salary-revision-dialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface SalaryIncrementsClientProps {
   initialIncrements: IncrementItem[];
@@ -58,6 +57,9 @@ export function SalaryIncrementsClient({
 
     if (b) params.set('branchId', b);
     if (q.trim()) params.set('search', q.trim());
+    if (initialPagination.pageSize !== 20) {
+      params.set('pageSize', initialPagination.pageSize.toString());
+    }
 
     startTransition(() => {
       router.push(`/salary/increments?${params.toString()}`);
@@ -77,6 +79,21 @@ export function SalaryIncrementsClient({
     if (branchFilter) params.set('branchId', branchFilter);
     if (search.trim()) params.set('search', search.trim());
     params.set('page', newPage.toString());
+    if (initialPagination.pageSize !== 20) {
+      params.set('pageSize', initialPagination.pageSize.toString());
+    }
+
+    startTransition(() => {
+      router.push(`/salary/increments?${params.toString()}`);
+    });
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    const params = new URLSearchParams();
+    if (branchFilter) params.set('branchId', branchFilter);
+    if (search.trim()) params.set('search', search.trim());
+    params.set('page', '1');
+    params.set('pageSize', newPageSize.toString());
 
     startTransition(() => {
       router.push(`/salary/increments?${params.toString()}`);
@@ -289,44 +306,17 @@ export function SalaryIncrementsClient({
         </div>
 
         {/* Pagination Footer */}
-        {initialPagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
-            <div>
-              Showing {(initialPagination.page - 1) * initialPagination.pageSize + 1} to{' '}
-              {Math.min(
-                initialPagination.page * initialPagination.pageSize,
-                initialPagination.totalItems
-              )}{' '}
-              of {initialPagination.totalItems} increments
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(initialPagination.page - 1)}
-                disabled={!initialPagination.hasPrevPage || isPending}
-                className="h-8 gap-1 text-xs"
-              >
-                <ChevronLeft className="size-3.5" />
-                Previous
-              </Button>
-              <span>
-                Page {initialPagination.page} of {initialPagination.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(initialPagination.page + 1)}
-                disabled={!initialPagination.hasNextPage || isPending}
-                className="h-8 gap-1 text-xs"
-              >
-                Next
-                <ChevronRight className="size-3.5" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <div className="border-t p-4">
+          <DataTablePagination
+            currentPage={initialPagination.page}
+            totalPages={initialPagination.totalPages}
+            totalItems={initialPagination.totalItems}
+            pageSize={initialPagination.pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={isPending}
+          />
+        </div>
       </Card>
 
       {/* Revision Dialog */}

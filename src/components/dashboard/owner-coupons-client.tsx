@@ -31,6 +31,7 @@ import {
 } from '@/lib/coupons/coupon-actions';
 import type { CouponDiscountType, CouponUserFilter } from '@/lib/coupons/coupon-types';
 import { toast } from 'sonner';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface BranchOption {
   id: string;
@@ -62,6 +63,8 @@ export function OwnerCouponsClient({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [typeFilter, setTypeFilter] = useState<'ALL' | CouponDiscountType>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -152,6 +155,13 @@ export function OwnerCouponsClient({
       return true;
     });
   }, [coupons, statusFilter, typeFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCoupons.length / pageSize));
+  const activePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedCoupons: CouponWithStats[] = useMemo(() => {
+    const start = (activePage - 1) * pageSize;
+    return filteredCoupons.slice(start, start + pageSize);
+  }, [filteredCoupons, activePage, pageSize]);
 
   // Copy code helper
   const handleCopyCode = (code: string) => {
@@ -457,7 +467,10 @@ export function OwnerCouponsClient({
             type="text"
             placeholder="Search code, title or note..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full pl-9 pr-3 py-2 text-xs bg-muted/40 border border-border/70 rounded-xl focus:outline-none focus:border-primary"
           />
         </div>
@@ -465,7 +478,10 @@ export function OwnerCouponsClient({
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-xl border border-border/60 text-xs">
             <button
-              onClick={() => setStatusFilter('ALL')}
+              onClick={() => {
+                setStatusFilter('ALL');
+                setCurrentPage(1);
+              }}
               className={`px-3 py-1 rounded-lg font-medium transition-all ${
                 statusFilter === 'ALL'
                   ? 'bg-background text-foreground shadow-xs'
@@ -475,7 +491,10 @@ export function OwnerCouponsClient({
               All ({coupons.length})
             </button>
             <button
-              onClick={() => setStatusFilter('ACTIVE')}
+              onClick={() => {
+                setStatusFilter('ACTIVE');
+                setCurrentPage(1);
+              }}
               className={`px-3 py-1 rounded-lg font-medium transition-all ${
                 statusFilter === 'ACTIVE'
                   ? 'bg-background text-emerald-600 shadow-xs'
@@ -485,7 +504,10 @@ export function OwnerCouponsClient({
               Active ({stats.active})
             </button>
             <button
-              onClick={() => setStatusFilter('INACTIVE')}
+              onClick={() => {
+                setStatusFilter('INACTIVE');
+                setCurrentPage(1);
+              }}
               className={`px-3 py-1 rounded-lg font-medium transition-all ${
                 statusFilter === 'INACTIVE'
                   ? 'bg-background text-muted-foreground shadow-xs'
@@ -498,7 +520,10 @@ export function OwnerCouponsClient({
 
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as 'ALL' | CouponDiscountType)}
+            onChange={(e) => {
+              setTypeFilter(e.target.value as 'ALL' | CouponDiscountType);
+              setCurrentPage(1);
+            }}
             className="px-3 py-1.5 text-xs bg-muted/50 border border-border/70 rounded-xl focus:outline-none focus:border-primary font-medium text-foreground"
           >
             <option value="ALL">All Types</option>
@@ -530,8 +555,9 @@ export function OwnerCouponsClient({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCoupons.map((coupon) => {
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedCoupons.map((coupon) => {
             const isFirst50 = coupon.code === 'FIRST50';
             const isBirthday = coupon.code === 'BIRTHDAY';
 
@@ -749,7 +775,22 @@ export function OwnerCouponsClient({
               </div>
             );
           })}
-        </div>
+          </div>
+
+          <DataTablePagination
+            currentPage={activePage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredCoupons.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[10, 20, 50, 100]}
+            itemLabel="coupons"
+          />
+        </>
       )}
 
       {/* ======================================================== */}

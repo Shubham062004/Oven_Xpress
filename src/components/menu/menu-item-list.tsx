@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import {
   Search,
   Plus,
@@ -69,6 +70,8 @@ export function MenuItemList({
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal dialog states
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -93,6 +96,13 @@ export function MenuItemList({
       return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [items, search, categoryFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const activePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedItems: MenuItemListItem[] = useMemo(() => {
+    const start = (activePage - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, activePage, pageSize]);
 
   const handleOpenCreate = () => {
     setEditingDetail(null);
@@ -122,7 +132,10 @@ export function MenuItemList({
             <Input
               placeholder="Search dishes & drinks..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-8 text-sm"
             />
           </div>
@@ -130,7 +143,10 @@ export function MenuItemList({
           <Select
             value={categoryFilter}
             onValueChange={(val) => {
-              if (val) setCategoryFilter(val);
+              if (val) {
+                setCategoryFilter(val);
+                setCurrentPage(1);
+              }
             }}
           >
             <SelectTrigger className="w-full sm:w-40">
@@ -149,7 +165,10 @@ export function MenuItemList({
           <Select
             value={statusFilter}
             onValueChange={(val) => {
-              if (val) setStatusFilter(val as 'ALL' | 'ACTIVE' | 'INACTIVE');
+              if (val) {
+                setStatusFilter(val as 'ALL' | 'ACTIVE' | 'INACTIVE');
+                setCurrentPage(1);
+              }
             }}
           >
             <SelectTrigger className="w-full sm:w-32">
@@ -208,7 +227,7 @@ export function MenuItemList({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredItems.map((item) => (
+                {paginatedItems.map((item) => (
                   <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell>
                       <div>
@@ -331,7 +350,7 @@ export function MenuItemList({
 
           {/* Mobile / Tablet Cards */}
           <div className="grid grid-cols-1 gap-3 lg:hidden sm:grid-cols-2">
-            {filteredItems.map((item) => (
+            {paginatedItems.map((item) => (
               <Card key={item.id} className="p-4 border border-border shadow-xs flex flex-col justify-between">
                 <div>
                   <div className="flex items-start justify-between gap-2">
@@ -424,6 +443,19 @@ export function MenuItemList({
               </Card>
             ))}
           </div>
+
+          <DataTablePagination
+            currentPage={activePage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredItems.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
+            itemLabel="dishes"
+          />
         </>
       )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, useTransition } from 'react';
+import { useState, useCallback, useEffect, useRef, useTransition, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -62,6 +62,7 @@ import {
 } from '@/components/ui/select';
 
 import { PurchaseCancelDialog } from '@/components/purchases/purchase-cancel-dialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface BranchOption {
   id: string;
@@ -107,6 +108,10 @@ export function PurchaseListClient({
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // Dialogs
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrderListItem | null>(null);
@@ -145,6 +150,7 @@ export function PurchaseListClient({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
+    setCurrentPage(1);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -155,18 +161,21 @@ export function PurchaseListClient({
   const handleBranchChange = (val: string | null) => {
     const nextBranch = val ?? 'ALL';
     setBranchFilter(nextBranch);
+    setCurrentPage(1);
     fetchFilteredPurchases(searchQuery, nextBranch, supplierFilter, statusFilter);
   };
 
   const handleSupplierChange = (val: string | null) => {
     const nextSupplier = val ?? 'ALL';
     setSupplierFilter(nextSupplier);
+    setCurrentPage(1);
     fetchFilteredPurchases(searchQuery, branchFilter, nextSupplier, statusFilter);
   };
 
   const handleStatusChange = (val: string | null) => {
     const nextStatus = val ?? 'ALL';
     setStatusFilter(nextStatus);
+    setCurrentPage(1);
     fetchFilteredPurchases(searchQuery, branchFilter, supplierFilter, nextStatus);
   };
 
@@ -180,6 +189,14 @@ export function PurchaseListClient({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
+
+  // ─── Pagination Calculations ────────────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(purchases.length / pageSize));
+  const activePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedPurchases: PurchaseOrderListItem[] = useMemo(() => {
+    const start = (activePage - 1) * pageSize;
+    return purchases.slice(start, start + pageSize);
+  }, [purchases, activePage, pageSize]);
 
   const getStatusBadge = (st: PurchaseOrderStatus) => {
     switch (st) {
@@ -417,7 +434,7 @@ export function PurchaseListClient({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {purchases.map((po) => {
+                  {paginatedPurchases.map((po) => {
                     const isReceivable =
                       po.status === PurchaseOrderStatus.ORDERED ||
                       po.status === PurchaseOrderStatus.PARTIALLY_RECEIVED;
@@ -543,7 +560,7 @@ export function PurchaseListClient({
 
             {/* Mobile Cards */}
             <div className="lg:hidden divide-y divide-border/60">
-              {purchases.map((po) => {
+              {paginatedPurchases.map((po) => {
                 const isReceivable =
                   po.status === PurchaseOrderStatus.ORDERED ||
                   po.status === PurchaseOrderStatus.PARTIALLY_RECEIVED;
@@ -631,6 +648,20 @@ export function PurchaseListClient({
                 );
               })}
             </div>
+
+            {/* Pagination Controls */}
+            <DataTablePagination
+              currentPage={activePage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={purchases.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+              itemLabel="purchase orders"
+            />
           </>
         )}
       </Card>

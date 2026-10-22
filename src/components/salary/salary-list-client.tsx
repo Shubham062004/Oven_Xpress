@@ -13,8 +13,6 @@ import {
   Gift,
   Eye,
   RotateCcw,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { SalaryRecordStatus } from '@prisma/client';
 
@@ -45,6 +43,7 @@ import {
 import { SalaryPeriodDialog } from '@/components/salary/salary-period-dialog';
 import { SalaryRevisionDialog } from '@/components/salary/salary-revision-dialog';
 import { BonusCreateDialog } from '@/components/salary/bonus-create-dialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface SalaryListClientProps {
   initialRecords: SalaryListItem[];
@@ -91,6 +90,9 @@ export function SalaryListClient({
     if (b) params.set('branchId', b);
     if (s) params.set('status', s);
     if (q.trim()) params.set('search', q.trim());
+    if (initialPagination.pageSize !== 15) {
+      params.set('pageSize', initialPagination.pageSize.toString());
+    }
 
     startTransition(() => {
       router.push(`/salary?${params.toString()}`);
@@ -112,6 +114,22 @@ export function SalaryListClient({
     if (statusFilter) params.set('status', statusFilter);
     if (search.trim()) params.set('search', search.trim());
     params.set('page', newPage.toString());
+    if (initialPagination.pageSize !== 15) {
+      params.set('pageSize', initialPagination.pageSize.toString());
+    }
+
+    startTransition(() => {
+      router.push(`/salary?${params.toString()}`);
+    });
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    const params = new URLSearchParams();
+    if (branchFilter) params.set('branchId', branchFilter);
+    if (statusFilter) params.set('status', statusFilter);
+    if (search.trim()) params.set('search', search.trim());
+    params.set('page', '1');
+    params.set('pageSize', newPageSize.toString());
 
     startTransition(() => {
       router.push(`/salary?${params.toString()}`);
@@ -571,44 +589,17 @@ export function SalaryListClient({
         </div>
 
         {/* Pagination Footer */}
-        {initialPagination.totalPages > 1 && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t px-4 py-3 text-xs text-muted-foreground">
-            <div>
-              Showing {(initialPagination.page - 1) * initialPagination.pageSize + 1} to{' '}
-              {Math.min(
-                initialPagination.page * initialPagination.pageSize,
-                initialPagination.totalItems
-              )}{' '}
-              of {initialPagination.totalItems} records
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(initialPagination.page - 1)}
-                disabled={!initialPagination.hasPrevPage || isPending}
-                className="min-h-9 gap-1 text-xs"
-              >
-                <ChevronLeft className="size-3.5" />
-                Previous
-              </Button>
-              <span className="px-1 font-medium">
-                Page {initialPagination.page} of {initialPagination.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(initialPagination.page + 1)}
-                disabled={!initialPagination.hasNextPage || isPending}
-                className="min-h-9 gap-1 text-xs"
-              >
-                Next
-                <ChevronRight className="size-3.5" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <div className="border-t p-4">
+          <DataTablePagination
+            currentPage={initialPagination.page}
+            totalPages={initialPagination.totalPages}
+            totalItems={initialPagination.totalItems}
+            pageSize={initialPagination.pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={isPending}
+          />
+        </div>
       </Card>
 
       {/* Dialogs */}
