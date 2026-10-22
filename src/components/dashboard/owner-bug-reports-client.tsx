@@ -49,6 +49,7 @@ export function OwnerBugReportsClient({
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<BugReportStatus | 'ALL'>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<BugReportCategory | 'ALL'>('ALL');
   const [page, setPage] = useState(initialData.pagination.page);
   const [pageSize, setPageSize] = useState(initialData.pagination.limit || 15);
 

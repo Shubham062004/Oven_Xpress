@@ -10,6 +10,8 @@ import {
   updateEmployeeSchema,
   resetEmployeePasswordSchema,
   createLoginAccountSchema,
+  assignBranchWorkSchema,
+  type AssignBranchWorkInput,
   APPROVED_DESIGNATIONS,
 } from '@/lib/validations/employee';
 import type { ActionResult } from '@/lib/auth/types';
@@ -31,7 +33,7 @@ export interface EmployeeItem {
   dateOfBirth: Date | null;
   joiningDate: Date;
   designation: string;
-  branchId: string;
+  branchId: string | null;
   employmentStatus: EmploymentStatus;
   salary: number;
   salaryType: SalaryType;
@@ -47,7 +49,7 @@ export interface EmployeeItem {
     code: string;
     city: string;
     status: string;
-  };
+  } | null;
   user: {
     id: string;
     name: string;
@@ -433,48 +435,39 @@ export async function createEmployee(
 
     const input = parsed.data;
 
-    // Branch authorization check
-    const scope = await getAuthorizedBranchScope(currentUser);
-    if (!isBranchAuthorized(scope, input.branchId)) {
-      return {
-        success: false,
-        error: 'Unauthorized: You do not have access to create employees for this branch.',
-        fieldErrors: { branchId: ['Unauthorized branch selection.'] },
-      };
-    }
+    // Branch authorization check (if branchId is provided)
+    let resolvedBranchId: string | null = null;
+    if (input.branchId && input.branchId.trim().length > 0) {
+      const scope = await getAuthorizedBranchScope(currentUser);
+      if (!isBranchAuthorized(scope, input.branchId)) {
+        return {
+          success: false,
+          error: 'Unauthorized: You do not have access to create employees for this branch.',
+          fieldErrors: { branchId: ['Unauthorized branch selection.'] },
+        };
+      }
 
-    // Rule 1: Employee code must be unique
-    const existingCode = await prisma.employee.findUnique({
-      where: { employeeCode: input.employeeCode },
-    });
+      const branch = await prisma.branch.findUnique({
+        where: { id: input.branchId },
+      });
 
-    if (existingCode) {
-      return {
-        success: false,
-        error: 'An employee with this code already exists.',
-        fieldErrors: { employeeCode: ['This employee code is already in use.'] },
-      };
-    }
+      if (!branch) {
+        return {
+          success: false,
+          error: 'Selected branch does not exist.',
+          fieldErrors: { branchId: ['Invalid branch selected.'] },
+        };
+      }
 
-    // Rule 2: Active employees should belong to a valid active branch
-    const branch = await prisma.branch.findUnique({
-      where: { id: input.branchId },
-    });
+      if (input.employmentStatus === 'ACTIVE' && branch.status !== 'ACTIVE') {
+        return {
+          success: false,
+          error: 'Active employees cannot be assigned to an inactive branch.',
+          fieldErrors: { branchId: ['Cannot assign an active employee to an inactive branch.'] },
+        };
+      }
 
-    if (!branch) {
-      return {
-        success: false,
-        error: 'Selected branch does not exist.',
-        fieldErrors: { branchId: ['Invalid branch selected.'] },
-      };
-    }
-
-    if (input.employmentStatus === 'ACTIVE' && branch.status !== 'ACTIVE') {
-      return {
-        success: false,
-        error: 'Active employees cannot be assigned to an inactive branch.',
-        fieldErrors: { branchId: ['Cannot assign an active employee to an inactive branch.'] },
-      };
+      resolvedBranchId = input.branchId;
     }
 
     // Rule 9: Explicit user linking or inline account creation
@@ -662,8 +655,8 @@ export async function createEmployee(
         email: input.email || null,
         dateOfBirth,
         joiningDate,
-        designation: input.designation,
-        branchId: input.branchId,
+        designation: input.designation || 'Unassigned',
+        branchId: resolvedBranchId,
         employmentStatus: input.employmentStatus,
         salary: input.salary,
         salaryType: input.salaryType,
@@ -771,9 +764,9 @@ export async function updateEmployee(
       return { success: false, error: 'Employee not found.' };
     }
 
-    // Branch authorization check on existing record
+    // Branch authorization check on existing record (if assigned)
     const scope = await getAuthorizedBranchScope(currentUser);
-    if (!isBranchAuthorized(scope, existing.branchId)) {
+    if (existing.branchId && !isBranchAuthorized(scope, existing.branchId)) {
       return {
         success: false,
         error: 'Unauthorized: You do not have permission to modify employees in this branch.',
@@ -1473,6 +1466,111 @@ export async function checkLoginIdAvailability(
       success: false,
       error: 'Failed to verify login ID availability.',
     };
+  }
+}
+
+/**
+ * Assigns or reassigns an employee's restaurant branch and job designation/work.
+ */
+export async function assignBranchAndWork(
+  data: AssignBranchWorkInput
+): Promise<ActionResult<EmployeeItem>> {
+  try {
+    const user = await requirePermission(PERMISSIONS.EMPLOYEE_UPDATE);
+    const scope = await getAuthorizedBranchScope(user);
+
+    const parsed = assignBranchWorkSchema.safeParse(data);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message || 'Invalid assignment data.',
+      };
+    }
+
+    const { employeeId, branchId, designation } = parsed.data;
+
+    // Branch authorization check
+    if (!isBranchAuthorized(scope, branchId)) {
+      return {
+        success: false,
+        error: 'Unauthorized: You do not have permission to assign employees to this branch.',
+      };
+    }
+
+    const existingEmployee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { branch: true },
+    });
+
+    if (!existingEmployee) {
+      return { success: false, error: 'Employee not found.' };
+    }
+
+    if (existingEmployee.branchId && !isBranchAuthorized(scope, existingEmployee.branchId)) {
+      return {
+        success: false,
+        error: 'Unauthorized: You do not have permission to reassign this employee.',
+      };
+    }
+
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId },
+    });
+    if (!branch) {
+      return { success: false, error: 'Selected branch does not exist.' };
+    }
+
+    const updated = await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        branchId,
+        designation,
+      },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            city: true,
+            status: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId,
+      action: AUDIT_ACTIONS.UPDATE,
+      entityType: AUDIT_ENTITY_TYPES.EMPLOYEE,
+      entityId: employeeId,
+      description: `Assigned branch "${updated.branch?.name}" and designation "${designation}" to employee ${updated.firstName} ${updated.lastName} (${updated.employeeCode})`,
+      afterData: { branchId, designation },
+    }).catch((e: unknown) => console.error('Failed to create audit log:', e));
+
+    revalidatePath('/employees');
+    revalidatePath('/owner/employees');
+
+    return {
+      success: true,
+      data: {
+        ...updated,
+        salary: Number(updated.salary),
+      },
+    };
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    console.error('Failed to assign branch and work:', error);
+    return { success: false, error: 'Failed to assign branch and work. Please try again.' };
   }
 }
 

@@ -180,9 +180,9 @@ model Employee {
   email                 String?
   dateOfBirth           DateTime?
   joiningDate           DateTime
-  designation           String
-  branchId              String
-  branch                Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  designation           String           @default("Unassigned")
+  branchId              String?
+  branch                Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
   currentShiftId        String?
   currentShift          Shift?           @relation("EmployeeCurrentShift", fields: [currentShiftId], references: [id], onDelete: SetNull)
   employmentStatus      EmploymentStatus @default(ACTIVE)

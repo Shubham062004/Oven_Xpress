@@ -16,6 +16,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  Briefcase,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,13 +50,8 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 import { EmployeeFormDialog } from '@/components/employees/employee-form-dialog';
 import { EmployeeDeleteDialog } from '@/components/employees/employee-delete-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { AssignBranchWorkDialog } from '@/components/employees/assign-branch-work-dialog';
+
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -133,12 +129,19 @@ export function EmployeeListClient({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [assignWorkDialogOpen, setAssignWorkDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeItem | null>(null);
+  const [assignWorkEmployee, setAssignWorkEmployee] = useState<EmployeeItem | null>(null);
 
   // Permission checks
   const canCreate = hasPermission(user, PERMISSIONS.EMPLOYEE_CREATE);
   const canUpdate = hasPermission(user, PERMISSIONS.EMPLOYEE_UPDATE);
   const canDeactivate = hasPermission(user, PERMISSIONS.EMPLOYEE_DEACTIVATE);
+
+  const handleAssignBranchWork = (emp: EmployeeItem) => {
+    setAssignWorkEmployee(emp);
+    setAssignWorkDialogOpen(true);
+  };
 
   // ─── Data Fetching ────────────────────────────────────────────────────────
 
@@ -604,9 +607,7 @@ export function EmployeeListClient({
                 </TableHead>
 
                 {/* Actions Header */}
-                <TableHead className="w-24 text-right">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                <TableHead className="text-right min-w-[220px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -657,15 +658,27 @@ export function EmployeeListClient({
 
                     {/* Designation */}
                     <TableCell>
-                      <span className="text-sm font-medium">{emp.designation}</span>
+                      {emp.designation && emp.designation !== 'Unassigned' ? (
+                        <span className="text-sm font-medium">{emp.designation}</span>
+                      ) : (
+                        <Badge variant="outline" className="text-amber-500 bg-amber-500/10 border-amber-500/30 text-[11px]">
+                          Unassigned
+                        </Badge>
+                      )}
                     </TableCell>
 
                     {/* Branch */}
                     <TableCell>
-                      <div>
-                        <div className="text-sm font-medium">{emp.branch.name}</div>
-                        <div className="text-xs text-muted-foreground">{emp.branch.city}</div>
-                      </div>
+                      {emp.branch ? (
+                        <div>
+                          <div className="text-sm font-medium">{emp.branch.name}</div>
+                          <div className="text-xs text-muted-foreground">{emp.branch.city}</div>
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-amber-500 bg-amber-500/10 border-amber-500/30 text-[11px]">
+                          Unassigned
+                        </Badge>
+                      )}
                     </TableCell>
 
                     {/* Joining Date */}
@@ -721,9 +734,25 @@ export function EmployeeListClient({
                       </Badge>
                     </TableCell>
 
-                    {/* Directly Visible Action Buttons (Replaces Three-Dot Menu) */}
+                    {/* Directly Visible Action Buttons */}
                     <TableCell>
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {canUpdate && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAssignBranchWork(emp);
+                            }}
+                            className="h-8 gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/10 hover:text-primary font-medium"
+                            title="Assign branch and work role"
+                          >
+                            <Briefcase className="size-3.5" />
+                            <span>Assign Branch & Work</span>
+                          </Button>
+                        )}
+
                         {canUpdate && (
                           <Button
                             variant="ghost"
@@ -819,7 +848,7 @@ export function EmployeeListClient({
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground border-t pt-2">
                     <div>
                       <span className="block font-medium text-foreground">Branch</span>
-                      <span>{emp.branch.name}</span>
+                      <span>{emp.branch?.name ?? 'Unassigned'}</span>
                     </div>
                     <div>
                       <span className="block font-medium text-foreground">Compensation</span>
@@ -845,11 +874,11 @@ export function EmployeeListClient({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t pt-2">
+                  <div className="flex items-center justify-between border-t pt-2 gap-2 flex-wrap">
                     <span className="text-xs text-muted-foreground">
                       Joined {formatDate(emp.joiningDate)}
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <Button
                         variant="outline"
                         size="sm"
@@ -859,6 +888,17 @@ export function EmployeeListClient({
                         <Eye className="mr-1 size-3.5" />
                         View
                       </Button>
+                      {canUpdate && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAssignBranchWork(emp)}
+                          className="h-8 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                        >
+                          <Briefcase className="size-3.5" />
+                          Assign
+                        </Button>
+                      )}
                       {canUpdate && (
                         <Button
                           variant="ghost"
@@ -939,6 +979,21 @@ export function EmployeeListClient({
           }}
           employee={selectedEmployee}
           onSuccess={handleDeleteSuccess}
+        />
+      )}
+
+      {/* Dialog for Assigning Branch and Work */}
+      {assignWorkEmployee && (
+        <AssignBranchWorkDialog
+          key={assignWorkEmployee.id}
+          open={assignWorkDialogOpen}
+          onOpenChange={(open) => {
+            setAssignWorkDialogOpen(open);
+            if (!open) setAssignWorkEmployee(null);
+          }}
+          employee={assignWorkEmployee}
+          branches={branches}
+          onSuccess={handleFormSuccess}
         />
       )}
     </div>

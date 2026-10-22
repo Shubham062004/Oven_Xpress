@@ -52,6 +52,7 @@ import {
 
 import { EmployeeFormDialog } from '@/components/employees/employee-form-dialog';
 import { EmployeeStatusDialog } from '@/components/employees/employee-status-dialog';
+import { AssignBranchWorkDialog } from '@/components/employees/assign-branch-work-dialog';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,7 @@ export function EmployeeDetailClient({
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [assignWorkDialogOpen, setAssignWorkDialogOpen] = useState(false);
   const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
   const [bonusDialogOpen, setBonusDialogOpen] = useState(false);
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
@@ -189,15 +191,30 @@ export function EmployeeDetailClient({
               </Badge>
             </div>
             <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
-              <span className="font-medium text-foreground">{employee.designation}</span>
+              <span className="font-medium text-foreground">{employee.designation || 'Unassigned'}</span>
               <span>•</span>
-              <span>{employee.branch.name} ({employee.branch.city})</span>
+              <span>
+                {employee.branch
+                  ? `${employee.branch.name} (${employee.branch.city})`
+                  : 'Unassigned Branch'}
+              </span>
             </p>
           </div>
         </div>
 
         {/* Header Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {canUpdate && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAssignWorkDialogOpen(true)}
+              className="border-primary/30 text-primary hover:bg-primary/10"
+            >
+              <Briefcase className="mr-1.5 size-4" />
+              Assign Branch & Work
+            </Button>
+          )}
           {canUpdate && (
             <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
               <Pencil className="mr-1.5 size-4" />
@@ -291,21 +308,37 @@ export function EmployeeDetailClient({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs text-muted-foreground">Assigned Branch</span>
-                <p className="text-sm font-medium">
-                  <Link
-                    href={`/branches/${employee.branch.id}`}
-                    className="text-primary hover:underline inline-flex items-center gap-1"
+              {employee.branch ? (
+                <div>
+                  <span className="text-xs text-muted-foreground">Assigned Branch</span>
+                  <p className="text-sm font-medium">
+                    <Link
+                      href={`/branches/${employee.branch.id}`}
+                      className="text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      {employee.branch.name}
+                    </Link>
+                  </p>
+                  <p className="text-xs text-muted-foreground">{employee.branch.city}</p>
+                </div>
+              ) : (
+                <div>
+                  <span className="text-xs text-muted-foreground">Assigned Branch</span>
+                  <p className="text-sm font-medium text-amber-500">Unassigned</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAssignWorkDialogOpen(true)}
+                    className="mt-1 h-7 text-xs border-primary/30 text-primary hover:bg-primary/10"
                   >
-                    {employee.branch.name}
-                  </Link>
-                </p>
-                <p className="text-xs text-muted-foreground">{employee.branch.city}</p>
-              </div>
+                    <Briefcase className="mr-1 size-3" />
+                    Assign Branch & Work
+                  </Button>
+                </div>
+              )}
               <div>
                 <span className="text-xs text-muted-foreground">Designation</span>
-                <p className="text-sm font-medium">{employee.designation}</p>
+                <p className="text-sm font-medium">{employee.designation || 'Unassigned'}</p>
               </div>
             </div>
 
@@ -324,17 +357,19 @@ export function EmployeeDetailClient({
               </div>
             </div>
 
-            <div className="border-t pt-3">
-              <span className="text-xs text-muted-foreground">Branch Status</span>
-              <div className="mt-1 flex items-center gap-2">
-                <Badge
-                  variant={employee.branch.status === 'ACTIVE' ? 'outline' : 'secondary'}
-                  className="text-xs"
-                >
-                  Branch is {employee.branch.status}
-                </Badge>
+            {employee.branch && (
+              <div className="border-t pt-3">
+                <span className="text-xs text-muted-foreground">Branch Status</span>
+                <div className="mt-1 flex items-center gap-2">
+                  <Badge
+                    variant={employee.branch.status === 'ACTIVE' ? 'outline' : 'secondary'}
+                    className="text-xs"
+                  >
+                    Branch is {employee.branch.status}
+                  </Badge>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -876,7 +911,7 @@ export function EmployeeDetailClient({
         open={revisionDialogOpen}
         onOpenChange={setRevisionDialogOpen}
         defaultEmployeeId={employee.id}
-        branchId={employee.branch.id}
+        branchId={employee.branch?.id || ''}
         onSuccess={() => {
           if (canReadSalary) {
             getEmployeeCompensation(employee.id).then((res) => {
@@ -891,7 +926,7 @@ export function EmployeeDetailClient({
         open={bonusDialogOpen}
         onOpenChange={setBonusDialogOpen}
         defaultEmployeeId={employee.id}
-        branchId={employee.branch.id}
+        branchId={employee.branch?.id || ''}
         onSuccess={() => {
           if (canReadSalary) {
             getEmployeeCompensation(employee.id).then((res) => {
@@ -905,7 +940,7 @@ export function EmployeeDetailClient({
       <SalaryPeriodDialog
         open={periodDialogOpen}
         onOpenChange={setPeriodDialogOpen}
-        branchId={employee.branch.id}
+        branchId={employee.branch?.id || ''}
         onSuccess={() => {
           if (canReadSalary) {
             getEmployeeCompensation(employee.id).then((res) => {
@@ -930,6 +965,15 @@ export function EmployeeDetailClient({
         onOpenChange={setStatusDialogOpen}
         employee={employee}
         onSuccess={handleStatusSuccess}
+      />
+
+      {/* Assign Branch & Work Dialog */}
+      <AssignBranchWorkDialog
+        open={assignWorkDialogOpen}
+        onOpenChange={setAssignWorkDialogOpen}
+        employee={employee}
+        branches={branches}
+        onSuccess={handleFormSuccess}
       />
     </div>
   );

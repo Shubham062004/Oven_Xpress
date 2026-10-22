@@ -74,13 +74,18 @@ export const baseEmployeeSchema = z.object({
         message: 'Employee code must contain only uppercase letters, digits, and hyphens',
       })
     ),
-  designation: z.enum(APPROVED_DESIGNATIONS, {
-    message: 'Designation must be one of: Kitchen, Delivery, Branch Manager, Cleaner',
-  }),
+  designation: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(''))
+    .default('Unassigned'),
   branchId: z
     .string()
     .trim()
-    .min(1, { message: 'Branch selection is required' }),
+    .optional()
+    .or(z.literal(''))
+    .nullable(),
   joiningDate: z
     .string()
     .trim()
@@ -236,12 +241,18 @@ export const createLoginAccountSchema = z
 export const employeeFilterSchema = z.object({
   search: z.string().optional(),
   branchId: z.string().optional(),
-  status: z.enum(['ALL', 'ACTIVE', 'INACTIVE']).optional(),
   designation: z.string().optional(),
+});
+
+export const assignBranchWorkSchema = z.object({
+  employeeId: z.string().min(1, 'Employee ID is required'),
+  branchId: z.string().min(1, 'Please select a branch'),
+  designation: z.string().min(1, 'Please select or enter a job designation/work'),
 });
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 export type EmployeeFilterInput = z.infer<typeof employeeFilterSchema>;
+export type AssignBranchWorkInput = z.infer<typeof assignBranchWorkSchema>;
 export type ResetEmployeePasswordInput = z.infer<typeof resetEmployeePasswordSchema>;
 export type CreateLoginAccountInput = z.infer<typeof createLoginAccountSchema>;

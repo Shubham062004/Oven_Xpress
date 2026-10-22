@@ -70,7 +70,7 @@ export function EmployeeStatusDialog({
           <DialogDescription>
             {isDeactivating
               ? `Deactivating "${employee.firstName} ${employee.lastName} (${employee.employeeCode})" will mark their status as inactive while preserving all historical attendance and payroll data. Employees are never permanently deleted.`
-              : `Reactivating "${employee.firstName} ${employee.lastName} (${employee.employeeCode})" will restore them to active employment status at "${employee.branch.name}".`}
+              : `Reactivating "${employee.firstName} ${employee.lastName} (${employee.employeeCode})" will restore them to active employment status${employee.branch?.name ? ` at "${employee.branch.name}"` : ''}.`}
           </DialogDescription>
         </DialogHeader>
 
