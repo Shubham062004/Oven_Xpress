@@ -55,8 +55,6 @@ function extractItemMap(
 }
 
 interface SelectContextValue {
-  registerItem: (value: unknown, label: React.ReactNode) => void
-  unregisterItem: (value: unknown) => void
   items: Record<string, React.ReactNode>
 }
 
@@ -67,59 +65,20 @@ function Select<Value = unknown, Multiple extends boolean | undefined = false>({
   children,
   ...props
 }: SelectPrimitive.Root.Props<Value, Multiple>) {
-  const [dynamicItems, setDynamicItems] = React.useState<
-    Record<string, React.ReactNode>
-  >({})
-
-  const registerItem = React.useCallback(
-    (val: unknown, label: React.ReactNode) => {
-      if (val !== undefined && val !== null) {
-        const key = String(val)
-        setDynamicItems((prev) => {
-          if (prev[key] === label) return prev
-          return { ...prev, [key]: label }
-        })
-      }
-    },
-    []
-  )
-
-  const unregisterItem = React.useCallback((val: unknown) => {
-    if (val !== undefined && val !== null) {
-      const key = String(val)
-      setDynamicItems((prev) => {
-        if (!(key in prev)) return prev
-        const next = { ...prev }
-        delete next[key]
-        return next
-      })
-    }
-  }, [])
-
-  const extractedItems = React.useMemo(() => {
+  const mergedItems = React.useMemo(() => {
     const map: Record<string, React.ReactNode> = {}
     extractItemMap(children, map)
-    return map
-  }, [children])
-
-  const mergedItems = React.useMemo(() => {
-    const map: Record<string, React.ReactNode> = {
-      ...extractedItems,
-      ...dynamicItems,
-    }
     if (userItems && !Array.isArray(userItems)) {
       Object.assign(map, userItems)
     }
     return map
-  }, [extractedItems, dynamicItems, userItems])
+  }, [children, userItems])
 
   const contextValue = React.useMemo(
     () => ({
-      registerItem,
-      unregisterItem,
       items: mergedItems,
     }),
-    [registerItem, unregisterItem, mergedItems]
+    [mergedItems]
   )
 
   return (
@@ -258,18 +217,6 @@ function SelectItem({
   label: labelProp,
   ...props
 }: SelectPrimitive.Item.Props) {
-  const context = React.useContext(SelectContext)
-
-  React.useEffect(() => {
-    if (value !== undefined && value !== null && context?.registerItem) {
-      const text = getElementText(children)
-      const label = labelProp ?? (text.trim().length > 0 ? text : children)
-      context.registerItem(value, label)
-      return () => {
-        context.unregisterItem(value)
-      }
-    }
-  }, [value, labelProp, children, context])
 
   return (
     <SelectPrimitive.Item

@@ -46,23 +46,14 @@ export function AssignBranchWorkDialog({
   onSuccess,
 }: AssignBranchWorkDialogProps) {
   const [isPending, startTransition] = useTransition();
-  const [prevEmployeeId, setPrevEmployeeId] = useState<string | undefined>(employee?.id);
-  const [selectedBranchId, setSelectedBranchId] = useState<string>(() => employee?.branchId || (branches[0]?.id ?? ''));
+  const [selectedBranchId, setSelectedBranchId] = useState<string>(
+    () => employee?.branchId || (branches[0]?.id ?? '')
+  );
   const [selectedDesignation, setSelectedDesignation] = useState<string>(() =>
     employee?.designation && employee.designation !== 'Unassigned'
       ? employee.designation
       : 'Kitchen'
   );
-
-  if (employee && employee.id !== prevEmployeeId) {
-    setPrevEmployeeId(employee.id);
-    setSelectedBranchId(employee.branchId || (branches[0]?.id ?? ''));
-    setSelectedDesignation(
-      employee.designation && employee.designation !== 'Unassigned'
-        ? employee.designation
-        : 'Kitchen'
-    );
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

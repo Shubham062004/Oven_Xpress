@@ -969,6 +969,7 @@ export function EmployeeDetailClient({
 
       {/* Assign Branch & Work Dialog */}
       <AssignBranchWorkDialog
+        key={employee.id}
         open={assignWorkDialogOpen}
         onOpenChange={setAssignWorkDialogOpen}
         employee={employee}
