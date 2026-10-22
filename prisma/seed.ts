@@ -2360,7 +2360,7 @@ async function main() {
     const existing = await prisma.salaryStructure.findFirst({
       where: { employeeId: emp.id, status: 'ACTIVE' },
     });
-    if (!existing) {
+    if (!existing && emp.branchId) {
       await prisma.salaryStructure.create({
         data: {
           employeeId: emp.id,

@@ -46,7 +46,7 @@ export interface ProfileDetails {
       code: string;
       city: string;
       address: string;
-    };
+    } | null;
   } | null;
   activeSessions: {
     id: string;
@@ -117,13 +117,15 @@ export async function getProfileData(): Promise<ProfileDetails> {
           designation: userRecord.employee.designation,
           joiningDate: userRecord.employee.joiningDate,
           employmentStatus: userRecord.employee.employmentStatus,
-          branch: {
-            id: userRecord.employee.branch.id,
-            name: userRecord.employee.branch.name,
-            code: userRecord.employee.branch.code,
-            city: userRecord.employee.branch.city,
-            address: userRecord.employee.branch.address,
-          },
+          branch: userRecord.employee.branch
+            ? {
+                id: userRecord.employee.branch.id,
+                name: userRecord.employee.branch.name,
+                code: userRecord.employee.branch.code,
+                city: userRecord.employee.branch.city,
+                address: userRecord.employee.branch.address,
+              }
+            : null,
         }
       : null,
     activeSessions,

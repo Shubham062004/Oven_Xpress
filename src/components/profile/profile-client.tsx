@@ -489,7 +489,7 @@ export function ProfileClient({
                   {profileData.employee ? (
                     <span className="flex items-center gap-1.5 font-medium text-foreground/80">
                       <Building2 className="size-3.5" />
-                      {profileData.employee.branch.name} ({profileData.employee.designation})
+                      {profileData.employee.branch?.name ?? 'Unassigned'} ({profileData.employee.designation})
                     </span>
                   ) : (
                     <span className="flex items-center gap-1.5 font-medium text-foreground/80">
@@ -655,12 +655,20 @@ export function ProfileClient({
 
                     <div>
                       <span className="text-xs text-muted-foreground uppercase font-medium">Assigned Branch</span>
-                      <p className="text-sm font-semibold text-foreground mt-0.5">
-                        {profileData.employee.branch.name} ({profileData.employee.branch.code})
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {profileData.employee.branch.address}, {profileData.employee.branch.city}
-                      </p>
+                      {profileData.employee?.branch ? (
+                        <>
+                          <p className="text-sm font-semibold text-foreground mt-0.5">
+                            {profileData.employee.branch?.name} ({profileData.employee.branch?.code})
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {profileData.employee.branch?.address}, {profileData.employee.branch?.city}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm font-medium text-muted-foreground mt-0.5">
+                          Not Assigned to Any Branch
+                        </p>
+                      )}
                     </div>
 
                     <Separator />

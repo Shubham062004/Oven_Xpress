@@ -746,6 +746,193 @@ export async function toggleBranchStatus(
   }
 }
 
+// ─── Branch Staff & Daily Work Management ────────────────────────────────────
+
+export interface BranchEmployeeTodayItem {
+  id: string;
+  firstName: string;
+  lastName: string;
+  employeeCode: string;
+  designation: string;
+  phone: string;
+  email: string | null;
+  employmentStatus: 'ACTIVE' | 'INACTIVE';
+  joiningDate: string;
+  todayAttendance: {
+    status: string;
+    checkIn: string | null;
+    checkOut: string | null;
+    shiftName: string | null;
+  } | null;
+}
+
+export interface BranchEmployeesTodayData {
+  branch: {
+    id: string;
+    name: string;
+    code: string;
+    city: string;
+    status: BranchStatus;
+  };
+  employees: BranchEmployeeTodayItem[];
+  unassignedEmployees: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    employeeCode: string;
+    designation: string;
+  }>;
+}
+
+/**
+ * Fetches all employees assigned to a branch today along with today's attendance/shift status
+ * and unassigned employees who can be assigned to this branch.
+ */
+export async function getBranchEmployeesToday(
+  branchId: string
+): Promise<ActionResult<BranchEmployeesTodayData>> {
+  try {
+    const user = await requirePermission(PERMISSIONS.BRANCH_READ);
+    const scope = await getAuthorizedBranchScope(user);
+
+    if (!isBranchAuthorized(scope, branchId)) {
+      return { success: false, error: 'Unauthorized branch access.' };
+    }
+
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId },
+      select: { id: true, name: true, code: true, city: true, status: true },
+    });
+
+    if (!branch) {
+      return { success: false, error: 'Branch not found.' };
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const [employees, unassignedEmployees] = await Promise.all([
+      prisma.employee.findMany({
+        where: { branchId },
+        orderBy: [
+          { employmentStatus: 'asc' }, // ACTIVE first
+          { designation: 'asc' },
+          { firstName: 'asc' },
+        ],
+        include: {
+          attendances: {
+            where: {
+              date: { gte: todayStart, lte: todayEnd },
+            },
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              shift: { select: { name: true } },
+            },
+          },
+        },
+      }),
+      prisma.employee.findMany({
+        where: {
+          branchId: null,
+          employmentStatus: 'ACTIVE',
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          employeeCode: true,
+          designation: true,
+        },
+        orderBy: { firstName: 'asc' },
+      }),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        branch,
+        employees: employees.map((emp) => ({
+          id: emp.id,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          employeeCode: emp.employeeCode,
+          designation: emp.designation,
+          phone: emp.phone,
+          email: emp.email,
+          employmentStatus: emp.employmentStatus as 'ACTIVE' | 'INACTIVE',
+          joiningDate: emp.joiningDate.toISOString(),
+          todayAttendance: emp.attendances[0]
+            ? {
+                status: emp.attendances[0].status,
+                checkIn: emp.attendances[0].checkIn ? emp.attendances[0].checkIn.toISOString() : null,
+                checkOut: emp.attendances[0].checkOut ? emp.attendances[0].checkOut.toISOString() : null,
+                shiftName: emp.attendances[0].shift?.name ?? null,
+              }
+            : null,
+        })),
+        unassignedEmployees,
+      },
+    };
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    console.error('Failed to get branch employees today:', error);
+    return { success: false, error: 'Failed to load branch staff. Please try again.' };
+  }
+}
+
+/**
+ * Unassigns an employee from a branch, resetting their designation to 'Unassigned'.
+ */
+export async function unassignEmployeeFromBranch(
+  employeeId: string,
+  branchId: string
+): Promise<ActionResult<{ message: string }>> {
+  try {
+    const user = await requirePermission(PERMISSIONS.EMPLOYEE_UPDATE);
+    const scope = await getAuthorizedBranchScope(user);
+
+    if (!isBranchAuthorized(scope, branchId)) {
+      return { success: false, error: 'Unauthorized branch access.' };
+    }
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+    });
+
+    if (!employee || employee.branchId !== branchId) {
+      return { success: false, error: 'Employee not found in this branch.' };
+    }
+
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: { branchId: null, designation: 'Unassigned' },
+    });
+
+    await createAuditLog({
+      actorUserId: user.id,
+      branchId,
+      action: AUDIT_ACTIONS.UPDATE,
+      entityType: AUDIT_ENTITY_TYPES.EMPLOYEE,
+      entityId: employee.id,
+      description: `Unassigned employee "${employee.firstName} ${employee.lastName}" from branch`,
+    }).catch((e: unknown) => console.error('Failed to create unassign audit log:', e));
+
+    revalidatePath('/branches');
+    revalidatePath('/employees');
+    return {
+      success: true,
+      data: { message: `Unassigned ${employee.firstName} ${employee.lastName} from branch.` },
+    };
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    console.error('Failed to unassign employee:', error);
+    return { success: false, error: 'Failed to unassign employee.' };
+  }
+}
+
 // ─── Internal Helpers ───────────────────────────────────────────────────────
 
 /**

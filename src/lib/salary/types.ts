@@ -43,7 +43,7 @@ export interface SalaryListItem {
     firstName: string;
     lastName: string;
     designation: string;
-    branchId: string;
+    branchId: string | null;
     branchName: string;
   };
   branch: {
@@ -72,7 +72,7 @@ export interface SalaryDetail {
     firstName: string;
     lastName: string;
     designation: string;
-    branchId: string;
+    branchId: string | null;
     branchName: string;
     phone: string;
   };
@@ -220,7 +220,7 @@ export interface EmployeeCompensationSummary {
     firstName: string;
     lastName: string;
     designation: string;
-    branchId: string;
+    branchId: string | null;
     branchName: string;
     employmentStatus: string;
   };

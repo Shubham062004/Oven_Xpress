@@ -319,7 +319,7 @@ export async function getSalaryRecords(params: {
         lastName: r.employee.lastName,
         designation: r.employee.designation,
         branchId: r.employee.branchId,
-        branchName: r.employee.branch.name,
+        branchName: r.employee.branch?.name ?? 'Unassigned',
       },
       branch: {
         id: r.branch.id,
@@ -452,7 +452,7 @@ export async function getSalaryRecordById(
         lastName: record.employee.lastName,
         designation: record.employee.designation,
         branchId: record.employee.branchId,
-        branchName: record.employee.branch.name,
+        branchName: record.employee.branch?.name ?? 'Unassigned',
         phone: record.employee.phone,
       },
       branchId: record.branchId,
@@ -480,7 +480,7 @@ export async function getSalaryRecordById(
           firstName: b.employee.firstName,
           lastName: b.employee.lastName,
           designation: b.employee.designation,
-          branchName: b.employee.branch.name,
+          branchName: b.employee.branch?.name ?? 'Unassigned',
         },
         branch: {
           id: b.branch.id,
@@ -507,7 +507,7 @@ export async function getSalaryRecordById(
           firstName: i.employee.firstName,
           lastName: i.employee.lastName,
           designation: i.employee.designation,
-          branchName: i.employee.branch.name,
+          branchName: i.employee.branch?.name ?? 'Unassigned',
         },
         branch: {
           id: i.branch.id,
@@ -596,6 +596,10 @@ export async function previewSalaryRecord(
     });
 
     if (!employee) return { success: false, error: 'Employee not found' };
+
+    if (!employee.branchId) {
+      return { success: false, error: 'Employee is not assigned to any branch.' };
+    }
 
     const scope = await getAuthorizedBranchScope(user);
     if (!isBranchAuthorized(scope, employee.branchId)) {
@@ -720,7 +724,7 @@ export async function previewSalaryRecord(
             firstName: b.employee.firstName,
             lastName: b.employee.lastName,
             designation: b.employee.designation,
-            branchName: b.employee.branch.name,
+            branchName: b.employee.branch?.name ?? 'Unassigned',
           },
           branch: {
             id: b.branch.id,
@@ -747,7 +751,7 @@ export async function previewSalaryRecord(
             firstName: i.employee.firstName,
             lastName: i.employee.lastName,
             designation: i.employee.designation,
-            branchName: i.employee.branch.name,
+            branchName: i.employee.branch?.name ?? 'Unassigned',
           },
           branch: {
             id: i.branch.id,
@@ -808,6 +812,13 @@ export async function createSalaryRecord(
       return {
         success: false,
         error: 'Cannot create a new salary period for an inactive employee. Reactivate employee first.',
+      };
+    }
+
+    if (!employee.branchId) {
+      return {
+        success: false,
+        error: 'Cannot create a salary period for an employee with no assigned branch.',
       };
     }
 
@@ -918,7 +929,7 @@ export async function createSalaryRecord(
         data: {
           salaryNumber,
           employeeId,
-          branchId: employee.branchId,
+          branchId: employee.branchId!,
           periodStart,
           periodEnd,
           baseSalary: baseSalaryDecimal,
@@ -1005,7 +1016,7 @@ export async function createSalaryRecord(
           lastName: result.employee.lastName,
           designation: result.employee.designation,
           branchId: result.employee.branchId,
-          branchName: result.employee.branch.name,
+          branchName: result.employee.branch?.name ?? 'Unassigned',
         },
         branch: {
           id: result.branch.id,
@@ -1215,6 +1226,13 @@ export async function reviseSalary(
 
     if (!employee) return { success: false, error: 'Employee not found' };
 
+    if (!employee.branchId) {
+      return {
+        success: false,
+        error: 'Cannot apply a salary increment to an employee with no assigned branch.',
+      };
+    }
+
     const scope = await getAuthorizedBranchScope(user);
     if (!isBranchAuthorized(scope, employee.branchId)) {
       return { success: false, error: 'Forbidden: Access to branch denied' };
@@ -1258,7 +1276,7 @@ export async function reviseSalary(
       const newStructure = await tx.salaryStructure.create({
         data: {
           employeeId,
-          branchId: employee.branchId,
+          branchId: employee.branchId!,
           salary: new Prisma.Decimal(newSalary),
           salaryType: salaryType || SalaryType.MONTHLY,
           effectiveFrom: effectiveDate,
@@ -1273,7 +1291,7 @@ export async function reviseSalary(
       const increment = await tx.salaryIncrement.create({
         data: {
           employeeId,
-          branchId: employee.branchId,
+          branchId: employee.branchId!,
           previousSalary: new Prisma.Decimal(previousSalaryNumber),
           newSalary: new Prisma.Decimal(newSalary),
           difference: new Prisma.Decimal(differenceNumber),
@@ -1364,7 +1382,7 @@ export async function reviseSalary(
           firstName: result.employee.firstName,
           lastName: result.employee.lastName,
           designation: result.employee.designation,
-          branchName: result.employee.branch.name,
+          branchName: result.employee.branch?.name ?? 'Unassigned',
         },
         branch: {
           id: result.branch.id,
@@ -1479,7 +1497,7 @@ export async function getIncrements(params: {
         firstName: inc.employee.firstName,
         lastName: inc.employee.lastName,
         designation: inc.employee.designation,
-        branchName: inc.employee.branch.name,
+        branchName: inc.employee.branch?.name ?? 'Unassigned',
       },
       branch: {
         id: inc.branch.id,
@@ -1616,7 +1634,7 @@ export async function getBonuses(params: {
         firstName: b.employee.firstName,
         lastName: b.employee.lastName,
         designation: b.employee.designation,
-        branchName: b.employee.branch.name,
+        branchName: b.employee.branch?.name ?? 'Unassigned',
       },
       branch: {
         id: b.branch.id,
@@ -1687,6 +1705,9 @@ export async function createBonus(
     if (!employee) return { success: false, error: 'Employee not found' };
 
     const scope = await getAuthorizedBranchScope(user);
+    if (!employee.branchId) {
+      return { success: false, error: 'Employee is not assigned to any branch' };
+    }
     if (!isBranchAuthorized(scope, employee.branchId)) {
       return { success: false, error: 'Forbidden: Access to branch denied' };
     }
@@ -1757,7 +1778,7 @@ export async function createBonus(
           firstName: bonus.employee.firstName,
           lastName: bonus.employee.lastName,
           designation: bonus.employee.designation,
-          branchName: bonus.employee.branch.name,
+          branchName: bonus.employee.branch?.name ?? '',
         },
         branch: {
           id: bonus.branch.id,
@@ -2013,6 +2034,9 @@ export async function createIncentive(
     if (!employee) return { success: false, error: 'Employee not found' };
 
     const scope = await getAuthorizedBranchScope(user);
+    if (!employee.branchId) {
+      return { success: false, error: 'Employee is not assigned to any branch' };
+    }
     if (!isBranchAuthorized(scope, employee.branchId)) {
       return { success: false, error: 'Forbidden: Access to branch denied' };
     }
@@ -2063,7 +2087,7 @@ export async function createIncentive(
           firstName: incentive.employee.firstName,
           lastName: incentive.employee.lastName,
           designation: incentive.employee.designation,
-          branchName: incentive.employee.branch.name,
+          branchName: incentive.employee.branch?.name ?? '',
         },
         branch: {
           id: incentive.branch.id,
@@ -2116,8 +2140,12 @@ export async function getEmployeeCompensation(
     if (!employee) return { success: false, error: 'Employee not found' };
 
     const scope = await getAuthorizedBranchScope(user);
-    if (!isBranchAuthorized(scope, employee.branchId)) {
-      return { success: false, error: 'Forbidden: Access to branch denied' };
+    if (employee.branchId) {
+      if (!isBranchAuthorized(scope, employee.branchId)) {
+        return { success: false, error: 'Forbidden: Access to branch denied' };
+      }
+    } else if (!scope.isAllBranches) {
+      return { success: false, error: 'Forbidden: Access to unassigned employee denied' };
     }
 
     const [structures, increments, bonuses, incentives, salaryRecords] = await Promise.all([
@@ -2208,7 +2236,7 @@ export async function getEmployeeCompensation(
           lastName: employee.lastName,
           designation: employee.designation,
           branchId: employee.branchId,
-          branchName: employee.branch.name,
+          branchName: employee.branch?.name ?? 'Unassigned',
           employmentStatus: employee.employmentStatus,
         },
         currentStructure: activeStructure
@@ -2246,7 +2274,7 @@ export async function getEmployeeCompensation(
             firstName: inc.employee.firstName,
             lastName: inc.employee.lastName,
             designation: inc.employee.designation,
-            branchName: inc.employee.branch.name,
+            branchName: inc.employee.branch?.name ?? 'Unassigned',
           },
           branch: {
             id: inc.branch.id,
@@ -2273,7 +2301,7 @@ export async function getEmployeeCompensation(
             firstName: b.employee.firstName,
             lastName: b.employee.lastName,
             designation: b.employee.designation,
-            branchName: b.employee.branch.name,
+            branchName: b.employee.branch?.name ?? 'Unassigned',
           },
           branch: {
             id: b.branch.id,
@@ -2300,7 +2328,7 @@ export async function getEmployeeCompensation(
             firstName: i.employee.firstName,
             lastName: i.employee.lastName,
             designation: i.employee.designation,
-            branchName: i.employee.branch.name,
+            branchName: i.employee.branch?.name ?? 'Unassigned',
           },
           branch: {
             id: i.branch.id,
@@ -2327,7 +2355,7 @@ export async function getEmployeeCompensation(
             lastName: r.employee.lastName,
             designation: r.employee.designation,
             branchId: r.employee.branchId,
-            branchName: r.employee.branch.name,
+            branchName: r.employee.branch?.name ?? 'Unassigned',
           },
           branch: {
             id: r.branch.id,
@@ -2369,7 +2397,7 @@ export async function getActiveEmployeesForSelect(
     firstName: string;
     lastName: string;
     designation: string;
-    branchId: string;
+    branchId: string | null;
     branchName: string;
     salary: number;
     salaryType: SalaryType;
@@ -2419,7 +2447,7 @@ export async function getActiveEmployeesForSelect(
         lastName: e.lastName,
         designation: e.designation,
         branchId: e.branchId,
-        branchName: e.branch.name,
+        branchName: e.branch?.name ?? 'Unassigned',
         salary: Number(e.salary),
         salaryType: e.salaryType,
       })),

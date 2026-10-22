@@ -228,8 +228,12 @@ export async function getEmployeeById(
       return { success: false, error: 'Employee not found.' };
     }
 
-    if (!isBranchAuthorized(scope, employee.branchId)) {
-      return { success: false, error: 'Unauthorized to view employee from this branch.' };
+    if (employee.branchId) {
+      if (!isBranchAuthorized(scope, employee.branchId)) {
+        return { success: false, error: 'Unauthorized to view employee from this branch.' };
+      }
+    } else if (!scope.isAllBranches) {
+      return { success: false, error: 'Unauthorized to view unassigned employee.' };
     }
 
     return {
@@ -271,7 +275,9 @@ export async function getEmployeeStats(): Promise<ActionResult<EmployeeStats>> {
 
     const branchCounts: Record<string, number> = {};
     for (const group of branchGroup) {
-      branchCounts[group.branchId] = group._count._all;
+      if (group.branchId) {
+        branchCounts[group.branchId] = group._count._all;
+      }
     }
 
     return {
@@ -967,10 +973,17 @@ export async function toggleEmployeeStatus(
     }
 
     const scope = await getAuthorizedBranchScope(currentUser);
-    if (!isBranchAuthorized(scope, existing.branchId)) {
+    if (existing.branchId) {
+      if (!isBranchAuthorized(scope, existing.branchId)) {
+        return {
+          success: false,
+          error: 'Unauthorized: You do not have permission to change employee status in this branch.',
+        };
+      }
+    } else if (!scope.isAllBranches) {
       return {
         success: false,
-        error: 'Unauthorized: You do not have permission to change employee status in this branch.',
+        error: 'Unauthorized: You do not have permission to change unassigned employee status.',
       };
     }
 
@@ -978,7 +991,7 @@ export async function toggleEmployeeStatus(
       existing.employmentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
 
     // If reactivating, verify branch is active
-    if (newStatus === 'ACTIVE' && existing.branch.status !== 'ACTIVE') {
+    if (newStatus === 'ACTIVE' && existing.branch && existing.branch.status !== 'ACTIVE') {
       return {
         success: false,
         error: 'Cannot activate employee because their assigned branch is currently inactive.',
@@ -1084,10 +1097,17 @@ export async function deleteEmployee(
     }
 
     const scope = await getAuthorizedBranchScope(currentUser);
-    if (!isBranchAuthorized(scope, existing.branchId)) {
+    if (existing.branchId) {
+      if (!isBranchAuthorized(scope, existing.branchId)) {
+        return {
+          success: false,
+          error: 'Unauthorized: You do not have permission to delete or deactivate employees in this branch.',
+        };
+      }
+    } else if (!scope.isAllBranches) {
       return {
         success: false,
-        error: 'Unauthorized: You do not have permission to delete or deactivate employees in this branch.',
+        error: 'Unauthorized: You do not have permission to delete unassigned employees.',
       };
     }
 
@@ -1251,10 +1271,17 @@ export async function resetEmployeePassword(
     }
 
     const scope = await getAuthorizedBranchScope(currentUser);
-    if (!isBranchAuthorized(scope, employee.branchId)) {
+    if (employee.branchId) {
+      if (!isBranchAuthorized(scope, employee.branchId)) {
+        return {
+          success: false,
+          error: 'Unauthorized: You do not have permission to modify employees in this branch.',
+        };
+      }
+    } else if (!scope.isAllBranches) {
       return {
         success: false,
-        error: 'Unauthorized: You do not have permission to modify employees in this branch.',
+        error: 'Unauthorized: You do not have permission to modify unassigned employees.',
       };
     }
 
@@ -1349,10 +1376,17 @@ export async function createLoginAccountForExistingEmployee(
     }
 
     const scope = await getAuthorizedBranchScope(currentUser);
-    if (!isBranchAuthorized(scope, employee.branchId)) {
+    if (employee.branchId) {
+      if (!isBranchAuthorized(scope, employee.branchId)) {
+        return {
+          success: false,
+          error: 'Unauthorized: You do not have permission to modify employees in this branch.',
+        };
+      }
+    } else if (!scope.isAllBranches) {
       return {
         success: false,
-        error: 'Unauthorized: You do not have permission to modify employees in this branch.',
+        error: 'Unauthorized: You do not have permission to modify unassigned employees.',
       };
     }
 

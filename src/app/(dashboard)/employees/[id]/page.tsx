@@ -21,7 +21,7 @@ export async function generateMetadata({
 
   return {
     title: `${result.data.firstName} ${result.data.lastName} (${result.data.employeeCode})`,
-    description: `Staff profile for ${result.data.firstName} ${result.data.lastName} - ${result.data.designation} at ${result.data.branch.name}`,
+    description: `Staff profile for ${result.data.firstName} ${result.data.lastName} - ${result.data.designation} at ${result.data.branch?.name ?? 'Unassigned'}`,
   };
 }
 

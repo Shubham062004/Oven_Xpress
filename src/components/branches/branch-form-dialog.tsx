@@ -1,15 +1,11 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
-import { Loader2, UserCheck } from 'lucide-react';
+import { useState, useTransition } from 'react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { BranchWithManager, EligibleManager } from '@/lib/branches/actions';
-import {
-  createBranch,
-  updateBranch,
-  getEligibleBranchManagers,
-} from '@/lib/branches/actions';
+import type { BranchWithManager } from '@/lib/branches/actions';
+import { createBranch, updateBranch } from '@/lib/branches/actions';
 import { createBranchSchema, updateBranchSchema } from '@/lib/validations/branch';
 
 import { Button } from '@/components/ui/button';
@@ -53,10 +49,6 @@ export function BranchFormDialog({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Eligible branch managers
-  const [eligibleManagers, setEligibleManagers] = useState<EligibleManager[]>([]);
-  const [loadingManagers, setLoadingManagers] = useState(false);
-
   // ─── Form State ─────────────────────────────────────────────────────────
 
   const [formData, setFormData] = useState({
@@ -72,7 +64,6 @@ export function BranchFormDialog({
     openingTime: branch?.openingTime ?? '',
     closingTime: branch?.closingTime ?? '',
     status: (branch?.status ?? 'ACTIVE') as 'ACTIVE' | 'INACTIVE',
-    managerId: branch?.manager?.id ?? 'UNASSIGNED',
   });
 
   const [prevBranch, setPrevBranch] = useState(branch);
@@ -96,7 +87,6 @@ export function BranchFormDialog({
         openingTime: branch.openingTime ?? '',
         closingTime: branch.closingTime ?? '',
         status: branch.status ?? 'ACTIVE',
-        managerId: branch.manager?.id ?? 'UNASSIGNED',
       });
     } else {
       setFormData({
@@ -112,42 +102,15 @@ export function BranchFormDialog({
         openingTime: '',
         closingTime: '',
         status: 'ACTIVE',
-        managerId: 'UNASSIGNED',
       });
     }
     setFieldErrors({});
     setFormError(null);
-    if (open && !prevOpen) {
-      setLoadingManagers(true);
-    }
   }
-
-  // Load eligible managers when dialog opens
-  useEffect(() => {
-    if (!open) return;
-
-    let isMounted = true;
-
-    getEligibleBranchManagers()
-      .then((res) => {
-        if (isMounted && res.success && res.data) {
-          setEligibleManagers(res.data);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load eligible managers:', err);
-      })
-      .finally(() => {
-        if (isMounted) setLoadingManagers(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [open]);
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+
     // Clear field error on change
     if (fieldErrors[field]) {
       setFieldErrors((prev) => {
@@ -164,7 +127,7 @@ export function BranchFormDialog({
   const validateClient = (): boolean => {
     const payload = {
       ...formData,
-      managerId: formData.managerId === 'UNASSIGNED' ? null : formData.managerId,
+      managerId: null,
     };
     const schema = isEditing ? updateBranchSchema : createBranchSchema;
     const result = schema.safeParse(payload);
@@ -195,7 +158,7 @@ export function BranchFormDialog({
 
     const payload = {
       ...formData,
-      managerId: formData.managerId === 'UNASSIGNED' ? null : formData.managerId,
+      managerId: null,
     };
 
     startTransition(async () => {
@@ -224,8 +187,6 @@ export function BranchFormDialog({
 
   const getFieldError = (field: string) => fieldErrors[field]?.[0];
 
-  const hasAssignedManager = !!branch?.manager?.name;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -235,7 +196,7 @@ export function BranchFormDialog({
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Update the branch information, manager assignment, and operating status.'
+              ? 'Update branch information, location, contact, and operating status.'
               : 'Fill in the details to create a new restaurant branch.'}
           </DialogDescription>
         </DialogHeader>
@@ -250,6 +211,26 @@ export function BranchFormDialog({
               {formError}
             </div>
           )}
+
+          {/* Branch Status */}
+          <div className="space-y-1.5">
+            <Label htmlFor="branch-status">Branch Status</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(val) =>
+                updateField('status', (val as 'ACTIVE' | 'INACTIVE') ?? 'ACTIVE')
+              }
+              disabled={isPending}
+            >
+              <SelectTrigger id="branch-status" className="w-full">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Branch Name */}
           <div className="space-y-1.5">
@@ -287,84 +268,6 @@ export function BranchFormDialog({
             )}
           </div>
 
-          {/* Branch Manager Assignment */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="branch-manager" className="flex items-center gap-1.5">
-                <UserCheck className="size-3.5 text-primary" />
-                <span>Branch Manager</span>
-              </Label>
-              <span className="text-xs font-normal text-muted-foreground">
-                {hasAssignedManager ? 'Change Manager' : 'Assign Manager'}
-              </span>
-            </div>
-
-            <Select
-              value={formData.managerId}
-              onValueChange={(val) => updateField('managerId', val ?? 'UNASSIGNED')}
-              disabled={isPending || loadingManagers}
-            >
-              <SelectTrigger id="branch-manager" className="w-full">
-                <SelectValue
-                  placeholder={
-                    loadingManagers
-                      ? 'Loading eligible managers...'
-                      : 'Select branch manager'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
-                {eligibleManagers.length > 0 ? (
-                  eligibleManagers.map((mgr) => (
-                    <SelectItem key={mgr.id} value={mgr.id}>
-                      {mgr.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="__empty__" disabled>
-                    {loadingManagers
-                      ? 'Loading managers...'
-                      : 'No eligible branch managers available'}
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-
-            {eligibleManagers.length === 0 && !loadingManagers && (
-              <p className="text-xs text-muted-foreground">
-                No active users with the Branch Manager role exist yet. Create a user with the MANAGER role to assign one.
-              </p>
-            )}
-
-            {getFieldError('managerId') && (
-              <p className="text-xs text-destructive">{getFieldError('managerId')}</p>
-            )}
-          </div>
-
-          {/* Branch Status */}
-          <div className="space-y-1.5">
-            <Label htmlFor="branch-status">Branch Status</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(val) =>
-                updateField('status', (val as 'ACTIVE' | 'INACTIVE') ?? 'ACTIVE')
-              }
-              disabled={isPending}
-            >
-              <SelectTrigger id="branch-status" className="w-full">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-            {getFieldError('status') && (
-              <p className="text-xs text-destructive">{getFieldError('status')}</p>
-            )}
-          </div>
-
           {/* Description */}
           <div className="space-y-1.5">
             <Label htmlFor="branch-description">Description</Label>
@@ -373,12 +276,8 @@ export function BranchFormDialog({
               placeholder="Brief description of the branch"
               value={formData.description}
               onChange={(e) => updateField('description', e.target.value)}
-              aria-invalid={!!getFieldError('description')}
               disabled={isPending}
             />
-            {getFieldError('description') && (
-              <p className="text-xs text-destructive">{getFieldError('description')}</p>
-            )}
           </div>
 
           {/* Address */}
@@ -400,7 +299,7 @@ export function BranchFormDialog({
           </div>
 
           {/* City & State */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="branch-city">
                 City <span className="text-destructive">*</span>
@@ -417,6 +316,7 @@ export function BranchFormDialog({
                 <p className="text-xs text-destructive">{getFieldError('city')}</p>
               )}
             </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="branch-state">State</Label>
               <Input
@@ -424,38 +324,29 @@ export function BranchFormDialog({
                 placeholder="e.g. Maharashtra"
                 value={formData.state}
                 onChange={(e) => updateField('state', e.target.value)}
-                aria-invalid={!!getFieldError('state')}
                 disabled={isPending}
               />
-              {getFieldError('state') && (
-                <p className="text-xs text-destructive">{getFieldError('state')}</p>
-              )}
             </div>
           </div>
 
           {/* Postal Code */}
           <div className="space-y-1.5">
-            <Label htmlFor="branch-postal">Postal Code</Label>
+            <Label htmlFor="branch-postalCode">Postal Code</Label>
             <Input
-              id="branch-postal"
+              id="branch-postalCode"
               placeholder="e.g. 400001"
               value={formData.postalCode}
               onChange={(e) => updateField('postalCode', e.target.value)}
-              aria-invalid={!!getFieldError('postalCode')}
               disabled={isPending}
             />
-            {getFieldError('postalCode') && (
-              <p className="text-xs text-destructive">{getFieldError('postalCode')}</p>
-            )}
           </div>
 
           {/* Phone & Email */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="branch-phone">Phone</Label>
               <Input
                 id="branch-phone"
-                type="tel"
                 placeholder="e.g. +91 22 1234 5678"
                 value={formData.phone}
                 onChange={(e) => updateField('phone', e.target.value)}
@@ -466,6 +357,7 @@ export function BranchFormDialog({
                 <p className="text-xs text-destructive">{getFieldError('phone')}</p>
               )}
             </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="branch-email">Email</Label>
               <Input
@@ -483,12 +375,12 @@ export function BranchFormDialog({
             </div>
           </div>
 
-          {/* Operating Hours */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Opening & Closing Hours */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="branch-opening">Opening Time</Label>
+              <Label htmlFor="branch-openingTime">Opening Time</Label>
               <Input
-                id="branch-opening"
+                id="branch-openingTime"
                 type="time"
                 value={formData.openingTime}
                 onChange={(e) => updateField('openingTime', e.target.value)}
@@ -499,10 +391,11 @@ export function BranchFormDialog({
                 <p className="text-xs text-destructive">{getFieldError('openingTime')}</p>
               )}
             </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="branch-closing">Closing Time</Label>
+              <Label htmlFor="branch-closingTime">Closing Time</Label>
               <Input
-                id="branch-closing"
+                id="branch-closingTime"
                 type="time"
                 value={formData.closingTime}
                 onChange={(e) => updateField('closingTime', e.target.value)}
@@ -514,26 +407,23 @@ export function BranchFormDialog({
               )}
             </div>
           </div>
-        </form>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form="branch-form"
-            disabled={isPending}
-            id="save-branch-button"
-          >
-            {isPending && <Loader2 className="mr-1.5 size-4 animate-spin" />}
-            {isEditing ? 'Save Changes' : 'Create Branch'}
-          </Button>
-        </DialogFooter>
+          {/* Footer Actions */}
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending} id="submit-branch-btn">
+              {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {isEditing ? 'Save Changes' : 'Create Branch'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

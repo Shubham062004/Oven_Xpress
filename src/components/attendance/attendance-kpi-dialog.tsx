@@ -105,7 +105,7 @@ export function AttendanceKpiDialog({
       case 'active': {
         const list = activeEmployees.map((emp) => {
           const rec = attendanceMap.get(emp.id);
-          const br = branchMap.get(emp.branchId);
+          const br = emp.branchId ? branchMap.get(emp.branchId) : undefined;
           return {
             id: emp.id,
             recordId: rec?.id,
@@ -113,7 +113,7 @@ export function AttendanceKpiDialog({
             lastName: emp.lastName,
             employeeCode: emp.employeeCode,
             designation: emp.designation,
-            branchName: br?.name ?? 'Branch',
+            branchName: br?.name ?? 'Unassigned',
             branchCity: br?.city ?? '',
             status: rec?.status,
             checkIn: rec?.checkIn ?? null,

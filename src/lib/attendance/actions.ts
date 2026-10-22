@@ -652,7 +652,7 @@ export async function markAttendance(
     if (employee.branchId !== input.branchId) {
       return {
         success: false,
-        error: `Employee belongs to "${employee.branch.name}", not the selected branch.`,
+        error: `Employee belongs to "${employee.branch?.name ?? 'Unassigned'}", not the selected branch.`,
       };
     }
 
@@ -1000,6 +1000,10 @@ export async function quickCheckIn(
       return { success: false, error: 'Employee not found.' };
     }
 
+    if (!employee.branchId) {
+      return { success: false, error: 'Employee is not assigned to any branch yet. Please assign a branch first.' };
+    }
+
     if (!isBranchAuthorized(scope, employee.branchId)) {
       return { success: false, error: 'Unauthorized to check in staff for this branch.' };
     }
@@ -1203,7 +1207,7 @@ export async function getAuthorizedEmployees(
       lastName: string;
       employeeCode: string;
       designation: string;
-      branchId: string;
+      branchId: string | null;
       currentShiftId: string | null;
     }>
   >

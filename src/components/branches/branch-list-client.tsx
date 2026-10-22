@@ -10,6 +10,7 @@ import {
   Trash2,
   CheckCircle2,
   XCircle,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -58,6 +59,7 @@ import {
 
 import { BranchFormDialog } from '@/components/branches/branch-form-dialog';
 import { BranchDeleteDialog } from '@/components/branches/branch-delete-dialog';
+import { BranchEmployeesDialog } from '@/components/branches/branch-employees-dialog';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
@@ -94,7 +96,14 @@ export function BranchListClient({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [employeesDialogOpen, setEmployeesDialogOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<BranchWithManager | null>(null);
+  const [employeesBranch, setEmployeesBranch] = useState<BranchWithManager | null>(null);
+
+  const handleViewEmployees = (b: BranchWithManager) => {
+    setEmployeesBranch(b);
+    setEmployeesDialogOpen(true);
+  };
 
   // Permission checks
   const canCreate = hasPermission(user, PERMISSIONS.BRANCH_CREATE);
@@ -407,8 +416,19 @@ export function BranchListClient({
                       )}
                     </div>
 
-                    {/* Mobile Actions */}
+                    {/* Mobile Actions: View Staff, Edit, Delete */}
                     <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewEmployees(branch)}
+                        className="min-h-11 h-auto flex-1 text-xs gap-1.5 text-primary border-primary/30 hover:bg-primary/10"
+                        aria-label="View branch staff"
+                        title="View branch staff and assign work"
+                      >
+                        <Eye className="size-3.5" />
+                        View
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -509,9 +529,28 @@ export function BranchListClient({
                       <TableCell className="hidden sm:table-cell text-muted-foreground">
                         {formatDate(branch.createdAt)}
                       </TableCell>
-                      {/* Actions Column: Direct Edit and Delete Icon Buttons */}
+                      {/* Actions Column: View Staff, Edit, Delete */}
                       <TableCell className="text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => handleViewEmployees(branch)}
+                                  aria-label="View branch staff today"
+                                  title="View branch staff and assign work"
+                                  id={`view-branch-${branch.code}`}
+                                  className="text-primary hover:text-primary hover:bg-primary/10"
+                                >
+                                  <Eye className="size-4" />
+                                </Button>
+                              }
+                            />
+                            <TooltipContent>View branch staff and assign work</TooltipContent>
+                          </Tooltip>
+
                           <Tooltip>
                             <TooltipTrigger
                               render={
@@ -602,6 +641,19 @@ export function BranchListClient({
             }}
             branch={selectedBranch}
             onSuccess={handleDeleteSuccess}
+          />
+        )}
+
+        {/* Branch Staff and Work Management Dialog */}
+        {employeesBranch && (
+          <BranchEmployeesDialog
+            open={employeesDialogOpen}
+            onOpenChange={(open) => {
+              setEmployeesDialogOpen(open);
+              if (!open) setEmployeesBranch(null);
+            }}
+            branch={employeesBranch}
+            onSuccess={refreshData}
           />
         )}
       </div>

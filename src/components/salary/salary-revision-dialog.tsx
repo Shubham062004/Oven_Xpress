@@ -48,7 +48,7 @@ export function SalaryRevisionDialog({
       firstName: string;
       lastName: string;
       designation: string;
-      branchId: string;
+      branchId: string | null;
       branchName: string;
       salary: number;
       salaryType: SalaryType;

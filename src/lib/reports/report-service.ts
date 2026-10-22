@@ -680,7 +680,9 @@ export async function getBranchesReportData(
   const salaryMap = new Map<string, number>();
   for (const s of salaryRecords) {
     const bId = s.employee.branchId;
-    salaryMap.set(bId, (salaryMap.get(bId) || 0) + Number(s.grossAmount));
+    if (bId) {
+      salaryMap.set(bId, (salaryMap.get(bId) || 0) + Number(s.grossAmount));
+    }
   }
 
   const rows: BranchReportRow[] = branches.map((b) => {
@@ -1638,7 +1640,7 @@ export async function getCompensationReportData(
       salaryRecordNumber: r.salaryNumber,
       employeeName: `${r.employee.firstName} ${r.employee.lastName}`,
       employeeCode: r.employee.employeeCode,
-      branchName: r.employee.branch.name,
+      branchName: r.employee.branch?.name ?? 'Unassigned',
       periodMonth: month,
       periodYear: year,
       baseSalary: Number(Number(r.baseSalary).toFixed(2)),

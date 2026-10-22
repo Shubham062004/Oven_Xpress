@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { Briefcase, Building2, Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,19 +46,23 @@ export function AssignBranchWorkDialog({
   onSuccess,
 }: AssignBranchWorkDialogProps) {
   const [isPending, startTransition] = useTransition();
-  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
-  const [selectedDesignation, setSelectedDesignation] = useState<string>('');
+  const [prevEmployeeId, setPrevEmployeeId] = useState<string | undefined>(employee?.id);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>(() => employee?.branchId || (branches[0]?.id ?? ''));
+  const [selectedDesignation, setSelectedDesignation] = useState<string>(() =>
+    employee?.designation && employee.designation !== 'Unassigned'
+      ? employee.designation
+      : 'Kitchen'
+  );
 
-  useEffect(() => {
-    if (employee) {
-      setSelectedBranchId(employee.branchId || (branches[0]?.id ?? ''));
-      setSelectedDesignation(
-        employee.designation && employee.designation !== 'Unassigned'
-          ? employee.designation
-          : 'Kitchen'
-      );
-    }
-  }, [employee, branches, open]);
+  if (employee && employee.id !== prevEmployeeId) {
+    setPrevEmployeeId(employee.id);
+    setSelectedBranchId(employee.branchId || (branches[0]?.id ?? ''));
+    setSelectedDesignation(
+      employee.designation && employee.designation !== 'Unassigned'
+        ? employee.designation
+        : 'Kitchen'
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,7 +143,7 @@ export function AssignBranchWorkDialog({
               <Building2 className="size-3.5 text-muted-foreground" />
               Assigned Branch <span className="text-destructive">*</span>
             </Label>
-            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+            <Select value={selectedBranchId} onValueChange={(val) => setSelectedBranchId(val ?? '')}>
               <SelectTrigger id="branch" className="h-10 text-xs">
                 <SelectValue placeholder="Select restaurant branch" />
               </SelectTrigger>
@@ -162,7 +166,7 @@ export function AssignBranchWorkDialog({
               <Briefcase className="size-3.5 text-muted-foreground" />
               Job Designation / Work <span className="text-destructive">*</span>
             </Label>
-            <Select value={selectedDesignation} onValueChange={setSelectedDesignation}>
+            <Select value={selectedDesignation} onValueChange={(val) => setSelectedDesignation(val ?? '')}>
               <SelectTrigger id="designation" className="h-10 text-xs">
                 <SelectValue placeholder="Select work designation" />
               </SelectTrigger>

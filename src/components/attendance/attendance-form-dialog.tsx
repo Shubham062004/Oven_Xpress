@@ -47,7 +47,7 @@ export interface EmployeeOption {
   lastName: string;
   employeeCode: string;
   designation: string;
-  branchId: string;
+  branchId: string | null;
   currentShiftId: string | null;
 }
 
