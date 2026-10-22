@@ -411,7 +411,13 @@ export function InventoryDashboardClient({ initialData }: InventoryDashboardClie
               }}
             >
               <SelectTrigger className="w-full sm:w-44 min-h-9 sm:min-h-0">
-                <SelectValue placeholder="Branch" />
+                <SelectValue placeholder="Branch">
+                  {(val) => {
+                    if (!val || val === 'ALL') return 'All Branches';
+                    const b = branches.find((item) => item.id === val);
+                    return b ? `${b.name} (${b.code})` : String(val);
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Branches</SelectItem>

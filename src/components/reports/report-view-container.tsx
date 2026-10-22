@@ -315,7 +315,13 @@ export function ReportViewContainer({
                   <SelectTrigger className="h-9 text-xs">
                     <div className="flex items-center gap-2 truncate">
                       <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <SelectValue placeholder="All Branches" />
+                      <SelectValue placeholder="All Branches">
+                        {(val) => {
+                          if (!val || val === 'all') return 'All Accessible Branches';
+                          const b = branches.find((item) => item.id === val);
+                          return b ? `${b.name} (${b.code})` : String(val);
+                        }}
+                      </SelectValue>
                     </div>
                   </SelectTrigger>
                   <SelectContent>

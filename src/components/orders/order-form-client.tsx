@@ -391,8 +391,14 @@ export function OrderFormClient({
               </span>
             ) : (
               <Select value={branchId} onValueChange={(val) => { if (val) handleBranchChange(val); }} disabled={isPending}>
-                <SelectTrigger className="h-8 w-[200px] border-none bg-transparent shadow-none font-semibold focus:ring-0 p-0 text-foreground">
-                  <SelectValue placeholder="Select Branch" />
+                <SelectTrigger className="h-8 w-50 border-none bg-transparent shadow-none font-semibold focus:ring-0 p-0 text-foreground">
+                  <SelectValue placeholder="Select Branch">
+                    {(val) => {
+                      if (!val) return 'Select Branch';
+                      const b = branches.find((item) => item.id === val);
+                      return b ? `${b.name} (${b.code})` : String(val);
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {branches.map((b) => (

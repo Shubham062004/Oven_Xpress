@@ -376,7 +376,13 @@ export function KitchenBoardClient({
             ) : (
               <Select value={selectedBranch} onValueChange={(val) => { if (val) handleBranchChange(val); }}>
                 <SelectTrigger className="h-7 text-xs w-36 sm:w-44 font-semibold bg-muted/50 border-none">
-                  <SelectValue placeholder="All Branches" />
+                  <SelectValue placeholder="All Branches">
+                    {(val) => {
+                      if (!val || val === 'ALL') return 'All Branches';
+                      const b = branches.find((item) => item.id === val);
+                      return b ? `${b.name} (${b.code})` : String(val);
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Branches</SelectItem>

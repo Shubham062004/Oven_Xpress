@@ -356,7 +356,13 @@ export function ExpenseListClient({
                 <SelectTrigger className="h-9 text-xs w-full">
                   <div className="flex items-center gap-1.5 truncate">
                     <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <SelectValue placeholder="All Branches" />
+                    <SelectValue placeholder="All Branches">
+                      {(val) => {
+                        if (!val || val === 'all') return 'All Branches';
+                        const b = branches.find((item) => item.id === val);
+                        return b ? b.name : String(val);
+                      }}
+                    </SelectValue>
                   </div>
                 </SelectTrigger>
                 <SelectContent>
@@ -379,7 +385,13 @@ export function ExpenseListClient({
                 }}
               >
                 <SelectTrigger className="h-9 text-xs w-full">
-                  <SelectValue placeholder="All Categories" />
+                  <SelectValue placeholder="All Categories">
+                    {(val) => {
+                      if (!val || val === 'all') return 'All Categories';
+                      const c = categories.find((item) => item.id === val);
+                      return c ? c.name : String(val);
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>

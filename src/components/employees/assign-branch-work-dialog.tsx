@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import { Briefcase, Building2, Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,8 +46,31 @@ export function AssignBranchWorkDialog({
   onSuccess,
 }: AssignBranchWorkDialogProps) {
   const [isPending, startTransition] = useTransition();
+
+  // Ensure employee's current branch is always in the available list, even if inactive or scoped
+  const allBranches = useMemo(() => {
+    const list = [...branches];
+    if (employee?.branch && !list.some((b) => b.id === employee.branch?.id)) {
+      list.unshift({
+        id: employee.branch.id,
+        name: employee.branch.name,
+        code: employee.branch.code,
+        city: employee.branch.city,
+      });
+    }
+    return list;
+  }, [branches, employee]);
+
+  const branchMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const b of allBranches) {
+      map[b.id] = `${b.name} (${b.city})`;
+    }
+    return map;
+  }, [allBranches]);
+
   const [selectedBranchId, setSelectedBranchId] = useState<string>(
-    () => employee?.branchId || (branches[0]?.id ?? '')
+    () => employee?.branchId || (allBranches[0]?.id ?? '')
   );
   const [selectedDesignation, setSelectedDesignation] = useState<string>(() =>
     employee?.designation && employee.designation !== 'Unassigned'
@@ -134,12 +157,27 @@ export function AssignBranchWorkDialog({
               <Building2 className="size-3.5 text-muted-foreground" />
               Assigned Branch <span className="text-destructive">*</span>
             </Label>
-            <Select value={selectedBranchId} onValueChange={(val) => setSelectedBranchId(val ?? '')}>
+            <Select
+              value={selectedBranchId}
+              onValueChange={(val) => setSelectedBranchId(val ?? '')}
+              items={branchMap}
+            >
               <SelectTrigger id="branch" className="h-10 text-xs">
-                <SelectValue placeholder="Select restaurant branch" />
+                <SelectValue placeholder="Select restaurant branch">
+                  {(val) => {
+                    if (!val) return 'Select restaurant branch';
+                    const str = String(val);
+                    return (
+                      branchMap[str] ||
+                      (employee?.branch?.id === str
+                        ? `${employee.branch.name} (${employee.branch.city})`
+                        : str)
+                    );
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {branches.map((b) => (
+                {allBranches.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {b.name} ({b.city})
                   </SelectItem>

@@ -455,7 +455,13 @@ export function NotificationCenterClient({
           {canFilterBranches && branches.length > 0 && (
             <Select value={branchFilter} onValueChange={handleBranchChange}>
               <SelectTrigger className="w-37.5 h-9 text-xs">
-                <SelectValue placeholder="Branch" />
+                <SelectValue placeholder="Branch">
+                  {(val) => {
+                    if (!val || val === 'all') return 'All Branches';
+                    const b = branches.find((item) => item.id === val);
+                    return b ? b.name : String(val);
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Branches</SelectItem>

@@ -334,7 +334,13 @@ export function PurchaseListClient({
           <div>
             <Select value={branchFilter} onValueChange={handleBranchChange}>
               <SelectTrigger className="h-10">
-                <SelectValue placeholder="Branch: All" />
+                <SelectValue placeholder="Branch: All">
+                  {(val) => {
+                    if (!val || val === 'ALL') return 'All Branches';
+                    const b = branches.find((item) => item.id === val);
+                    return b ? b.name : String(val);
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Branches</SelectItem>
@@ -359,7 +365,13 @@ export function PurchaseListClient({
         <div>
           <Select value={supplierFilter} onValueChange={handleSupplierChange}>
             <SelectTrigger className="h-10">
-              <SelectValue placeholder="Supplier: All" />
+              <SelectValue placeholder="Supplier: All">
+                {(val) => {
+                  if (!val || val === 'ALL') return 'All Suppliers';
+                  const s = suppliers.find((item) => item.id === val);
+                  return s ? s.name : String(val);
+                }}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Suppliers</SelectItem>

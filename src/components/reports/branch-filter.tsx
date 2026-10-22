@@ -48,7 +48,13 @@ export function BranchFilter({
         <SelectTrigger className="h-9 min-w-45 bg-card/60 border-border/60 text-xs rounded-xl">
           <div className="flex items-center gap-2 truncate">
             <Store className="w-3.5 h-3.5 text-primary shrink-0" />
-            <SelectValue placeholder="Select branch" />
+            <SelectValue placeholder="Select branch">
+              {(val) => {
+                if (!val || val === 'all') return '🏢 All Branches';
+                const b = branches.find((item) => item.id === val);
+                return b ? `${b.name} (${b.code})` : String(val);
+              }}
+            </SelectValue>
           </div>
         </SelectTrigger>
         <SelectContent>

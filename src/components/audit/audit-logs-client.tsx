@@ -377,7 +377,13 @@ export function AuditLogsClient({
               >
                 <SelectTrigger className="text-sm">
                   <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="All Branches" />
+                  <SelectValue placeholder="All Branches">
+                    {(val) => {
+                      if (!val || val === 'all') return 'All Branches';
+                      const b = branches.find((item) => item.id === val);
+                      return b ? `${b.name} (${b.code})` : String(val);
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {!isBranchRestricted && <SelectItem value="all">All Branches</SelectItem>}

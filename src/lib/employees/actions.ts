@@ -306,7 +306,6 @@ export async function getActiveBranchesForSelect(): Promise<ActionResult<BranchO
 
     const branches = await prisma.branch.findMany({
       where: {
-        status: 'ACTIVE',
         ...(!scope.isAllBranches ? { id: { in: scope.branchIds } } : {}),
       },
       select: {
@@ -315,7 +314,10 @@ export async function getActiveBranchesForSelect(): Promise<ActionResult<BranchO
         code: true,
         city: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: [
+        { status: 'asc' },
+        { name: 'asc' },
+      ],
     });
 
     return { success: true, data: branches };
