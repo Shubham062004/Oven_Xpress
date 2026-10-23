@@ -39,7 +39,7 @@ export function HomepageHeroActions({ defaultBranchSlug }: HomepageHeroActionsPr
       <button
         type="button"
         onClick={handleOrderAhead}
-        className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-orange-600/25 flex items-center justify-center gap-2 group transition-all active:scale-[0.98] cursor-pointer"
+        className="px-7 py-3.5 rounded-xl bg-linear-to-r from-[#E15227] via-[#EA632B] to-[#F17E34] hover:from-[#EB5C30] hover:to-[#F58642] text-white font-bold text-sm sm:text-base shadow-lg shadow-[#E15227]/30 flex items-center justify-center gap-2 group transition-all active:scale-[0.98] cursor-pointer"
       >
         <Clock className="size-4 shrink-0" />
         <span>Order Ahead</span>

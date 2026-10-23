@@ -131,17 +131,17 @@ export default function CartPage() {
             </div>
 
             {/* Order Type Toggle */}
-            <div className="grid grid-cols-3 gap-2 bg-muted/60 p-1.5 rounded-2xl text-xs font-bold border border-border/60">
+            <div className="grid grid-cols-3 gap-2 bg-muted/60 p-1.5 rounded-2xl text-xs font-bold border border-border/70">
               <button
                 type="button"
                 onClick={() => setOrderType('DELIVERY')}
                 className={`py-2.5 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   orderType === 'DELIVERY'
-                    ? 'bg-background text-primary shadow-xs font-extrabold border border-border/40'
+                    ? 'bg-background text-primary shadow-sm font-black border border-primary/25 ring-1 ring-primary/15'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Bike className="size-4 shrink-0 text-orange-500" />
+                <Bike className={`size-4 shrink-0 ${orderType === 'DELIVERY' ? 'text-primary' : 'text-muted-foreground'}`} />
                 <span>Delivery</span>
               </button>
               <button
@@ -149,11 +149,11 @@ export default function CartPage() {
                 onClick={() => setOrderType('TAKEAWAY')}
                 className={`py-2.5 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   orderType === 'TAKEAWAY'
-                    ? 'bg-background text-primary shadow-xs font-extrabold border border-border/40'
+                    ? 'bg-background text-primary shadow-sm font-black border border-primary/25 ring-1 ring-primary/15'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <PackageCheck className="size-4 shrink-0 text-amber-500" />
+                <PackageCheck className={`size-4 shrink-0 ${orderType === 'TAKEAWAY' ? 'text-primary' : 'text-muted-foreground'}`} />
                 <span>Takeaway</span>
               </button>
               <button
@@ -161,11 +161,11 @@ export default function CartPage() {
                 onClick={() => setOrderType('DINE_IN')}
                 className={`py-2.5 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   orderType === 'DINE_IN'
-                    ? 'bg-background text-primary shadow-xs font-extrabold border border-border/40'
+                    ? 'bg-background text-primary shadow-sm font-black border border-primary/25 ring-1 ring-primary/15'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <UtensilsCrossed className="size-4 shrink-0 text-blue-500" />
+                <UtensilsCrossed className={`size-4 shrink-0 ${orderType === 'DINE_IN' ? 'text-primary' : 'text-muted-foreground'}`} />
                 <span>Dine-In</span>
               </button>
             </div>
@@ -309,25 +309,25 @@ export default function CartPage() {
 
         {/* Right Column: Coupon & Bill Summary */}
         <div className="lg:col-span-5 space-y-5">
-          {/* Free Delivery Bar */}
+          {/* Free Delivery Bar — Tuscan Honeycomb Accent */}
           {orderType === 'DELIVERY' && (
-            <div className="bg-linear-to-r from-orange-500/10 via-amber-500/10 to-orange-500/10 border border-orange-500/30 rounded-2xl p-4 text-xs shadow-xs space-y-2">
+            <div className="bg-linear-to-r from-amber-500/10 via-amber-500/5 to-amber-500/10 border border-amber-500/25 rounded-2xl p-4 text-xs shadow-xs space-y-2.5">
               {amountForFreeDelivery > 0 ? (
                 <>
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-foreground flex items-center gap-1.5">
-                      <Bike className="size-4 text-orange-500 shrink-0" />
+                      <Bike className="size-4 text-amber-500 shrink-0" />
                       <span>
-                        Add <strong className="text-orange-600 dark:text-orange-400">₹{amountForFreeDelivery.toFixed(2)}</strong> more for FREE Delivery!
+                        Add <strong className="text-amber-600 dark:text-amber-400">₹{amountForFreeDelivery.toFixed(2)}</strong> more for FREE Delivery!
                       </span>
                     </span>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-400 shrink-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
                       ₹{freeDeliveryThreshold} Goal
                     </span>
                   </div>
-                  <div className="w-full bg-orange-500/20 h-2 rounded-full overflow-hidden p-0.5">
+                  <div className="w-full bg-amber-500/15 h-2 rounded-full overflow-hidden p-0.5">
                     <div
-                      className="bg-linear-to-r from-orange-500 to-amber-500 h-full rounded-full transition-all duration-500 ease-out"
+                      className="bg-linear-to-r from-amber-500 to-amber-400 h-full rounded-full transition-all duration-500 ease-out shadow-xs shadow-amber-500/30"
                       style={{ width: `${Math.min(100, (subtotal / freeDeliveryThreshold) * 100)}%` }}
                     />
                   </div>
@@ -412,7 +412,7 @@ export default function CartPage() {
                     type="button"
                     disabled={isApplyingCoupon}
                     onClick={() => handleApplyCoupon()}
-                    className="px-4 py-2.5 rounded-xl bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-xs shadow-md shadow-orange-600/20 transition-all cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2.5 rounded-xl bg-linear-to-r from-[#E15227] to-[#EE7832] hover:from-[#EB5C30] hover:to-[#F58642] text-white font-bold text-xs shadow-md shadow-[#E15227]/25 transition-all cursor-pointer disabled:opacity-50"
                   >
                     {isApplyingCoupon ? 'Checking...' : 'Apply'}
                   </button>
@@ -435,7 +435,7 @@ export default function CartPage() {
                   <button
                     type="button"
                     onClick={() => handleApplyCoupon('FIRST50')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-orange-500/40 hover:border-orange-500 bg-orange-500/5 hover:bg-orange-500/10 text-xs font-bold text-orange-600 dark:text-orange-400 transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-amber-500/40 hover:border-amber-500 bg-amber-500/8 hover:bg-amber-500/15 text-xs font-bold text-amber-600 dark:text-amber-400 transition-all cursor-pointer"
                   >
                     <span className="font-extrabold uppercase tracking-wider">FIRST50</span>
                     <span className="text-[10px] opacity-80">(₹50 OFF • 1st Order &gt; ₹150)</span>
@@ -443,7 +443,7 @@ export default function CartPage() {
                   <button
                     type="button"
                     onClick={() => handleApplyCoupon('BIRTHDAY')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-pink-500/40 hover:border-pink-500 bg-pink-500/5 hover:bg-pink-500/10 text-xs font-bold text-pink-600 dark:text-pink-400 transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-pink-500/40 hover:border-pink-500 bg-pink-500/8 hover:bg-pink-500/15 text-xs font-bold text-pink-600 dark:text-pink-400 transition-all cursor-pointer"
                   >
                     <span className="font-extrabold uppercase tracking-wider">🎂 BIRTHDAY</span>
                     <span className="text-[10px] opacity-80">(FREE Cake &gt; ₹1500)</span>
@@ -500,7 +500,7 @@ export default function CartPage() {
             {/* Checkout Button */}
             <Link
               href="/checkout"
-              className="w-full py-3.5 rounded-xl bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-xl shadow-orange-600/25 flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer"
+              className="w-full py-3.5 rounded-xl bg-linear-to-r from-[#E15227] via-[#EA632B] to-[#F17E34] hover:from-[#EB5C30] hover:to-[#F58642] text-white font-black text-sm shadow-xl shadow-[#E15227]/30 hover:shadow-2xl hover:shadow-[#E15227]/40 flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer"
             >
               <span>Proceed to Checkout</span>
               <ArrowRight className="size-4" />

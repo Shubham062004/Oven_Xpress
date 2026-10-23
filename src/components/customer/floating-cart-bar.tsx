@@ -28,10 +28,10 @@ export function FloatingCartBar() {
       <div className="max-w-md mx-auto pointer-events-auto">
         <Link
           href="/cart"
-          className="group flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-linear-to-r from-orange-600 to-amber-600 text-white shadow-xl shadow-orange-600/30 hover:shadow-orange-600/40 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+          className="group flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-linear-to-r from-[#E15227] via-[#EA632B] to-[#F17E34] text-white shadow-xl shadow-[#E15227]/35 hover:shadow-2xl hover:shadow-[#E15227]/45 border border-white/20 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
         >
           <div className="flex items-center gap-3">
-            <div className="size-9 rounded-xl bg-white/20 flex items-center justify-center font-bold text-sm">
+            <div className="size-9 rounded-xl bg-white/20 backdrop-blur-xs border border-white/25 flex items-center justify-center font-bold text-sm shadow-xs">
               <ShoppingBag className="size-4" />
             </div>
             <div>

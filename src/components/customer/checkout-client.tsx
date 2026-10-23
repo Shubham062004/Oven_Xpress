@@ -189,7 +189,7 @@ export function CheckoutClient({
           branchId: branch?.id || '',
         },
         theme: {
-          color: '#ea580c', // Oven Xpress Brand Orange
+          color: '#E15227', // Oven Xpress Brand Terracotta Ember
         },
         config: isQrFocus
           ? {
@@ -660,15 +660,15 @@ export function CheckoutClient({
                 onClick={() => setPaymentMethod('UPI_QR')}
                 className={`p-3.5 rounded-xl border text-xs cursor-pointer flex flex-col justify-between space-y-2 transition-all ${
                   paymentMethod === 'UPI_QR'
-                    ? 'bg-orange-500/10 border-orange-500 shadow-xs ring-2 ring-orange-500/30'
+                    ? 'bg-primary/10 border-primary shadow-xs ring-2 ring-primary/25'
                     : 'hover:bg-muted/40 border-border/70'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="size-8 rounded-lg bg-orange-500/15 text-orange-600 flex items-center justify-center">
+                  <div className="size-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
                     <QrCode className="size-4" />
                   </div>
-                  <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-linear-to-r from-orange-600 to-amber-600 text-white rounded-full shadow-xs">
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-linear-to-r from-[#E15227] to-[#EE7832] text-white rounded-full shadow-xs">
                     Popular • Scan &amp; Pay
                   </span>
                 </div>
@@ -811,7 +811,7 @@ export function CheckoutClient({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 rounded-xl bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-xl shadow-orange-600/25 flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-60 cursor-pointer"
+              className="w-full py-3.5 rounded-xl bg-linear-to-r from-[#E15227] via-[#EA632B] to-[#F17E34] hover:from-[#EB5C30] hover:to-[#F58642] text-white font-black text-sm shadow-xl shadow-[#E15227]/30 hover:shadow-2xl hover:shadow-[#E15227]/40 flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-60 cursor-pointer"
             >
               {isSubmitting ? (
                 <>

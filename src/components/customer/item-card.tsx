@@ -32,7 +32,7 @@ export function ItemCard({ item }: ItemCardProps) {
   const isVeg = isItemVeg(item);
 
   return (
-    <div className="group relative bg-card rounded-2xl border border-border/70 hover:border-border overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+    <div className="group relative bg-card rounded-2xl border border-border/80 hover:border-primary/40 hover:shadow-xl hover:shadow-black/40 overflow-hidden transition-all duration-200 flex flex-col justify-between">
       {/* Image container */}
       <div className="relative aspect-16/10 w-full overflow-hidden bg-muted">
         {item.imageUrl ? (
